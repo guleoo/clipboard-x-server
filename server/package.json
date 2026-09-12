@@ -1,0 +1,26 @@
+{
+  "name": "@clipboard-x/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/entry/main.ts --config ../config.yaml",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:network": "CLIPBOARD_X_NETWORK_TEST=1 bun test tests/network.integration.test.ts",
+    "build": "bun run build.ts",
+    "compile": "bun run build.ts --compile",
+    "openapi": "bun run scripts/openapi.ts",
+    "audit:objects": "bun run scripts/objects.ts audit",
+    "gc:objects": "bun run scripts/objects.ts gc",
+    "benchmark": "bun run scripts/benchmark.ts"
+  },
+  "dependencies": {
+    "hono": "4.13.7",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.1",
+    "typescript": "7.0.2"
+  }
+}

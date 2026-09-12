@@ -1,0 +1,24 @@
+{
+  "name": "clipboard-x-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "workspaces": [
+    "web",
+    "server"
+  ],
+  "scripts": {
+    "dev": "bun run --parallel --filter '*' dev",
+    "typecheck": "bun run --parallel --filter '*' typecheck",
+    "test": "bun test",
+    "test:network": "bun run --filter '@clipboard-x/server' test:network",
+    "build": "bun run build.ts",
+    "compile": "bun run build.ts --compile",
+    "openapi:check": "bun run server/scripts/openapi.ts --check",
+    "audit:objects": "bun run --filter '@clipboard-x/server' audit:objects",
+    "gc:objects": "bun run --filter '@clipboard-x/server' gc:objects",
+    "benchmark": "bun run --filter '@clipboard-x/server' benchmark",
+    "audit:licenses": "bun run scripts/licenses.ts"
+  }
+}
