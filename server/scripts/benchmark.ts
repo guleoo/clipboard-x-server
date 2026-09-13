@@ -1,8 +1,11 @@
 import { mkdtemp, rm } from "node:fs/promises"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
+import { sql } from "drizzle-orm"
 import { Application } from "../src/application"
 import { createId } from "../src/common/identity"
-import { ConfigurationSchema, ConfigurationStore, loadConfig } from "../src/entry/config"
+import { ConfigurationSchema, ConfigurationStore, loadConfig } from "../src/config"
+import { migrateApplicationDatabase } from "../src/db"
+import { clipboardItems } from "../src/db/schema"
 
 const loads = {
   publications: 2_000,
@@ -17,10 +20,15 @@ const configurationPath = join(directory, "config.yaml")
 ConfigurationStore.create(configurationPath, ConfigurationSchema.parse({
   version: 1,
   server: { environment: "test", cookieSecure: false },
-  storage: { dataDirectory: "./data" },
+  storage: {
+    dataDirectory: "./data",
+    migrationsDirectory: resolve(import.meta.dir, "../drizzle"),
+  },
   administrator: { username: "administrator", password: "benchmark-password" },
 }))
-const application = await Application.create(loadConfig(configurationPath))
+const config = loadConfig(configurationPath)
+migrateApplicationDatabase(config)
+const application = await Application.create(config)
 const sourceId = "11111111-1111-4111-8111-111111111111"
 const targetId = "22222222-2222-4222-8222-222222222222"
 const measurements: Record<string, number> = {}
@@ -87,26 +95,33 @@ try {
   })
 
   await measure("metadataSeedMs", () => {
-    const insert = application.database.raw.prepare(
-      `INSERT INTO clipboard_items(id, channel_id, origin_device_id, created_at, updated_at, visible)
-       VALUES (?, ?, ?, ?, ?, 1)`,
-    )
-    application.database.raw.transaction(() => {
-      for (let index = loads.publications; index < loads.metadataItems; index += 1) {
-        const id = `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`
-        insert.run(id, channel.id, sourceId, index + 1, index + 1)
+    application.database.transaction(() => {
+      for (let start = loads.publications; start < loads.metadataItems; start += 500) {
+        const end = Math.min(start + 500, loads.metadataItems)
+        const values = Array.from({ length: end - start }, (_, offset) => {
+          const index = start + offset
+          return {
+            id: `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`,
+            channelId: channel.id,
+            originDeviceId: sourceId,
+            createdAt: index + 1,
+            updatedAt: index + 1,
+            visible: true,
+          }
+        })
+        application.database.current.insert(clipboardItems).values(values).run()
       }
-    })()
+    })
   })
   await measure("metadataFirstPageMs", () => {
     const page = application.clipboard.list({ channelId: channel.id, memberDeviceId: targetId, limit: 100 })
     if (page.items.length !== 100 || !page.hasMore || !page.cursor) throw new Error("Metadata page baseline failed")
   })
-  const plan = application.database.raw.query<{ detail: string }, [string, number]>(
-    `EXPLAIN QUERY PLAN SELECT id FROM clipboard_items
-     WHERE channel_id = ? AND visible = 1 AND deleted_at IS NULL
-     ORDER BY created_at DESC, id DESC LIMIT ?`,
-  ).all(channel.id, 101)
+  const plan = application.database.current.all<{ detail: string }>(sql`
+    EXPLAIN QUERY PLAN SELECT id FROM clipboard_items
+    WHERE channel_id = ${channel.id} AND visible = 1 AND deleted_at IS NULL
+    ORDER BY created_at DESC, id DESC LIMIT ${101}
+  `)
   if (!plan.some((entry) => entry.detail.includes("clipboard_items_page"))) {
     throw new Error(`Pagination did not use clipboard_items_page: ${JSON.stringify(plan)}`)
   }

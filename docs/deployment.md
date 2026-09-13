@@ -15,9 +15,17 @@ chmod 600 config.yaml
 ./clipboard-x-server --config ./config.yaml
 ```
 
+For a compiled release, run the explicit migration operation before the first start and every upgrade:
+
+```sh
+./clipboard-x-server --config ./config.yaml --migrate
+./clipboard-x-server --config ./config.yaml
+```
+
 Before starting, set a unique `administrator.password`. For production, also set
 `server.environment: production`, the HTTPS `server.publicOrigin`, `server.cookieSecure: true`, and
-the required listen/storage paths. Relative paths are resolved from the YAML file's directory.
+the required listen/storage paths. `server.timezone` defaults to `UTC`. Relative paths are resolved
+from the YAML file's directory.
 
 The YAML file is the sole authoritative source for runtime options, the administrator, devices,
 complete device API keys, channels, and memberships. The process reads it at startup. Changes made
@@ -26,7 +34,7 @@ through the console are written with a temporary file, synced, atomically rename
 
 The executable contains the Bun runtime but is still platform/architecture-specific. Build and
 smoke-test separate Linux x64 and arm64 artifacts on their target libc baseline. Keep `web/dist`,
-`migrations`, and `config.yaml` beside the executable unless absolute paths are configured.
+`server/drizzle`, and `config.yaml` beside the executable unless absolute paths are configured.
 
 ## systemd
 

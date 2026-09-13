@@ -7,8 +7,13 @@ server:
   webRoot: ./web/dist
   publicOrigin: http://127.0.0.1:8787
   cookieSecure: false
+  shutdownTimeoutMillis: 30000
+  timezone: UTC
 storage:
   dataDirectory: ./data
+  migrationsDirectory: ./server/drizzle
+  busyTimeoutMillis: 5000
+  wal: true
 limits:
   maxObjectBytes: 83886080
   maxItemBytes: 268435456
@@ -18,6 +23,27 @@ lifetimes:
   keyOverlapSeconds: 300
   materializationTtlSeconds: 600
   objectGcGraceSeconds: 86400
+security:
+  passwordMemoryCost: 65536
+  passwordTimeCost: 3
+  sessionTokenBytes: 32
+  rateLimit:
+    maximum: 600
+    windowMillis: 60000
+logger:
+  console:
+    enabled: true
+    level: info
+    format: pretty
+  file:
+    enabled: true
+    level: info
+    format: json
+    dir: logs
+    filename: app-%DATE%.log
+    maxFiles: 30d
+    maxSize: 100m
+    zippedArchive: true
 content:
   supportedMimeTypes:
     - text/plain;charset=utf-8

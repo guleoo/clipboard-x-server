@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { zz as z } from "../frame/zod"
 
 export const UuidSchema = z.uuidv4()
 export const ContentIdSchema = z.string().min(1).max(128).refine((value) => !/[\r\n\0]/u.test(value))

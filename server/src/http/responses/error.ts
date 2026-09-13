@@ -1,10 +1,15 @@
 import type { Context } from "hono"
 import { ZodError } from "zod"
 import { DomainError } from "../../common/error"
+import { RequestStore } from "../../frame/core"
+import { Log } from "../../frame/logger"
+import { HttpError } from "../../frame/hono/error"
 import type { HttpEnvironment } from "../types"
 
+const logger = Log.create({ service: "http" })
+
 export function errorResponse(c: Context<HttpEnvironment>, error: unknown): Response {
-  const requestId = c.get("requestId")
+  const requestId = RequestStore.get("requestId") ?? "unknown"
   if (error instanceof DomainError) {
     return c.json({
       error: {
@@ -12,6 +17,16 @@ export function errorResponse(c: Context<HttpEnvironment>, error: unknown): Resp
         message: error.message,
         requestId,
         details: error.details ?? {},
+      },
+    }, error.status as 400)
+  }
+  if (error instanceof HttpError) {
+    return c.json({
+      error: {
+        code: error.status === 429 ? "rate_limited" : "invalid_request",
+        message: error.message,
+        requestId,
+        details: error.data ?? {},
       },
     }, error.status as 400)
   }
@@ -27,12 +42,7 @@ export function errorResponse(c: Context<HttpEnvironment>, error: unknown): Resp
       },
     }, 400)
   }
-  console.error(JSON.stringify({
-    level: "error",
-    event: "request.failed",
-    requestId,
-    message: error instanceof Error ? error.message : "Unknown error",
-  }))
+  logger.error(error, { event: "request.failed", requestId })
   return c.json({
     error: {
       code: "internal_error",

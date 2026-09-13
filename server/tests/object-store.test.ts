@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
-import { ObjectStore } from "../src/infrastructure/objects/store"
+import { ObjectStore } from "../src/modules/clipboard/object"
 
 const directories: string[] = []
 

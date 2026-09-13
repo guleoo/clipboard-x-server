@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
 import { join } from "node:path"
+import { sql } from "drizzle-orm"
+import { parse } from "yaml"
 import { Application } from "../src/application"
-import { loadConfig } from "../src/entry/config"
+import { configurationPath, loadConfig } from "../src/config"
 import { createTestConfig } from "./support"
 
 const directories: string[] = []
@@ -14,6 +16,11 @@ afterEach(async () => {
 })
 
 describe("authoritative YAML configuration", () => {
+  test("the last config argument overrides a workspace default", () => {
+    expect(configurationPath(["--config", "../config.yaml", "--config=/tmp/override.yaml"]))
+      .toBe("/tmp/override.yaml")
+  })
+
   test("console mutations persist secrets and restart reconciles derived database state", async () => {
     const directory = await mkdtemp("/tmp/clipboard-x-configuration-")
     directories.push(directory)
@@ -30,16 +37,21 @@ describe("authoritative YAML configuration", () => {
     const yaml = await readFile(join(directory, "config.yaml"), "utf8")
     expect(yaml).toContain("\nserver:\n")
     expect(yaml).toContain("\n  supportedMimeTypes:\n")
-    expect(yaml).toContain("\ndevices:\n  -\n")
+    expect(yaml).toContain("\ndevices:\n  - id:")
+    expect(yaml.split("\n").length).toBeGreaterThan(30)
+    expect(parse(yaml)).toMatchObject({
+      devices: [{ id: deviceId }],
+      channels: [{ id: channel.id, members: [deviceId] }],
+    })
     expect(yaml).toContain("configured-password")
     expect(yaml).toContain(issued.key)
     expect(yaml).toContain(channel.id)
-    const passwordHash = first.database.raw.query<{ password_hash: string }, []>(
-      "SELECT password_hash FROM administrators WHERE id = 1",
-    ).get()?.password_hash
-    const secretHash = first.database.raw.query<{ secret_hash: string }, [string]>(
-      "SELECT secret_hash FROM device_keys WHERE id = ?",
-    ).get(issued.id)?.secret_hash
+    const passwordHash = first.database.first<{ password_hash: string }>(sql`
+      SELECT password_hash FROM administrators WHERE id = 1
+    `)?.password_hash
+    const secretHash = first.database.first<{ secret_hash: string }>(sql`
+      SELECT secret_hash FROM device_keys WHERE id = ${issued.id}
+    `)?.secret_hash
     expect(passwordHash).toStartWith("$argon2id$")
     expect(passwordHash).not.toContain("configured-password")
     expect(secretHash).toStartWith("$argon2id$")

@@ -1,0 +1,58 @@
+import { resolve } from "node:path"
+import { configurationPath, loadConfig } from "../src/config"
+
+const projectDirectory = resolve(import.meta.dir, "../..")
+const serverDirectory = resolve(projectDirectory, "server")
+const config = loadConfig(configurationPath())
+
+const migration = Bun.spawn([
+  "bun",
+  "run",
+  "scripts/db/migrate.ts",
+  "--config",
+  config.configuration.path,
+], {
+  cwd: serverDirectory,
+  stdin: "inherit",
+  stdout: "inherit",
+  stderr: "inherit",
+})
+const migrationExitCode = await migration.exited
+if (migrationExitCode !== 0) process.exit(migrationExitCode)
+
+const server = Bun.spawn([
+  "bun",
+  "--hot",
+  "src/index.ts",
+  "--config",
+  config.configuration.path,
+], {
+  cwd: serverDirectory,
+  stdin: "inherit",
+  stdout: "inherit",
+  stderr: "inherit",
+})
+const web = Bun.spawn(["bun", "run", "dev"], {
+  cwd: resolve(projectDirectory, "web"),
+  env: process.env,
+  stdin: "inherit",
+  stdout: "inherit",
+  stderr: "inherit",
+})
+
+let stopping = false
+function stop(signal: NodeJS.Signals): void {
+  if (stopping) return
+  stopping = true
+  server.kill(signal)
+  web.kill(signal)
+}
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => stop(signal))
+}
+
+const exitCode = await Promise.race([server.exited, web.exited])
+stop("SIGTERM")
+await Promise.allSettled([server.exited, web.exited])
+process.exitCode = exitCode

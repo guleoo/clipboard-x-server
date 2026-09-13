@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
+import { sql } from "drizzle-orm"
 import { Application } from "../src/application"
 import { createHttpApp } from "../src/http/app"
 import { createTestConfig } from "./support"
@@ -221,7 +222,7 @@ describe("HTTP API v1", () => {
       {},
     ))
     expect(adminRequested.transfer.id).not.toBe(requested.transfer.id)
-    expect(application.database.raw.query<{ count: number }, []>("SELECT count(*) AS count FROM work_queue").get()?.count).toBe(1)
+    expect(application.database.first<{ count: number }>(sql`SELECT count(*) AS count FROM work_queue`)?.count).toBe(1)
 
     const workPage = await document<{ work: readonly { id: string }[] }>(
       await app.request("/api/v1/work", { headers: deviceHeaders(sourceId, sourceKey) }),
@@ -262,7 +263,7 @@ describe("HTTP API v1", () => {
       jsonRequest("POST", {}, deviceHeaders(targetId, targetKey)),
     ))
     expect(cached.transfer.state).toBe("completed")
-    expect(application.database.raw.query<{ count: number }, []>("SELECT count(*) AS count FROM work_queue").get()?.count).toBe(1)
+    expect(application.database.first<{ count: number }>(sql`SELECT count(*) AS count FROM work_queue`)?.count).toBe(1)
 
     const manifestOnly = {
       id: badItemId,

@@ -23,6 +23,7 @@ config.yaml
 .env.test.local
 .env.production.local
 .env.local
+!web/.env
 
 # caches
 .eslintcache

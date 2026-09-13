@@ -1,8 +1,7 @@
-import type { Administrator } from "../auth/service"
-import type { DeviceIdentity } from "../devices/service"
+import type { Administrator } from "../modules/identity/administrator"
+import type { DeviceIdentity } from "../modules/device/device"
 
 export interface HttpVariables {
-  requestId: string
   administrator: Administrator
   adminToken: string
   device: DeviceIdentity

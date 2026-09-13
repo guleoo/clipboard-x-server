@@ -1,10 +1,11 @@
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import {
   ConfigurationSchema,
   ConfigurationStore,
   loadConfig,
   type ServerConfig,
-} from "../src/entry/config"
+} from "../src/config"
+import { migrateApplicationDatabase } from "../src/db"
 
 export function createTestConfig(directory: string, password = "1234567"): ServerConfig {
   const path = join(directory, "config.yaml")
@@ -17,10 +18,15 @@ export function createTestConfig(directory: string, password = "1234567"): Serve
       webRoot: "./web",
       cookieSecure: false,
     },
-    storage: { dataDirectory: "./data" },
+    storage: {
+      dataDirectory: "./data",
+      migrationsDirectory: resolve(import.meta.dir, "../drizzle"),
+    },
     administrator: { username: "administrator", password },
     devices: [],
     channels: [],
   }))
-  return loadConfig(path)
+  const config = loadConfig(path)
+  migrateApplicationDatabase(config)
+  return config
 }

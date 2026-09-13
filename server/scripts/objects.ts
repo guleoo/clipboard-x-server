@@ -1,7 +1,9 @@
 import { readdir, rm, stat } from "node:fs/promises"
 import { basename, join } from "node:path"
+import { and, eq, sql } from "drizzle-orm"
 import { Application } from "../src/application"
-import { loadConfig } from "../src/entry/config"
+import { loadConfig } from "../src/config"
+import { objects as objectRecords } from "../src/db/schema"
 
 interface ObjectRow {
   readonly id: string
@@ -34,7 +36,7 @@ async function fileDigest(path: string): Promise<string> {
 }
 
 async function audit(application: Application): Promise<readonly AuditIssue[]> {
-  const rows = application.database.raw.query<ObjectRow, []>("SELECT * FROM objects ORDER BY created_at").all()
+  const rows = application.database.current.all<ObjectRow>(sql`SELECT * FROM objects ORDER BY created_at`)
   const files = await application.objects.files()
   const referencedPaths = new Set(rows.map((row) => row.path))
   const issues: AuditIssue[] = []
@@ -51,12 +53,12 @@ async function audit(application: Application): Promise<readonly AuditIssue[]> {
     if (await fileDigest(row.path) !== row.sha256) {
       issues.push({ code: "hash_mismatch", object: row.sha256, detail: "stored bytes do not match the content address" })
     }
-    const actualReferences = Number(application.database.raw.query<{ count: number }, [string, string]>(
-      `SELECT (
-        (SELECT count(*) FROM representations WHERE object_id = ?) +
-        (SELECT count(*) FROM previews WHERE object_id = ?)
-      ) AS count`,
-    ).get(row.id, row.id)?.count ?? 0)
+    const actualReferences = Number(application.database.first<{ count: number }>(sql`
+      SELECT (
+        (SELECT count(*) FROM representations WHERE object_id = ${row.id}) +
+        (SELECT count(*) FROM previews WHERE object_id = ${row.id})
+      ) AS count
+    `)?.count ?? 0)
     if (actualReferences !== row.ref_count) {
       issues.push({ code: "ref_count_mismatch", object: row.sha256, detail: `metadata ${row.ref_count}, actual ${actualReferences}` })
     }
@@ -71,9 +73,9 @@ async function audit(application: Application): Promise<readonly AuditIssue[]> {
 
 async function garbageCollect(application: Application, removeFiles: boolean): Promise<void> {
   const cutoff = Date.now() - application.config.objectGcGraceMs
-  const rows = application.database.raw.query<ObjectRow, [number]>(
-    "SELECT * FROM objects WHERE ref_count = 0 AND created_at <= ? ORDER BY created_at",
-  ).all(cutoff)
+  const rows = application.database.current.all<ObjectRow>(sql`
+    SELECT * FROM objects WHERE ref_count = 0 AND created_at <= ${cutoff} ORDER BY created_at
+  `)
   const temporaryDirectory = join(application.config.objectDirectory, ".tmp")
   const staleParts: string[] = []
   for (const entry of await readdir(temporaryDirectory, { withFileTypes: true }).catch(() => [])) {
@@ -90,8 +92,11 @@ async function garbageCollect(application: Application, removeFiles: boolean): P
   }))
   if (!removeFiles) return
   for (const row of rows) {
-    const result = application.database.raw.query("DELETE FROM objects WHERE id = ? AND ref_count = 0").run(row.id)
-    if (result.changes > 0) await rm(row.path, { force: true })
+    const deleted = application.database.current.delete(objectRecords)
+      .where(and(eq(objectRecords.id, row.id), eq(objectRecords.refCount, 0)))
+      .returning({ id: objectRecords.id })
+      .all()
+    if (deleted.length > 0) await rm(row.path, { force: true })
   }
   for (const path of staleParts) await rm(path, { force: true })
   console.log(JSON.stringify({ event: "objects.gc.complete", deletedObjects: rows.length, deletedTemporaryFiles: staleParts.length }))

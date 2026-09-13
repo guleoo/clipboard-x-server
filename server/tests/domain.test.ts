@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
+import { sql } from "drizzle-orm"
 import { Application } from "../src/application"
 import { Cursor } from "../src/common/cursor"
 import { createTestConfig } from "./support"
@@ -53,9 +54,9 @@ describe("domain invariants", () => {
     value.devices.create({ id: deviceId, tag: "Test", iconKind: "desktop" })
     const first = await value.devices.issueKey(deviceId)
     const second = await value.devices.issueKey(deviceId)
-    const stored = value.database.raw.query<{ secret_hash: string }, [string]>(
-      "SELECT secret_hash FROM device_keys WHERE id = ?",
-    ).get(second.id)
+    const stored = value.database.first<{ secret_hash: string }>(sql`
+      SELECT secret_hash FROM device_keys WHERE id = ${second.id}
+    `)
     expect(stored?.secret_hash).toStartWith("$argon2id$")
     expect(stored?.secret_hash).not.toContain(second.key)
     expect((await value.devices.authenticate(first.key, deviceId)).keyId).toBe(first.id)

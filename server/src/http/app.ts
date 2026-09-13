@@ -1,41 +1,48 @@
 import { Hono } from "hono"
 import type { Application } from "../application"
-import { createAdminApi } from "../admin-api/routes"
-import { createDeviceApi } from "../device-api/routes"
-import { deviceAuth } from "./middleware/auth"
-import { jsonBodyLimit, rateLimit, requestContext } from "./middleware/request"
+import { createAdminApi, createDeviceApi } from "../modules"
+import { jsonBodyLimit, securityHeaders } from "./middleware/request"
 import { errorResponse } from "./responses/error"
 import { staticFile } from "../static/files"
 import type { HttpEnvironment } from "./types"
+import { RequestStore } from "../frame/core"
+import { requestContext } from "../frame/hono/request-context"
+import { requestLogger } from "../frame/hono/request-logger"
+import { rateLimit } from "../frame/security/rate-limit"
+import { operation } from "./openapi"
+import { Health } from "../frame/health/checker"
 
 export function createHttpApp(application: Application): Hono<HttpEnvironment> {
   const app = new Hono<HttpEnvironment>()
 
-  app.use("*", requestContext())
-  app.use("*", rateLimit())
+  app.use("*", requestContext)
+  app.use("*", requestLogger())
+  app.use("*", securityHeaders())
+  app.use("*", rateLimit({
+    name: "http",
+    limit: application.config.rateLimitMaximum,
+    windowMillis: application.config.rateLimitWindowMs,
+  }))
   app.use("*", jsonBodyLimit())
 
-  app.get("/health/live", (c) => c.json({ status: "ok" }))
-  app.get("/health/ready", (c) => {
-    try {
-      application.database.raw.query("SELECT 1").get()
-      return c.json({ status: "ready" })
-    } catch {
-      return c.json({ status: "not-ready" }, 503)
-    }
+  Health.register({ name: "database", check: () => application.database.check() })
+
+  app.get("/health/live", operation({ operationId: "getLiveness", tags: ["Health"], summary: "Check process liveness", auth: false }), (c) => c.json({ status: "ok" }))
+  app.get("/health/ready", operation({ operationId: "getReadiness", tags: ["Health"], summary: "Check service readiness", auth: false }), async (c) => {
+    const result = await Health.checkReady()
+    return result.ok
+      ? c.json({ status: "ready" })
+      : c.json({ status: "not-ready", failed: result.failed }, 503)
   })
 
-  const deviceApi = new Hono<HttpEnvironment>()
-  deviceApi.use("*", deviceAuth(application))
-  deviceApi.route("/", createDeviceApi(application))
-  app.route("/api/v1", deviceApi)
+  app.route("/api/v1", createDeviceApi(application))
   app.route("/admin/api/v1", createAdminApi(application))
 
   app.all("/api/*", (c) => c.json({
     error: {
       code: "not_found",
       message: "Resource not found",
-      requestId: c.get("requestId"),
+      requestId: RequestStore.get("requestId") ?? "unknown",
       details: {},
     },
   }, 404))
@@ -43,7 +50,7 @@ export function createHttpApp(application: Application): Hono<HttpEnvironment> {
     error: {
       code: "not_found",
       message: "Resource not found",
-      requestId: c.get("requestId"),
+      requestId: RequestStore.get("requestId") ?? "unknown",
       details: {},
     },
   }, 404))
@@ -54,7 +61,7 @@ export function createHttpApp(application: Application): Hono<HttpEnvironment> {
       error: {
         code: "not_found",
         message: "Resource not found",
-        requestId: c.get("requestId"),
+        requestId: RequestStore.get("requestId") ?? "unknown",
         details: {},
       },
     }, 404)
@@ -64,7 +71,7 @@ export function createHttpApp(application: Application): Hono<HttpEnvironment> {
     error: {
       code: "not_found",
       message: "Resource not found",
-      requestId: c.get("requestId"),
+      requestId: RequestStore.get("requestId") ?? "unknown",
       details: {},
     },
   }, 404))

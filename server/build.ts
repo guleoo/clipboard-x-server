@@ -6,7 +6,7 @@ const compile = process.argv.includes("--compile")
 await rm(outputDirectory, { recursive: true, force: true })
 
 const result = await Bun.build({
-  entrypoints: [new URL("./src/entry/main.ts", import.meta.url).pathname],
+  entrypoints: [new URL("./src/index.ts", import.meta.url).pathname],
   target: "bun",
   minify: true,
   sourcemap: compile ? "none" : "linked",
