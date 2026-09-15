@@ -6,10 +6,10 @@ import { RateLimitError } from "./error";
 
 export interface RateLimitOptions {
   readonly name: string;
-  readonly windowMillis: number;
+  readonly window: number;
   readonly limit: number;
   readonly message?: string;
-  readonly key?: (context: Parameters<MiddlewareHandler>[0]) => string | Promise<string>;
+  readonly keyGenerator?: (context: Parameters<MiddlewareHandler>[0]) => string | Promise<string>;
   readonly skip?: (context: Parameters<MiddlewareHandler>[0]) => boolean | Promise<boolean>;
 }
 
@@ -41,13 +41,13 @@ export function rateLimit(options: RateLimitOptions): MiddlewareHandler {
   if (!Number.isSafeInteger(options.limit) || options.limit <= 0) {
     throw new RateLimitError("Rate limit must be a positive integer", 1, 0);
   }
-  if (!Number.isSafeInteger(options.windowMillis) || options.windowMillis <= 0) {
+  if (!Number.isSafeInteger(options.window) || options.window <= 0) {
     throw new RateLimitError("Rate limit window must be positive", options.limit, 0);
   }
 
   return createMiddleware(async (context, next) => {
     if (await options.skip?.(context)) return next();
-    const rawKey = await (options.key ?? clientIp)(context);
+    const rawKey = await (options.keyGenerator ?? clientIp)(context);
     const hash = createHash("sha256").update(rawKey).digest("base64url");
     const key = `${options.name}:${hash}`;
     const now = Date.now();
@@ -63,7 +63,7 @@ export function rateLimit(options: RateLimitOptions): MiddlewareHandler {
     const current = counters.get(key);
     const counter =
       !current || current.expiresAt <= now
-        ? { count: 1, expiresAt: now + options.windowMillis }
+        ? { count: 1, expiresAt: now + options.window }
         : { ...current, count: current.count + 1 };
     counters.set(key, counter);
     const remaining = Math.max(options.limit - counter.count, 0);

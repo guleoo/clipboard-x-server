@@ -23,8 +23,8 @@ For a compiled release, run the explicit migration operation before the first st
 ```
 
 Before starting, set a unique `administrator.password`. For production, also set
-`server.environment: production`, the HTTPS `server.publicOrigin`, `server.cookieSecure: true`, and
-the required listen/storage paths. `server.timezone` defaults to `UTC`. Relative paths are resolved
+`app.hostname: 0.0.0.0`, the HTTPS `web.public-origin`, `web.cookie-secure: true`, and the required
+database/storage paths. `app.timezone` defaults to `UTC`. Relative paths are resolved
 from the YAML file's directory.
 
 The YAML file is the sole authoritative source for runtime options, the administrator, devices,
@@ -34,7 +34,8 @@ through the console are written with a temporary file, synced, atomically rename
 
 The executable contains the Bun runtime but is still platform/architecture-specific. Build and
 smoke-test separate Linux x64 and arm64 artifacts on their target libc baseline. Keep `web/dist`,
-`server/drizzle`, and `config.yaml` beside the executable unless absolute paths are configured.
+`server/drizzle`, `server/config`, and `config.yaml` beside the executable unless absolute paths are
+configured.
 
 ## systemd
 
@@ -52,9 +53,9 @@ Use the supplied Nginx example or an equivalent TLS reverse proxy. Preserve stre
 
 ## Container
 
-Copy `config.example.yaml` to `config.yaml`. Set `server.host: 0.0.0.0`,
-`server.webRoot: ./web/dist`, and `storage.dataDirectory: ./data`, then ensure UID/GID 10001 can update
-the file:
+Copy `config.example.yaml` to `config.yaml`. Set `app.hostname: 0.0.0.0`,
+`web.root: ./web/dist`, `database.url: ./data/clipboard-x.db`, and
+`storage.data-directory: ./data`, then ensure UID/GID 10001 can update the file:
 
 ```sh
 chown 10001:10001 config.yaml

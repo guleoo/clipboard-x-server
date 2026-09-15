@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "bun run server/scripts/dev.ts",
     "typecheck": "bun run --parallel --filter '*' typecheck",
-    "test": "bun test",
+    "test": "bun run --parallel --filter '*' test",
     "test:network": "bun run --filter '@clipboard-x/server' test:network",
     "build": "bun run build.ts",
     "compile": "bun run build.ts --compile",

@@ -6,7 +6,7 @@ services:
     tmpfs:
       - /tmp:size=16m,mode=1777
     ports:
-      - "127.0.0.1:8787:8787"
+      - "127.0.0.1:28787:28787"
     volumes:
       - ./config.yaml:/app/config.yaml
       - clipboard-x-data:/app/data

@@ -13,6 +13,19 @@ export interface Page<T> {
   readonly pageSize: number;
 }
 
+const DEFAULT_PAGE_SIZE = 10;
+
+export const PageReqSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1).optional(),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(200)
+    .default(DEFAULT_PAGE_SIZE)
+    .optional(),
+});
+
 export function resultSchema<T extends z.ZodType>(schema: T) {
   return z.object({
     code: z.number().int(),
@@ -29,7 +42,7 @@ export function successResultSchema<T extends z.ZodType>(schema: T) {
   });
 }
 
-export function pageSchema<T extends z.ZodType>(schema: T) {
+export function pageRespSchema<T extends z.ZodType>(schema: T) {
   return z.object({
     list: z.array(schema),
     total: z.number().int().nonnegative(),
@@ -38,7 +51,15 @@ export function pageSchema<T extends z.ZodType>(schema: T) {
   });
 }
 
+export const pageSchema = pageRespSchema;
+export const PageRespSchema = pageRespSchema(z.any());
+export type PageResp<T = unknown> = Page<T>;
+
 export namespace Result {
+  export function custom<T>(body: ResultBody<T>): ResultBody<T> {
+    return body;
+  }
+
   export function data<T>(result: T): ResultBody<T> {
     return { code: 200, msg: "ok", result };
   }

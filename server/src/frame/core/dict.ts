@@ -32,7 +32,7 @@ export function defineDict<const Type extends string, const Items extends DictIn
     type,
     value,
     label: input[value]!.label,
-    ...(input[value]!.desc === undefined ? {} : { description: input[value]!.desc }),
+    description: input[value]!.desc,
     sort: input[value]!.sort ?? DEFAULT_SORT,
   });
 

@@ -3,20 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "module": "src/index.ts",
   "scripts": {
-    "dev": "bun run db:migrate && bun --hot src/index.ts --config ../config.yaml",
-    "start": "bun run db:migrate && bun src/index.ts --config ../config.yaml",
+    "dev": "bun run db:migrate && bun --hot src/index.ts",
+    "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "APP_ENV=test bun test",
-    "test:network": "CLIPBOARD_X_NETWORK_TEST=1 bun test tests/network.integration.test.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run scripts/db/migrate.ts",
     "build": "bun run build.ts",
     "compile": "bun run build.ts --compile",
     "openapi": "bun run scripts/openapi.ts",
-    "audit:objects": "bun run scripts/objects.ts audit --config ../config.yaml",
-    "gc:objects": "bun run scripts/objects.ts gc --config ../config.yaml",
-    "benchmark": "bun run scripts/benchmark.ts --config ../config.yaml",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "bun run scripts/db/migrate.ts --config ../config.yaml"
+    "audit:objects": "bun run scripts/objects.ts audit",
+    "gc:objects": "bun run scripts/objects.ts gc",
+    "benchmark": "bun run scripts/benchmark.ts"
   },
   "dependencies": {
     "@hono/standard-validator": "0.4.0",

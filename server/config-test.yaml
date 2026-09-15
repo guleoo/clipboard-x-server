@@ -1,0 +1,19 @@
+app:
+  port: 0
+  api-prefix: /api
+  route-surfaces:
+    admin: /admin
+    app: /app
+database:
+  url: ":memory:"
+  wal: false
+logger:
+  console:
+    enabled: false
+  file:
+    enabled: false
+security:
+  jwt-secret: "test-only-secret-not-for-production-0001"
+  password:
+    memory-cost: 19456
+    time-cost: 2

@@ -1,0 +1,4 @@
+session:
+  ttl-millis: 604800000
+  touch-interval-millis: 300000
+  token-bytes: 32

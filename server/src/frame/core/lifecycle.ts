@@ -159,7 +159,7 @@ async function runShutdown(options: LifecycleShutdownOptions): Promise<void> {
   const context = {
     on: "shutdown" as const,
     reason: options.reason,
-    ...(options.signal === undefined ? {} : { signal: options.signal }),
+    signal: options.signal,
   };
   for (const handler of [...handlers].sort(compareHandlers)) {
     try {

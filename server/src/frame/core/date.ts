@@ -65,6 +65,9 @@ export interface ZonedDateFormatOptions extends DateFormatOptions {
   readonly zone?: string;
 }
 
+export type FormatOptions = DateFormatOptions;
+export type ZonedFormatOptions = ZonedDateFormatOptions;
+
 export function withZone(value: DateValue, targetZone?: string): ZonedDateTime {
   const selected = targetZone ?? zone();
   if (targetZone !== undefined) assertZone(targetZone);
@@ -283,11 +286,11 @@ export const DateFormat = Object.freeze({
   utc: (value: DateValue) => zonedString(value, { zone: Zone.UTC }),
   zone: zonedString,
   zone0: (value: DateValue, targetZone?: string) =>
-    zonedString(value, { ...(targetZone === undefined ? {} : { zone: targetZone }), precision: 0 }),
+    zonedString(value, { zone: targetZone, precision: 0 }),
   zone3: (value: DateValue, targetZone?: string) =>
-    zonedString(value, { ...(targetZone === undefined ? {} : { zone: targetZone }), precision: 3 }),
+    zonedString(value, { zone: targetZone, precision: 3 }),
   trans: (value: DateValue, options?: DateFormatOptions) =>
-    zonedString(value, { zone: zone(), ...(options?.precision === undefined ? {} : { precision: options.precision }) }),
+    zonedString(value, { zone: zone(), precision: options?.precision }),
   ansisql: ansiSqlString,
   human: (value: DateValue, targetZone?: string) =>
     value instanceof PlainDate
@@ -330,5 +333,7 @@ export function installDateSerialization(): void {
     return DateFormat.trans(this);
   };
 }
+
+export const installSerialization = installDateSerialization;
 
 installDateSerialization();

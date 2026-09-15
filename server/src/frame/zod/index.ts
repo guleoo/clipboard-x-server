@@ -2,12 +2,24 @@ export type * from "zod";
 import { z as baseZ } from "zod";
 import { dateZodExtensions, type DateZodExtensions } from "./date";
 
-export type RegisteredZod = typeof baseZ & DateZodExtensions;
-export const z = {
-  ...baseZ,
-  ...dateZodExtensions(baseZ),
-} as RegisteredZod;
-export const zz = z;
+export type RegisteredZod<
+  Base extends typeof baseZ,
+  Extensions extends object = {},
+> = Base & DateZodExtensions & Extensions;
+
+export function register<
+  Base extends typeof baseZ,
+  Extensions extends object = {},
+>(base: Base, extensions?: Extensions): RegisteredZod<Base, Extensions> {
+  return {
+    ...base,
+    ...dateZodExtensions(base),
+    ...extensions,
+  } as RegisteredZod<Base, Extensions>;
+}
+
+export const z = register(baseZ);
+export const zz = register(z);
 
 export namespace zz {
   export type input<Schema extends baseZ.ZodType> = baseZ.input<Schema>;

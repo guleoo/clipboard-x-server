@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
-import { matchedRoutes } from "hono/route";
-import { RequestStore } from "../core";
+import { routePath } from "hono/route";
+import { RequestStore } from "./request-context";
 import { Log } from "../logger";
 
 export interface RequestLoggerOptions {
@@ -14,14 +14,14 @@ export function requestLogger(options: RequestLoggerOptions = {}) {
   return createMiddleware(async (context, next) => {
     const startedAt = performance.now();
     await next();
-    const matched = matchedRoutes(context)
-      .filter((route) => route.path !== "" && route.path !== "*" && route.path !== "/*")
-      .at(-1)?.path;
+    const matched = routePath(context);
 
     logger.info("HTTP request completed", {
       method: context.req.method,
       route:
-        matched ?? "<unmatched>",
+        matched === "" || matched === "*" || matched === "/*"
+          ? "<unmatched>"
+          : matched,
       status: context.res.status,
       durationMillis: Math.max(0, Math.round(performance.now() - startedAt)),
       requestId: RequestStore.get("requestId"),

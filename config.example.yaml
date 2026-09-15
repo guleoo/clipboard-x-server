@@ -1,35 +1,25 @@
-# 复制为 config.yaml 后修改。此文件包含明文密码和设备 API Key，运行时权限会收紧为 0600。
-version: 1
-server:
-  environment: development
-  host: 127.0.0.1
-  port: 8787
-  webRoot: ./web/dist
-  publicOrigin: http://127.0.0.1:8787
-  cookieSecure: false
-  shutdownTimeoutMillis: 30000
-  timezone: UTC
-storage:
-  dataDirectory: ./data
-  migrationsDirectory: ./server/drizzle
-  busyTimeoutMillis: 5000
+# Copy to config.yaml before starting the server. This file contains plaintext
+# administrator and device credentials; keep its permissions at 0600.
+import:
+  - ./server/config/security.yaml
+  - ./server/config/session.yaml
+app:
+  name: clipboard-x-server
+  hostname: 127.0.0.1
+  port: 28787
+  timezone: Asia/Shanghai
+  api-prefix: /
+  shutdown-timeout-millis: 30000
+  route-surfaces:
+    admin: /admin/api
+    app: /api
+database:
+  name: clipboard-x
+  url: ./data/clipboard-x.db
+  busy-timeout-millis: 5000
   wal: true
-limits:
-  maxObjectBytes: 83886080
-  maxItemBytes: 268435456
-  maxPreviewBytes: 1048576
-lifetimes:
-  sessionTtlSeconds: 604800
-  keyOverlapSeconds: 300
-  materializationTtlSeconds: 600
-  objectGcGraceSeconds: 86400
-security:
-  passwordMemoryCost: 65536
-  passwordTimeCost: 3
-  sessionTokenBytes: 32
-  rateLimit:
-    maximum: 600
-    windowMillis: 60000
+  schema-path: ./server/src/db/schema.ts
+  migrations-folder: ./server/drizzle
 logger:
   console:
     enabled: true
@@ -39,19 +29,39 @@ logger:
     enabled: true
     level: info
     format: json
-    dir: logs
+    dir: ./data/logs
     filename: app-%DATE%.log
-    maxFiles: 30d
-    maxSize: 100m
-    zippedArchive: true
+    max-files: 30d
+    max-size: 100m
+    zipped-archive: true
+storage:
+  data-directory: ./data
+  object-directory: ./data/objects
+web:
+  root: ./web/dist
+  public-origin: http://127.0.0.1:28787
+  cookie-secure: false
+limits:
+  max-object-bytes: 83886080
+  max-item-bytes: 268435456
+  max-preview-bytes: 1048576
+lifetimes:
+  key-overlap-millis: 300000
+  materialization-ttl-millis: 600000
+  object-gc-grace-millis: 86400000
 content:
-  supportedMimeTypes:
+  supported-mime-types:
     - text/plain;charset=utf-8
     - text/html
     - image/png
     - image/jpeg
     - image/webp
     - image/gif
+http:
+  json-body-limit-bytes: 262144
+  rate-limit:
+    limit: 600
+    window-millis: 60000
 administrator:
   username: admin
   password: change-this-password

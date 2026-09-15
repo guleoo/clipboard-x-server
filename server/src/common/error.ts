@@ -16,17 +16,23 @@ export type ErrorCode =
   | "rate_limited"
   | "internal_error"
 
-export class DomainError extends Error {
-  public readonly name = "DomainError"
-
+export class DomainError extends ServiceError<{
+  readonly errorCode: ErrorCode
+  readonly httpStatus: number
+  readonly details?: Readonly<Record<string, unknown>>
+}> {
   constructor(
-    public readonly code: ErrorCode,
+    public readonly errorCode: ErrorCode,
     message: string,
     public readonly status: number,
     public readonly details?: Readonly<Record<string, unknown>>,
     options?: ErrorOptions,
   ) {
-    super(message, options)
+    super(
+      FrameErrorCode.of(status, message),
+      { errorCode, httpStatus: status, ...(details ? { details } : {}) },
+      options,
+    )
   }
 }
 
@@ -37,3 +43,4 @@ export function invalid(message: string, details?: Readonly<Record<string, unkno
 export function notFound(message = "Resource not found"): DomainError {
   return new DomainError("not_found", message, 404)
 }
+import { ErrorCode as FrameErrorCode, ServiceError } from "../frame/core"

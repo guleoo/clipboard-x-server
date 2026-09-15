@@ -1,16 +1,15 @@
 import { resolve } from "node:path"
-import { configurationPath, loadConfig } from "../src/config"
+import { configPath } from "../src/frame/config"
 
 const projectDirectory = resolve(import.meta.dir, "../..")
 const serverDirectory = resolve(projectDirectory, "server")
-const config = loadConfig(configurationPath())
 
 const migration = Bun.spawn([
   "bun",
   "run",
   "scripts/db/migrate.ts",
   "--config",
-  config.configuration.path,
+  configPath,
 ], {
   cwd: serverDirectory,
   stdin: "inherit",
@@ -25,7 +24,7 @@ const server = Bun.spawn([
   "--hot",
   "src/index.ts",
   "--config",
-  config.configuration.path,
+  configPath,
 ], {
   cwd: serverDirectory,
   stdin: "inherit",

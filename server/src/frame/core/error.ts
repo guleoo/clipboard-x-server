@@ -1,7 +1,7 @@
 export type ErrorData = Readonly<Record<string, unknown>>;
 
 export class BaseError<Data extends ErrorData = ErrorData> extends Error {
-  readonly data: Data | undefined;
+  readonly data?: Data;
 
   constructor(message?: string, data?: Data, options?: ErrorOptions) {
     super(message, options);

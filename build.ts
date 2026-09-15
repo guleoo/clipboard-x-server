@@ -22,6 +22,7 @@ await cp(
   compile ? `${release}/clipboard-x-server` : `${release}/server.js`,
 )
 await cp(`${root}/server/drizzle`, `${release}/server/drizzle`, { recursive: true })
+await cp(`${root}/server/config`, `${release}/server/config`, { recursive: true })
 await cp(`${root}/config.example.yaml`, `${release}/config.example.yaml`)
 
 console.log(`Release assembled in ${release}`)

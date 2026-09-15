@@ -109,11 +109,10 @@ function createAsyncStore(): AsyncStoreApi {
       requireFrame("set")[FRAME_VALUE][key] = value;
     },
     run(value, callback) {
-      const parent = currentFrame();
       return storage.run(
         {
           [FRAME_VALUE]: value,
-          ...(parent === undefined ? {} : { [FRAME_PARENT]: parent }),
+          [FRAME_PARENT]: currentFrame(),
         },
         callback,
       );
@@ -161,12 +160,11 @@ function createAsyncStore(): AsyncStoreApi {
               `${options.key} already exists in the current async context`,
             );
           }
-          const parent = currentFrame();
           return storage.run(
             {
               [FRAME_TOKEN]: token,
               [FRAME_VALUE]: value,
-              ...(parent === undefined ? {} : { [FRAME_PARENT]: parent }),
+              [FRAME_PARENT]: currentFrame(),
             },
             callback,
           );
@@ -182,17 +180,3 @@ function createAsyncStore(): AsyncStoreApi {
 }
 
 export const AsyncStore = createAsyncStore();
-
-export interface RequestContext {
-  requestId: string;
-  sid?: string;
-  tenantId?: string;
-  uid?: string;
-  authType?: "SESSION" | "OAUTH";
-  permissionKeys?: readonly string[];
-  [key: string]: unknown;
-}
-
-export const RequestStore = AsyncStore.context<RequestContext>({
-  key: "RequestContext",
-});

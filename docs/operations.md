@@ -25,11 +25,13 @@ bun run gc:objects -- --config /path/to/config.yaml
 bun run server/scripts/objects.ts gc --delete --config /path/to/config.yaml
 ```
 
-Audit is read-only. GC is also report-only by default and deletes only zero-reference objects older than `lifetimes.objectGcGraceSeconds` when `--delete` is supplied. Deletion is irreversible without a backup.
+Audit is read-only. GC is also report-only by default and deletes only zero-reference objects older
+than `lifetimes.object-gc-grace-millis` when `--delete` is supplied. Deletion is irreversible without
+a backup.
 
 ## Failure drills
 
-1. Restore a backup into a temporary directory and point a copied YAML file's `storage.dataDirectory` to it.
+1. Restore a backup into a temporary directory and point a copied YAML file's `storage.data-directory` to it.
 2. Run `audit --strict`, start on a temporary port, then verify `/health/ready`, admin login, and one object download.
 3. Stop the temporary server and record duration plus audit result.
 4. For a missing-object drill, remove one object only in the disposable restore and confirm strict audit reports `missing_file`; never mutate production data for the drill.

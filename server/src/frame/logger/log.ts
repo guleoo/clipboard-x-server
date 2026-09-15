@@ -1,4 +1,6 @@
 import { Lifecycle } from "../core/lifecycle";
+import { FrameConfig } from "../config";
+import { createConsoleOutput, type ConsoleOutput } from "./console";
 import { resolveLoggerOptions } from "./config";
 import { LoggerError } from "./error";
 import { createLogPayload } from "./payload";
@@ -25,6 +27,7 @@ let root: ReturnType<typeof createRootLogger> | undefined;
 let initialized = false;
 let closed = false;
 let closePromise: Promise<void> | undefined;
+let consoleOutput: ConsoleOutput | undefined;
 const serviceCache = new Map<string, FrameLogger>();
 
 function activeRoot(): ReturnType<typeof createRootLogger> | undefined {
@@ -43,13 +46,22 @@ export namespace Log {
   export type Timer = LogTimer;
   export type Logger = FrameLogger;
 
+  /** Raw terminal output for banners and CLI messages; it bypasses log transports. */
+  export namespace Console {
+    export function write(content: string): void {
+      if (closed) return;
+      consoleOutput?.write(content);
+    }
+  }
+
   /** Initialize the process-wide Logger exactly once during application startup. */
   export function init(options: Options = {}): void {
     if (initialized) {
       throw new LoggerError("Logger has already been initialized");
     }
 
-    const nextRoot = createRootLogger(resolveLoggerOptions(options));
+    const resolved = resolveLoggerOptions(options);
+    const nextRoot = createRootLogger(resolved);
     try {
       Lifecycle.register({
         name: "frame-logger",
@@ -64,6 +76,7 @@ export namespace Log {
     }
 
     root = nextRoot;
+    consoleOutput = createConsoleOutput(resolved.console.enabled);
     initialized = true;
   }
 
@@ -73,6 +86,7 @@ export namespace Log {
     closed = true;
     const current = root;
     root = undefined;
+    consoleOutput = undefined;
     closePromise = current ? closeRootLogger(current) : Promise.resolve();
     return closePromise;
   }
@@ -138,3 +152,5 @@ export namespace Log {
 
   export const Default = create({ service: "default" });
 }
+
+Log.init(FrameConfig.Logger);

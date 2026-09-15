@@ -17,6 +17,8 @@ export class ProviderError extends BaseError<{
 const values = new Map<symbol, unknown>();
 
 export namespace Provider {
+  export const Error = ProviderError;
+
   export function create<Value>(name: string): ProviderToken<Value> {
     if (!name.trim()) throw new ProviderError("Provider name is required");
     return { name, key: Symbol(name) };

@@ -1,11 +1,10 @@
 import { mkdtemp, rm } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { sql } from "drizzle-orm"
-import { Application } from "../src/application"
 import { createId } from "../src/common/identity"
-import { ConfigurationSchema, ConfigurationStore, loadConfig } from "../src/config"
-import { migrateApplicationDatabase } from "../src/db"
+import { sqliteValue } from "../src/common/sqlite"
 import { clipboardItems } from "../src/db/schema"
+import { stringify } from "yaml"
 
 const loads = {
   publications: 2_000,
@@ -17,18 +16,43 @@ const loads = {
 
 const directory = await mkdtemp("/tmp/clipboard-x-benchmark-")
 const configurationPath = join(directory, "config.yaml")
-ConfigurationStore.create(configurationPath, ConfigurationSchema.parse({
-  version: 1,
-  server: { environment: "test", cookieSecure: false },
-  storage: {
-    dataDirectory: "./data",
-    migrationsDirectory: resolve(import.meta.dir, "../drizzle"),
+await Bun.write(configurationPath, stringify({
+  app: { name: "clipboard-x-benchmark", port: 0 },
+  database: {
+    name: "benchmark",
+    url: ":memory:",
+    wal: false,
+    "schema-path": resolve(import.meta.dir, "../src/db/schema.ts"),
+    "migrations-folder": resolve(import.meta.dir, "../drizzle"),
   },
+  logger: { console: { enabled: false }, file: { enabled: false } },
+  security: { password: { "memory-cost": 19456, "time-cost": 2 } },
+  session: { "ttl-millis": 604800000, "touch-interval-millis": 300000, "token-bytes": 32 },
+  storage: { "data-directory": join(directory, "data") },
+  web: { root: join(directory, "web"), "cookie-secure": false },
+  limits: {},
+  lifetimes: {},
+  content: {},
   administrator: { username: "administrator", password: "benchmark-password" },
-}))
-const config = loadConfig(configurationPath)
-migrateApplicationDatabase(config)
-const application = await Application.create(config)
+  devices: [],
+  channels: [],
+}, { indent: 2, lineWidth: 0 }))
+process.env.APP_CONFIG_FILE = configurationPath
+
+const [{ Database, db }, { databaseConfig }, { Lifecycle }, { objectStore },
+  { channelService }, { clipboardService }, { deviceService }, { transferService }] = await Promise.all([
+  import("../src/db"),
+  import("../src/frame/db"),
+  import("../src/frame/core"),
+  import("../src/repo/object"),
+  import("../src/service/channel"),
+  import("../src/service/clipboard"),
+  import("../src/service/device"),
+  import("../src/service/transfer"),
+])
+Database.init()
+Database.migrate({ migrationsFolder: databaseConfig.migrationsFolder })
+await objectStore.initialize()
 const sourceId = "11111111-1111-4111-8111-111111111111"
 const targetId = "22222222-2222-4222-8222-222222222222"
 const measurements: Record<string, number> = {}
@@ -40,18 +64,18 @@ async function measure(name: string, operation: () => void | Promise<void>): Pro
 }
 
 try {
-  application.devices.create({ id: sourceId, tag: "Benchmark source", iconKind: "server" })
-  application.devices.create({ id: targetId, tag: "Benchmark target", iconKind: "desktop" })
-  const channel = application.channels.create("Benchmark")
-  application.channels.addMember(channel.id, sourceId)
-  application.channels.addMember(channel.id, targetId)
+  deviceService.create({ id: sourceId, tag: "Benchmark source", iconKind: "server" })
+  deviceService.create({ id: targetId, tag: "Benchmark target", iconKind: "desktop" })
+  const channel = channelService.create("Benchmark")
+  channelService.addMember(channel.id, sourceId)
+  channelService.addMember(channel.id, targetId)
 
   const publishedIds: string[] = []
   await measure("publicationsMs", () => {
     for (let index = 0; index < loads.publications; index += 1) {
       const id = createId()
       publishedIds.push(id)
-      application.clipboard.createPublication(sourceId, channel.id, {
+      clipboardService.createPublication(sourceId, channel.id, {
         id,
         createdAt: index + 1,
         originDeviceId: sourceId,
@@ -69,7 +93,7 @@ try {
 
   await measure("materializationsMs", () => {
     for (const id of publishedIds.slice(0, loads.materializations)) {
-      application.clipboard.requestContent({
+      clipboardService.requestContent({
         requesterKind: "device",
         requesterId: targetId,
         memberDeviceId: targetId,
@@ -80,7 +104,7 @@ try {
     }
   })
 
-  const progress = application.transfers.create({
+  const progress = transferService.create({
     deviceId: sourceId,
     itemId: publishedIds[0]!,
     kind: "content",
@@ -90,12 +114,12 @@ try {
   })
   await measure("progressUpdatesMs", () => {
     for (let value = 1; value <= loads.progressUpdates; value += 1) {
-      application.transfers.update(progress.id, value === loads.progressUpdates ? "completed" : "transferring", value)
+      transferService.update(progress.id, value === loads.progressUpdates ? "completed" : "transferring", value)
     }
   })
 
   await measure("metadataSeedMs", () => {
-    application.database.transaction(() => {
+    db.transaction(() => {
       for (let start = loads.publications; start < loads.metadataItems; start += 500) {
         const end = Math.min(start + 500, loads.metadataItems)
         const values = Array.from({ length: end - start }, (_, offset) => {
@@ -109,19 +133,19 @@ try {
             visible: true,
           }
         })
-        application.database.current.insert(clipboardItems).values(values).run()
+        db.insert(clipboardItems).values(values).run()
       }
     })
   })
   await measure("metadataFirstPageMs", () => {
-    const page = application.clipboard.list({ channelId: channel.id, memberDeviceId: targetId, limit: 100 })
+    const page = clipboardService.list({ channelId: channel.id, memberDeviceId: targetId, limit: 100 })
     if (page.items.length !== 100 || !page.hasMore || !page.cursor) throw new Error("Metadata page baseline failed")
   })
-  const plan = application.database.current.all<{ detail: string }>(sql`
+  const plan = sqliteValue(db.all<{ detail: string }>(sql`
     EXPLAIN QUERY PLAN SELECT id FROM clipboard_items
     WHERE channel_id = ${channel.id} AND visible = 1 AND deleted_at IS NULL
     ORDER BY created_at DESC, id DESC LIMIT ${101}
-  `)
+  `))
   if (!plan.some((entry) => entry.detail.includes("clipboard_items_page"))) {
     throw new Error(`Pagination did not use clipboard_items_page: ${JSON.stringify(plan)}`)
   }
@@ -139,7 +163,7 @@ try {
   })
   let storedPath = ""
   await measure("objectUpload80MiBMs", async () => {
-    storedPath = (await application.objects.write(body(), {
+    storedPath = (await objectStore.write(body(), {
       size: loads.objectBytes,
       sha256: expectedHash,
       maximumBytes: loads.objectBytes,
@@ -160,6 +184,6 @@ try {
 
   console.log(JSON.stringify({ event: "benchmark.complete", loads, measurements, paginationPlan: plan }, null, 2))
 } finally {
-  application.close()
+  await Lifecycle.shutdown({ reason: "manual" })
   await rm(directory, { recursive: true, force: true })
 }

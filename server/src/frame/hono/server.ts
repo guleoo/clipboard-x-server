@@ -1,3 +1,4 @@
+import { FrameConfig } from "../config";
 import { Lifecycle, SystemError } from "../core";
 
 export namespace Server {
@@ -12,16 +13,10 @@ export namespace Server {
     stop(force?: boolean): Promise<void>;
   }
 
-  export interface ListenOptions {
-    readonly hostname: string;
-    readonly port: number;
-    readonly shutdownTimeoutMillis: number;
-  }
-
   interface ManagedServer {
     readonly server: Bun.Server<unknown>;
     unregister(): void;
-    stopPromise: Promise<void> | undefined;
+    stopPromise?: Promise<void>;
   }
 
   let current: ManagedServer | undefined;
@@ -45,9 +40,9 @@ export namespace Server {
     return target.stopPromise;
   }
 
-  export async function listen(application: Application, options: ListenOptions): Promise<Listener> {
+  export async function listen(application: Application): Promise<Listener> {
     if (current) throw new SystemError("Server is already listening");
-    const { hostname, port: configuredPort, shutdownTimeoutMillis } = options;
+    const { hostname, port: configuredPort, shutdownTimeoutMillis } = FrameConfig.App;
     const server = Bun.serve({
       hostname,
       port: configuredPort,
@@ -57,7 +52,7 @@ export namespace Server {
     const address = new URL("http://localhost");
     address.hostname = hostname;
     address.port = String(port);
-    const target: ManagedServer = { server, unregister() {}, stopPromise: undefined };
+    const target: ManagedServer = { server, unregister() {} };
 
     try {
       target.unregister = Lifecycle.register({

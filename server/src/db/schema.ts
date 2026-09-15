@@ -1,4 +1,18 @@
-import { index, integer, primaryKey, sqliteTable, text, unique } from "drizzle-orm/sqlite-core"
+import {
+  boolean,
+  index,
+  integer,
+  json,
+  primaryKey,
+  serial,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "../frame/db/dbtype"
+import { mergeSchema } from "../frame/db/schema"
+import { frameSession } from "../frame/session/schema"
+
+export { frameSession } from "../frame/session/schema"
 
 export const metadata = sqliteTable("metadata", {
   key: text("key").primaryKey(),
@@ -12,14 +26,6 @@ export const administrators = sqliteTable("administrators", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 })
-
-export const adminSessions = sqliteTable("admin_sessions", {
-  id: text("id").primaryKey(),
-  tokenHash: text("token_hash").notNull().unique(),
-  createdAt: integer("created_at").notNull(),
-  expiresAt: integer("expires_at").notNull(),
-  lastSeenAt: integer("last_seen_at").notNull(),
-}, (table) => [index("admin_sessions_expiry").on(table.expiresAt)])
 
 export const devices = sqliteTable("devices", {
   id: text("id").primaryKey(),
@@ -67,7 +73,7 @@ export const objects = sqliteTable("objects", {
   refCount: integer("ref_count").notNull().default(0),
   createdAt: integer("created_at").notNull(),
 }, (table) => [
-  unique("objects_sha256_size").on(table.sha256, table.size),
+  uniqueIndex("objects_sha256_size").on(table.sha256, table.size),
   index("objects_collectable").on(table.refCount, table.createdAt),
 ])
 
@@ -78,7 +84,7 @@ export const clipboardItems = sqliteTable("clipboard_items", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
   deletedAt: integer("deleted_at"),
-  visible: integer("visible", { mode: "boolean" }).notNull().default(false),
+  visible: boolean("visible").notNull().default(false),
 }, (table) => [
   index("clipboard_items_page").on(table.channelId, table.visible, table.deletedAt, table.createdAt, table.id),
   index("clipboard_items_origin").on(table.originDeviceId, table.createdAt),
@@ -102,7 +108,7 @@ export const previews = sqliteTable("previews", {
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(),
   sha256: text("sha256").notNull(),
-  truncated: integer("truncated", { mode: "boolean" }).notNull(),
+  truncated: boolean("truncated").notNull(),
   objectId: text("object_id").references(() => objects.id),
 }, (table) => [primaryKey({ columns: [table.itemId, table.id] })])
 
@@ -115,7 +121,7 @@ export const transfers = sqliteTable("transfers", {
   state: text("state").notNull(),
   completedBytes: integer("completed_bytes").notNull(),
   totalBytes: integer("total_bytes").notNull(),
-  peerDeviceIds: text("peer_device_ids", { mode: "json" }).$type<readonly string[]>().notNull().default([]),
+  peerDeviceIds: json<readonly string[]>("peer_device_ids").notNull().default([]),
   errorCode: text("error_code"),
   errorMessage: text("error_message"),
   createdAt: integer("created_at").notNull(),
@@ -151,7 +157,7 @@ export const uploadObjects = sqliteTable("upload_objects", {
 }, (table) => [primaryKey({ columns: [table.uploadId, table.objectKind, table.objectId] })])
 
 export const changes = sqliteTable("changes", {
-  sequence: integer("sequence").primaryKey({ autoIncrement: true }),
+  sequence: serial("sequence"),
   channelId: text("channel_id").notNull(),
   kind: text("kind").notNull(),
   itemId: text("item_id").notNull(),
@@ -180,7 +186,7 @@ export const materializationWaiters = sqliteTable("materialization_waiters", {
 }, (table) => [primaryKey({ columns: [table.requestId, table.transferId] })])
 
 export const workQueue = sqliteTable("work_queue", {
-  sequence: integer("sequence").primaryKey({ autoIncrement: true }),
+  sequence: serial("sequence"),
   id: text("id").notNull().unique(),
   sourceDeviceId: text("source_device_id").notNull(),
   requestId: text("request_id").notNull().references(() => materializationRequests.id, { onDelete: "cascade" }),
@@ -190,3 +196,25 @@ export const workQueue = sqliteTable("work_queue", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (table) => [index("work_device").on(table.sourceDeviceId, table.sequence)])
+
+const productSchema = {
+  metadata,
+  administrators,
+  devices,
+  deviceKeys,
+  channels,
+  channelMembers,
+  objects,
+  clipboardItems,
+  representations,
+  previews,
+  transfers,
+  uploads,
+  uploadObjects,
+  changes,
+  materializationRequests,
+  materializationWaiters,
+  workQueue,
+};
+
+export const dbSchema = mergeSchema(productSchema, { frameSession });

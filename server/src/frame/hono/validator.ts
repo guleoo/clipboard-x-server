@@ -1,14 +1,13 @@
 import { sValidator } from "@hono/standard-validator";
 import type { Context } from "hono";
-import { HttpError } from "./error";
+import { Result } from "../core";
 
 export function validationHook(
   result: { readonly success: boolean },
   context: Context,
 ): Response | undefined {
   if (result.success) return;
-  void context;
-  throw new HttpError(400, "Request validation failed");
+  return context.json(Result.fail(400, "Invalid request"), 400);
 }
 
 /** Validate a request target once and expose its parsed value through req.valid(). */

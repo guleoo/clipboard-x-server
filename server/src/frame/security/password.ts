@@ -1,17 +1,13 @@
+import { SecurityConfig } from "./config";
 import { PasswordHashError } from "./error";
 
 export namespace Password {
-  export interface HashOptions {
-    readonly memoryCost?: number
-    readonly timeCost?: number
-  }
-
-  export async function hash(rawPassword: string, options: HashOptions = {}): Promise<string> {
+  export async function hash(rawPassword: string): Promise<string> {
     try {
       return await Bun.password.hash(rawPassword, {
         algorithm: "argon2id",
-        memoryCost: options.memoryCost ?? 65_536,
-        timeCost: options.timeCost ?? 3,
+        memoryCost: SecurityConfig.password.memoryCost,
+        timeCost: SecurityConfig.password.timeCost,
       });
     } catch (cause) {
       throw new PasswordHashError("Failed to hash password", undefined, { cause });

@@ -1,9 +1,13 @@
 import { readdir, rm, stat } from "node:fs/promises"
 import { basename, join } from "node:path"
 import { and, eq, sql } from "drizzle-orm"
-import { Application } from "../src/application"
-import { loadConfig } from "../src/config"
+import { config } from "../src/config"
+import { Database, db } from "../src/db"
 import { objects as objectRecords } from "../src/db/schema"
+import { databaseConfig } from "../src/frame/db"
+import { Lifecycle } from "../src/frame/core"
+import { objectStore } from "../src/repo/object"
+import { sqliteValue } from "../src/common/sqlite"
 
 interface ObjectRow {
   readonly id: string
@@ -35,13 +39,13 @@ async function fileDigest(path: string): Promise<string> {
   }
 }
 
-async function audit(application: Application): Promise<readonly AuditIssue[]> {
-  const rows = application.database.current.all<ObjectRow>(sql`SELECT * FROM objects ORDER BY created_at`)
-  const files = await application.objects.files()
+async function audit(): Promise<readonly AuditIssue[]> {
+  const rows = sqliteValue(db.all<ObjectRow>(sql`SELECT * FROM objects ORDER BY created_at`))
+  const files = await objectStore.files()
   const referencedPaths = new Set(rows.map((row) => row.path))
   const issues: AuditIssue[] = []
   for (const row of rows) {
-    const actualSize = await application.objects.size(row.path)
+    const actualSize = await objectStore.size(row.path)
     if (actualSize === undefined) {
       issues.push({ code: "missing_file", object: row.sha256, detail: "metadata exists but the object file is missing" })
       continue
@@ -53,12 +57,12 @@ async function audit(application: Application): Promise<readonly AuditIssue[]> {
     if (await fileDigest(row.path) !== row.sha256) {
       issues.push({ code: "hash_mismatch", object: row.sha256, detail: "stored bytes do not match the content address" })
     }
-    const actualReferences = Number(application.database.first<{ count: number }>(sql`
+    const actualReferences = sqliteValue(db.all<{ count: number }>(sql`
       SELECT (
         (SELECT count(*) FROM representations WHERE object_id = ${row.id}) +
         (SELECT count(*) FROM previews WHERE object_id = ${row.id})
       ) AS count
-    `)?.count ?? 0)
+    `))[0]?.count ?? 0
     if (actualReferences !== row.ref_count) {
       issues.push({ code: "ref_count_mismatch", object: row.sha256, detail: `metadata ${row.ref_count}, actual ${actualReferences}` })
     }
@@ -71,12 +75,12 @@ async function audit(application: Application): Promise<readonly AuditIssue[]> {
   return issues
 }
 
-async function garbageCollect(application: Application, removeFiles: boolean): Promise<void> {
-  const cutoff = Date.now() - application.config.objectGcGraceMs
-  const rows = application.database.current.all<ObjectRow>(sql`
+async function garbageCollect(removeFiles: boolean): Promise<void> {
+  const cutoff = Date.now() - config.objectGcGraceMillis
+  const rows = sqliteValue(db.all<ObjectRow>(sql`
     SELECT * FROM objects WHERE ref_count = 0 AND created_at <= ${cutoff} ORDER BY created_at
-  `)
-  const temporaryDirectory = join(application.config.objectDirectory, ".tmp")
+  `))
+  const temporaryDirectory = join(config.objectDirectory, ".tmp")
   const staleParts: string[] = []
   for (const entry of await readdir(temporaryDirectory, { withFileTypes: true }).catch(() => [])) {
     if (!entry.isFile()) continue
@@ -92,7 +96,7 @@ async function garbageCollect(application: Application, removeFiles: boolean): P
   }))
   if (!removeFiles) return
   for (const row of rows) {
-    const deleted = application.database.current.delete(objectRecords)
+    const deleted = db.delete(objectRecords)
       .where(and(eq(objectRecords.id, row.id), eq(objectRecords.refCount, 0)))
       .returning({ id: objectRecords.id })
       .all()
@@ -107,15 +111,17 @@ if (!new Set(["audit", "gc"]).has(command ?? "")) {
   console.error("Usage: bun run scripts/objects.ts <audit|gc> [--delete] [--strict]")
   process.exit(1)
 }
-const application = await Application.create(loadConfig())
+Database.init()
+Database.migrate({ migrationsFolder: databaseConfig.migrationsFolder })
+await objectStore.initialize()
 try {
   if (command === "audit") {
-    const issues = await audit(application)
-    console.log(JSON.stringify({ event: "objects.audit", objectCount: (await application.objects.files()).length, issueCount: issues.length, issues }, null, 2))
+    const issues = await audit()
+    console.log(JSON.stringify({ event: "objects.audit", objectCount: (await objectStore.files()).length, issueCount: issues.length, issues }, null, 2))
     if (issues.length > 0 && process.argv.includes("--strict")) process.exitCode = 2
   } else {
-    await garbageCollect(application, process.argv.includes("--delete"))
+    await garbageCollect(process.argv.includes("--delete"))
   }
 } finally {
-  application.close()
+  await Lifecycle.shutdown({ reason: "manual" })
 }

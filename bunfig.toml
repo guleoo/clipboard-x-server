@@ -3,6 +3,7 @@ exact = true
 
 [test]
 root = "."
+preload = ["./server/test/preload.ts"]
 
 [serve.static]
 plugins = ["bun-plugin-tailwind"]
