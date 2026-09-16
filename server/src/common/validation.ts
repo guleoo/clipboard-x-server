@@ -8,6 +8,11 @@ export const MimeTypeSchema = z.string().max(255).regex(
 )
 export const SafeTextSchema = (maximum: number) => z.string().max(maximum).refine((value) => !/[\r\n\0]/u.test(value))
 export const DeviceIconSchema = z.enum(["desktop", "laptop", "phone", "tablet", "server", "other"])
+const HexColorSchema = z.string().regex(/^#[0-9a-f]{6}$/u)
+export const DeviceIconColorSchema = z.object({
+  light: HexColorSchema,
+  dark: HexColorSchema.optional(),
+}).strict()
 
 export function parseInteger(value: string | undefined, fallback: number, minimum: number, maximum: number): number {
   if (value === undefined || value === "") return fallback

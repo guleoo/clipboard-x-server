@@ -5,6 +5,7 @@ import { config } from "../src/config"
 import { Database } from "../src/db"
 import { databaseConfig } from "../src/frame/db"
 import { deviceService } from "../src/service/device"
+import { DeviceProfileSchema } from "../src/dto/device"
 
 beforeAll(async () => {
   Database.init()
@@ -28,6 +29,7 @@ describe("pre-registered devices with client-owned profiles", () => {
       id: deviceId,
       tag: "Waiting for device profile",
       iconKind: "other",
+      iconColor: { light: "#ffffff" },
       keys: [],
     })
     expect(configurationDevice(deviceId)).toEqual({
@@ -49,8 +51,10 @@ describe("pre-registered devices with client-owned profiles", () => {
     const updated = deviceService.updateProfile(deviceId, {
       tag: "Client laptop",
       iconKind: "laptop",
+      iconColor: { light: "#2190a4", dark: "#183945" },
     })
-    expect(updated).toMatchObject({ id: deviceId, tag: "Client laptop", iconKind: "laptop" })
+    expect(updated).toMatchObject({ id: deviceId, tag: "Client laptop", iconKind: "laptop",
+      iconColor: { light: "#2190a4", dark: "#183945" } })
     expect(configurationDevice(deviceId)).not.toHaveProperty("tag")
     expect(configurationDevice(deviceId)).not.toHaveProperty("icon-kind")
 
@@ -59,7 +63,25 @@ describe("pre-registered devices with client-owned profiles", () => {
       id: deviceId,
       tag: "Client laptop",
       iconKind: "laptop",
+      iconColor: { light: "#2190a4", dark: "#183945" },
     })
+  })
+
+  it("defaults a missing icon color to white and rejects invalid colors", () => {
+    const deviceId = crypto.randomUUID()
+    deviceService.create({ id: deviceId })
+    expect(deviceService.updateProfile(deviceId, { tag: "Laptop", iconKind: "laptop" }).iconColor).toEqual({ light: "#ffffff" })
+    expect(DeviceProfileSchema.safeParse({ tag: "Laptop", iconKind: "laptop" }).success).toBe(true)
+    expect(DeviceProfileSchema.safeParse({ tag: "Laptop", iconKind: "laptop", iconColor: "red" }).success).toBe(false)
+    expect(DeviceProfileSchema.safeParse({ tag: "Laptop", iconKind: "laptop", iconColor: { dark: "#123456" } }).success).toBe(false)
+    expect(DeviceProfileSchema.safeParse({ tag: "Laptop", iconKind: "laptop", iconColor: { light: "red" } }).success).toBe(false)
+    expect(DeviceProfileSchema.parse({ tag: "Laptop", iconKind: "laptop", iconColor: { light: "#ffffff" } }).iconColor)
+      .toEqual({ light: "#ffffff" })
+    expect(deviceService.updateProfile(deviceId, { tag: "Laptop", iconKind: "laptop",
+      iconColor: { light: "#db9421", dark: "#734210" } }).iconColor)
+      .toEqual({ light: "#db9421", dark: "#734210" })
+    expect(deviceService.updateProfile(deviceId, { tag: "Laptop", iconKind: "laptop",
+      iconColor: { light: "#db9421" } }).iconColor).toEqual({ light: "#db9421" })
   })
 
   it("rejects issuing a key before its DeviceId is registered", async () => {

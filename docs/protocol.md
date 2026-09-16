@@ -10,7 +10,12 @@ bun run openapi:check
 Before a client connects, the administrator registers the client-generated DeviceId and issues an API
 key bound to it. Every `/api/v1` request requires both `Authorization: Bearer <apiKey>` and
 `X-Clipboard-X-Device-Id: <deviceId>`; the header must match the device bound to the key.
-`PUT /api/v1/device/profile` accepts `{ tag, iconKind }` and updates only client-owned profile data.
+`PUT /api/v1/device/profile` accepts `{ tag, iconKind, iconColor? }` and updates only client-owned profile data.
+`iconColor` is an optional object: `{ "light": "#ffffff", "dark": "#505050" }`. Colors use lowercase
+`#RRGGBB`; `light` is required within the object, while `dark` is optional. If the whole field is
+omitted, the server stores `{ "light": "#ffffff" }`. If `dark` is omitted, clients derive a suitable
+dark color from `light`; supplying `dark` disables that linkage. Device, channel-member, and
+clipboard-item origin responses include the stored object, leaving `dark` absent when linked.
 Fields use camelCase, time uses epoch milliseconds, bytes are uncompressed values, and cursors are
 opaque. Admin mutations are same-origin and use an HttpOnly, SameSite=Strict session cookie.
 

@@ -35,6 +35,7 @@ describe("Clipboard X product contracts", () => {
       id: "123e4567-e89b-42d3-a456-426614174000",
       tag: "Workstation",
       iconKind: "desktop",
+      iconColor: { light: "#ffffff" },
       state: "offline",
       lastSeenAt: 0,
       createdAt: 1,

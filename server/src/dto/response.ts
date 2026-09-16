@@ -1,5 +1,5 @@
 import { zz } from "../frame/zod"
-import { DeviceIconSchema, MimeTypeSchema, Sha256Schema, UuidSchema } from "../common/validation"
+import { DeviceIconColorSchema, DeviceIconSchema, MimeTypeSchema, Sha256Schema, UuidSchema } from "../common/validation"
 
 const epoch = zz.number().int().nonnegative()
 const DeviceKeySchema = zz.object({
@@ -9,6 +9,7 @@ const DeviceSchema = zz.object({
   id: UuidSchema,
   tag: zz.string(),
   iconKind: DeviceIconSchema,
+  iconColor: DeviceIconColorSchema,
   state: zz.string(),
   lastSeenAt: epoch,
   disabledAt: epoch.optional(),
@@ -28,7 +29,7 @@ const ChannelSchema = zz.object({
   updatedAt: epoch,
 }).meta({ $id: "Channel" })
 const ManagedChannelSchema = ChannelSchema.extend({
-  members: zz.array(DeviceSchema.pick({ id: true, tag: true, iconKind: true, state: true, kind: true })),
+  members: zz.array(DeviceSchema.pick({ id: true, tag: true, iconKind: true, iconColor: true, state: true, kind: true })),
 }).meta({ $id: "ManagedChannel" })
 const TransferSchema = zz.object({
   id: UuidSchema,
@@ -62,6 +63,7 @@ const ItemSchema = zz.object({
     deviceId: UuidSchema,
     tag: zz.string(),
     iconKind: DeviceIconSchema,
+    iconColor: DeviceIconColorSchema,
     kind: zz.enum(["client", "virtual"]),
   }),
   contents: zz.array(RepresentationSchema),

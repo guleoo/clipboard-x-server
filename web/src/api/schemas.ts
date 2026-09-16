@@ -2,6 +2,8 @@ import { z } from "zod"
 
 const Identifier = z.string().min(1)
 const Timestamp = z.number().int().nonnegative()
+const HexColor = z.string().regex(/^#[0-9a-f]{6}$/u)
+const IconColor = z.object({ light: HexColor, dark: HexColor.optional() })
 
 export const AdministratorSchema = z.object({ id: z.literal(1), username: z.string(), createdAt: Timestamp })
 export const DeviceKeySchema = z.object({
@@ -14,6 +16,7 @@ export const DeviceSchema = z.object({
   id: Identifier,
   tag: z.string(),
   iconKind: z.enum(["desktop", "laptop", "phone", "tablet", "server", "other"]),
+  iconColor: IconColor,
   state: z.string(),
   lastSeenAt: Timestamp,
   disabledAt: Timestamp.optional(),
@@ -27,6 +30,7 @@ export const ChannelMemberSchema = z.object({
   id: Identifier,
   tag: z.string(),
   iconKind: z.string(),
+  iconColor: IconColor,
   state: z.string(),
   kind: z.enum(["client", "virtual"]),
 })
@@ -63,6 +67,7 @@ export const ClipboardItemSchema = z.object({
     deviceId: Identifier,
     tag: z.string(),
     iconKind: z.string(),
+    iconColor: IconColor,
     kind: z.enum(["client", "virtual"]),
   }),
   contents: z.array(ClipboardRepresentationSchema),

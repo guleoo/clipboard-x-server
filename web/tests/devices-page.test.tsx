@@ -18,6 +18,7 @@ test("registers the client DeviceId without asking the administrator for client-
     id: deviceId,
     tag: "Waiting for device profile",
     iconKind: "other",
+    iconColor: { light: "#ffffff" },
     state: "offline",
     lastSeenAt: 0,
     createdAt: 1,

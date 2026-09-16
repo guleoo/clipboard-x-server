@@ -14,7 +14,7 @@ export interface Channel {
 }
 
 export interface ManagedChannel extends Channel {
-  readonly members: readonly Pick<Device, "id" | "tag" | "iconKind" | "state" | "kind">[]
+  readonly members: readonly Pick<Device, "id" | "tag" | "iconKind" | "iconColor" | "state" | "kind">[]
 }
 
 function channelOf(row: ChannelRow): Channel {
@@ -151,6 +151,10 @@ export class ChannelService {
         id: member.id,
         tag: member.tag,
         iconKind: member.iconKind,
+        iconColor: {
+          light: member.iconColorLight,
+          ...(member.iconColorDark ? { dark: member.iconColorDark } : {}),
+        },
         state: isVirtualDevice(member.id) ? "online" : member.disabledAt ? "disabled" : member.state,
         kind: isVirtualDevice(member.id) ? "virtual" : "client",
       })),

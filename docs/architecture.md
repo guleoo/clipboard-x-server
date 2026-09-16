@@ -52,7 +52,7 @@ handler installed only by the production composition root.
 
 YAML is the authoritative source for all runtime options, the single administrator, issued device API
 keys and their DeviceId bindings, disabled state, channels, and managed memberships. Client-owned device
-profiles (`tag` and `iconKind`) are runtime data in SQLite and are updated only by the client holding the
+profiles (`tag`, `iconKind`, and `iconColor`) are runtime data in SQLite and are updated only by the client holding the
 bound key. The built-in virtual Server device is another SQLite-only record derived at startup: it is
 never written to YAML and cannot be configured through the console. Frame's global `Config` loads,
 imports, interpolates, maps, validates, and freezes static sections. The exported application `config`

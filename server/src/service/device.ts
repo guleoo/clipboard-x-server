@@ -1,6 +1,8 @@
 import { DomainError, notFound } from "../common/error"
 import { createId, createSecret, digestSecret, isUuidV4, secretsEqual } from "../common/identity"
 import { isVirtualDevice, virtualDevice } from "../common/virtual-device"
+import type { DeviceIconColorSchema } from "../common/validation"
+import type { z } from "zod"
 import { config, deviceKeyId, deviceKeySecret, type DeviceConfiguration } from "../config"
 import { db } from "../db"
 import { Password } from "../frame/security/password"
@@ -10,6 +12,7 @@ export interface Device {
   readonly id: string
   readonly tag: string
   readonly iconKind: string
+  readonly iconColor: z.infer<typeof DeviceIconColorSchema>
   readonly state: string
   readonly lastSeenAt: number
   readonly disabledAt?: number
@@ -49,6 +52,7 @@ function deviceOf(row: DeviceRow): Device {
     id: row.id,
     tag: row.tag,
     iconKind: row.iconKind,
+    iconColor: { light: row.iconColorLight, ...(row.iconColorDark ? { dark: row.iconColorDark } : {}) },
     state: virtual ? "online" : row.deletedAt ? "unavailable" : row.disabledAt ? "disabled" : recentlySeen ? "online" : "offline",
     lastSeenAt: row.lastSeenAt,
     ...(row.disabledAt ? { disabledAt: row.disabledAt } : {}),
@@ -163,6 +167,8 @@ export class DeviceService {
         this.#repo.updateProfile(id, {
           tag: current.tag,
           iconKind: current.iconKind,
+          iconColorLight: current.iconColor.light,
+          iconColorDark: current.iconColor.dark ?? null,
           disabledAt,
           updatedAt: now,
         })
@@ -172,11 +178,18 @@ export class DeviceService {
     return this.getWithKeys(id)
   }
 
-  updateProfile(id: string, input: { readonly tag: string; readonly iconKind: string }): Device {
+  updateProfile(id: string, input: {
+    readonly tag: string; readonly iconKind: string; readonly iconColor?: Device["iconColor"]
+  }): Device {
     this.requireMutable(id)
     const current = this.get(id)
     if (current.disabledAt || current.deletedAt) throw new DomainError("device_disabled", "Device is disabled", 403)
-    this.#repo.updateProfile(id, { ...input, updatedAt: Date.now() })
+    this.#repo.updateProfile(id, {
+      tag: input.tag, iconKind: input.iconKind,
+      iconColorLight: input.iconColor?.light ?? "#ffffff",
+      iconColorDark: input.iconColor?.dark ?? null,
+      updatedAt: Date.now(),
+    })
     return this.get(id)
   }
 

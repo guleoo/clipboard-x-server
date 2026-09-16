@@ -31,7 +31,8 @@ beforeAll(async () => {
   channelService.synchronize()
   deviceService.create({ id: clientDeviceId })
   await deviceService.issueKey(clientDeviceId)
-  deviceService.updateProfile(clientDeviceId, { tag: "Test laptop", iconKind: "laptop" })
+  deviceService.updateProfile(clientDeviceId, { tag: "Test laptop", iconKind: "laptop",
+    iconColor: { light: "#2190a4", dark: "#183945" } })
   channelId = channelService.create("Test channel").id
   channelService.addMember(channelId, clientDeviceId)
 })
@@ -51,6 +52,8 @@ describe("virtual device", () => {
   it("is an immutable member of every channel without entering channel YAML", () => {
     const channel = channelService.list().find(({ id }) => id === channelId)
     expect(channel?.members.some(({ id, kind }) => id === virtualDevice.id && kind === "virtual")).toBe(true)
+    expect(channel?.members.find(({ id }) => id === clientDeviceId)?.iconColor)
+      .toEqual({ light: "#2190a4", dark: "#183945" })
     expect(config.read().channels.find(({ id }) => id === channelId)?.members).toEqual([clientDeviceId])
     domainError(
       () => channelService.removeMember(channelId, virtualDevice.id),
@@ -98,6 +101,7 @@ describe("virtual device", () => {
     ])
     expect(clipboardService.item(clientDeviceId, channelId, itemId).origin).toMatchObject({
       deviceId: virtualDevice.id,
+      iconColor: { light: "#ffffff" },
       kind: "virtual",
     })
     domainError(

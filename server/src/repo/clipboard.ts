@@ -6,7 +6,8 @@ import { sqliteValue } from "../common/sqlite"
 export interface ItemRow {
   readonly id: string; readonly channel_id: string; readonly origin_device_id: string
   readonly created_at: number; readonly updated_at: number; readonly deleted_at: number | null
-  readonly visible: number; readonly tag: string; readonly icon_kind: string; readonly channel_name: string
+  readonly visible: number; readonly tag: string; readonly icon_kind: string
+  readonly icon_color_light: string; readonly icon_color_dark: string | null; readonly channel_name: string
 }
 export interface RepresentationRow {
   readonly item_id: string; readonly id: string; readonly mime_type: string; readonly size: number
@@ -70,13 +71,13 @@ export class ClipboardRepo {
 
   item(id: string, visible = true): ItemRow | undefined {
     if (!visible) return this.first<ItemRow>(sql`
-      SELECT i.*, d.tag, d.icon_kind, c.name AS channel_name
+      SELECT i.*, d.tag, d.icon_kind, d.icon_color_light, d.icon_color_dark, c.name AS channel_name
       FROM clipboard_items i JOIN devices d ON d.id = i.origin_device_id
       JOIN channels c ON c.id = i.channel_id
       WHERE i.id = ${id}
     `) ?? undefined
     return this.first<ItemRow>(sql`
-      SELECT i.*, d.tag, d.icon_kind, c.name AS channel_name
+      SELECT i.*, d.tag, d.icon_kind, d.icon_color_light, d.icon_color_dark, c.name AS channel_name
       FROM clipboard_items i JOIN devices d ON d.id = i.origin_device_id
       JOIN channels c ON c.id = i.channel_id
       WHERE i.id = ${id} AND i.visible = 1 AND i.deleted_at IS NULL
@@ -211,7 +212,7 @@ export class ClipboardRepo {
       `)
     }
     return this.all<ItemRow>(sql`
-      SELECT i.*, d.tag, d.icon_kind, c.name AS channel_name FROM clipboard_items i
+      SELECT i.*, d.tag, d.icon_kind, d.icon_color_light, d.icon_color_dark, c.name AS channel_name FROM clipboard_items i
       JOIN devices d ON d.id = i.origin_device_id JOIN channels c ON c.id = i.channel_id
       WHERE ${sql.join(conditions, sql` AND `)}
       ORDER BY i.created_at DESC, i.id DESC LIMIT ${input.limit}

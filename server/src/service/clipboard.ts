@@ -48,6 +48,7 @@ export interface ClipboardItem {
     readonly deviceId: string
     readonly tag: string
     readonly iconKind: string
+    readonly iconColor: { readonly light: string; readonly dark?: string }
     readonly kind: "client" | "virtual"
   }
   readonly contents: readonly (RepresentationManifest & { readonly availability: string })[]
@@ -570,6 +571,10 @@ export class ClipboardService {
         deviceId: row.origin_device_id,
         tag: row.tag,
         iconKind: row.icon_kind,
+        iconColor: {
+          light: row.icon_color_light,
+          ...(row.icon_color_dark ? { dark: row.icon_color_dark } : {}),
+        },
         kind: isVirtualDevice(row.origin_device_id) ? "virtual" : "client",
       },
       contents,

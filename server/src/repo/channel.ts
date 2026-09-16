@@ -56,6 +56,8 @@ export class ChannelRepo {
       id: devices.id,
       tag: devices.tag,
       iconKind: devices.iconKind,
+      iconColorLight: devices.iconColorLight,
+      iconColorDark: devices.iconColorDark,
       state: devices.state,
       disabledAt: devices.disabledAt,
     }).from(channelMembers).innerJoin(devices, eq(devices.id, channelMembers.deviceId))

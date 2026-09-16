@@ -31,6 +31,7 @@ const item: ClipboardItem = {
     deviceId: "device-1",
     tag: "Laptop",
     iconKind: "laptop",
+    iconColor: { light: "#ffffff" },
     kind: "client",
   },
   contents: [{

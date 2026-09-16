@@ -9,7 +9,11 @@ export type DeviceKeyRow = typeof deviceKeys.$inferSelect
 export class DeviceRepo {
   synchronizeVirtualDevice(now: number): void {
     db.insert(devices).values({
-      ...virtualDevice,
+      id: virtualDevice.id,
+      tag: virtualDevice.tag,
+      iconKind: virtualDevice.iconKind,
+      iconColorLight: virtualDevice.iconColor.light,
+      iconColorDark: null,
       state: "online",
       lastSeenAt: now,
       disabledAt: null,
@@ -21,6 +25,8 @@ export class DeviceRepo {
       set: {
         tag: virtualDevice.tag,
         iconKind: virtualDevice.iconKind,
+        iconColorLight: virtualDevice.iconColor.light,
+        iconColorDark: null,
         state: "online",
         lastSeenAt: now,
         disabledAt: null,
@@ -53,6 +59,8 @@ export class DeviceRepo {
       id: input.id,
       tag: "Waiting for device profile",
       iconKind: "other",
+      iconColorLight: "#ffffff",
+      iconColorDark: null,
       state: "offline",
       lastSeenAt: 0,
       disabledAt: input.disabledAt,
@@ -127,12 +135,16 @@ export class DeviceRepo {
   updateProfile(id: string, input: {
     readonly tag: string
     readonly iconKind: string
+    readonly iconColorLight: string
+    readonly iconColorDark: string | null
     readonly updatedAt: number
     readonly disabledAt?: number | null
   }): void {
     db.update(devices).set({
       tag: input.tag,
       iconKind: input.iconKind,
+      iconColorLight: input.iconColorLight,
+      iconColorDark: input.iconColorDark,
       updatedAt: input.updatedAt,
       ...(input.disabledAt === undefined ? {} : { disabledAt: input.disabledAt }),
     }).where(eq(devices.id, id)).run()

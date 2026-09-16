@@ -31,6 +31,8 @@ export const devices = sqliteTable("devices", {
   id: text("id").primaryKey(),
   tag: text("tag").notNull(),
   iconKind: text("icon_kind").notNull(),
+  iconColorLight: text("icon_color_light").notNull().default("#ffffff"),
+  iconColorDark: text("icon_color_dark"),
   state: text("state").notNull().default("offline"),
   lastSeenAt: integer("last_seen_at").notNull().default(0),
   disabledAt: integer("disabled_at"),

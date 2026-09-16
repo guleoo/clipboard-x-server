@@ -184,6 +184,23 @@
               "other"
             ]
           },
+          "iconColor": {
+            "type": "object",
+            "properties": {
+              "light": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "dark": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              }
+            },
+            "required": [
+              "light"
+            ],
+            "additionalProperties": false
+          },
           "state": {
             "type": "string"
           },
@@ -230,6 +247,7 @@
           "id",
           "tag",
           "iconKind",
+          "iconColor",
           "state",
           "lastSeenAt",
           "createdAt",
@@ -316,6 +334,23 @@
                     "other"
                   ]
                 },
+                "iconColor": {
+                  "type": "object",
+                  "properties": {
+                    "light": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-f]{6}$"
+                    },
+                    "dark": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-f]{6}$"
+                    }
+                  },
+                  "required": [
+                    "light"
+                  ],
+                  "additionalProperties": false
+                },
                 "state": {
                   "type": "string"
                 },
@@ -331,6 +366,7 @@
                 "id",
                 "tag",
                 "iconKind",
+                "iconColor",
                 "state",
                 "kind"
               ]
@@ -469,6 +505,23 @@
                   "other"
                 ]
               },
+              "iconColor": {
+                "type": "object",
+                "properties": {
+                  "light": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-f]{6}$"
+                  },
+                  "dark": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-f]{6}$"
+                  }
+                },
+                "required": [
+                  "light"
+                ],
+                "additionalProperties": false
+              },
               "kind": {
                 "type": "string",
                 "enum": [
@@ -481,6 +534,7 @@
               "deviceId",
               "tag",
               "iconKind",
+              "iconColor",
               "kind"
             ]
           },
@@ -718,6 +772,23 @@
               "other"
             ]
           },
+          "iconColor": {
+            "type": "object",
+            "properties": {
+              "light": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "dark": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              }
+            },
+            "required": [
+              "light"
+            ],
+            "additionalProperties": false
+          },
           "state": {
             "type": "string"
           },
@@ -758,6 +829,7 @@
           "id",
           "tag",
           "iconKind",
+          "iconColor",
           "state",
           "lastSeenAt",
           "createdAt",
@@ -5280,6 +5352,23 @@
                       "server",
                       "other"
                     ]
+                  },
+                  "iconColor": {
+                    "type": "object",
+                    "properties": {
+                      "light": {
+                        "type": "string",
+                        "pattern": "^#[0-9a-f]{6}$"
+                      },
+                      "dark": {
+                        "type": "string",
+                        "pattern": "^#[0-9a-f]{6}$"
+                      }
+                    },
+                    "required": [
+                      "light"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
