@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Engine, type Node } from "../src/frame/router/core"
+import { application } from "../src/routes/app"
 
 const valid: readonly Node[] = [
   { id: "home", name: "home", path: "/", title: "Home", component: "home", index: true },
@@ -21,5 +22,17 @@ describe("route engine", () => {
     const previous = engine.get()
     expect(() => engine.replace([...valid, valid[0]!])).toThrow("路由 id 重复")
     expect(engine.get()).toBe(previous)
+  })
+
+  test("publishes activity as a settings route and redirects the legacy transfer path", () => {
+    const snapshot = Engine.create(application).get()
+    expect(snapshot.routes.find((route) => route.id === "app.activity")).toMatchObject({
+      path: "/activity",
+      target: { kind: "component", component: "transfers" },
+    })
+    expect(snapshot.routes.find((route) => route.id === "legacy.transfers")).toMatchObject({
+      path: "/transfers",
+      target: { kind: "redirect", redirect: "/activity" },
+    })
   })
 })

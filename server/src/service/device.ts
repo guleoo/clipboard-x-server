@@ -1,5 +1,6 @@
 import { DomainError, notFound } from "../common/error"
 import { createId, createSecret, digestSecret, isUuidV4, secretsEqual } from "../common/identity"
+import { isVirtualDevice, virtualDevice } from "../common/virtual-device"
 import { config, deviceKeyId, deviceKeySecret, type DeviceConfiguration } from "../config"
 import { db } from "../db"
 import { Password } from "../frame/security/password"
@@ -15,6 +16,7 @@ export interface Device {
   readonly deletedAt?: number
   readonly createdAt: number
   readonly updatedAt: number
+  readonly kind: "client" | "virtual"
 }
 
 export interface DeviceKeySummary {
@@ -22,6 +24,10 @@ export interface DeviceKeySummary {
   readonly createdAt: number
   readonly expiresAt?: number
   readonly revokedAt?: number
+}
+
+export interface ManagedDevice extends Device {
+  readonly keys: readonly DeviceKeySummary[]
 }
 
 export interface IssuedDeviceKey extends DeviceKeySummary {
@@ -38,16 +44,18 @@ const fallbackHash = "$argon2id$v=19$m=65536,t=3,p=1$sitgAOVTqhqcM/yU/ZD1M/bZiL9
 
 function deviceOf(row: DeviceRow): Device {
   const recentlySeen = row.lastSeenAt > 0 && Date.now() - row.lastSeenAt <= onlineWindowMs
+  const virtual = isVirtualDevice(row.id)
   return {
     id: row.id,
     tag: row.tag,
     iconKind: row.iconKind,
-    state: row.deletedAt ? "unavailable" : row.disabledAt ? "disabled" : recentlySeen ? "online" : "offline",
+    state: virtual ? "online" : row.deletedAt ? "unavailable" : row.disabledAt ? "disabled" : recentlySeen ? "online" : "offline",
     lastSeenAt: row.lastSeenAt,
     ...(row.disabledAt ? { disabledAt: row.disabledAt } : {}),
     ...(row.deletedAt ? { deletedAt: row.deletedAt } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    kind: virtual ? "virtual" : "client",
   }
 }
 
@@ -89,23 +97,24 @@ export class DeviceService {
         })
       }
     }
-    const configuredDeviceIds = new Set(configured.map(({ id }) => id))
+    const configuredDeviceIds = new Set([virtualDevice.id, ...configured.map(({ id }) => id)])
     const configuredKeyIds = new Set(keys.map(({ id }) => id))
     db.transaction(() => {
+      this.#repo.synchronizeVirtualDevice(now)
       for (const device of configured) {
         this.#repo.synchronizeDevice({
           id: device.id,
-          tag: device.tag,
-          iconKind: device.iconKind,
           disabledAt: device.disabled ? now : null,
           now,
         })
-        if (device.disabled) this.#repo.revokeDeviceKeys(device.id, now)
       }
       for (const id of this.#repo.deviceIds()) {
         if (!configuredDeviceIds.has(id)) this.#repo.archive(id, now)
       }
       for (const key of keys) this.#repo.saveKey({ ...key, secretHash: key.hash })
+      for (const device of configured) {
+        if (device.disabled) this.#repo.revokeDeviceKeys(device.id, now)
+      }
       for (const id of this.#repo.activeKeyIds()) {
         if (!configuredKeyIds.has(id)) this.#repo.revokeKey(id, now)
       }
@@ -113,12 +122,9 @@ export class DeviceService {
     this.#verifiedKeys.clear()
   }
 
-  list(includeDeleted = false): readonly (Device & { readonly keys: readonly DeviceKeySummary[] })[] {
+  list(includeDeleted = false): readonly ManagedDevice[] {
     const keys = this.#repo.keys()
-    return this.#repo.list(includeDeleted).map((row) => ({
-      ...deviceOf(row),
-      keys: keys.filter((key) => key.deviceId === row.id).map(keyOf),
-    }))
+    return this.#repo.list(includeDeleted).map((row) => this.withKeys(row, keys))
   }
 
   get(id: string): Device {
@@ -127,64 +133,55 @@ export class DeviceService {
     return deviceOf(row)
   }
 
-  create(input: { readonly id: string; readonly tag: string; readonly iconKind: DeviceConfiguration["iconKind"] }): Device {
+  create(input: { readonly id: string }): ManagedDevice {
     if (!isUuidV4(input.id)) throw new DomainError("invalid_request", "DeviceId must be a UUID v4", 400)
+    this.requireMutable(input.id)
     if (config.read().devices.some((device) => device.id === input.id)) {
       throw new DomainError("invalid_request", "Device already exists", 409)
     }
     const now = Date.now()
     config.change(
-      (configuration) => configuration.devices.push({ ...input, disabled: false, keys: [] }),
-      () => this.#repo.saveDevice({ ...input, now }),
+      (configuration) => configuration.devices.push({ id: input.id, disabled: false, keys: [] }),
+      () => this.#repo.synchronizeDevice({ id: input.id, disabledAt: null, now }),
     )
-    return this.get(input.id)
+    return this.getWithKeys(input.id)
   }
 
-  update(id: string, input: {
-    readonly tag?: string | undefined
-    readonly iconKind?: DeviceConfiguration["iconKind"] | undefined
-    readonly disabled?: boolean | undefined
-  }): Device {
+  update(id: string, input: { readonly disabled: boolean }): ManagedDevice {
+    this.requireMutable(id)
     const current = this.get(id)
     if (current.deletedAt) throw notFound("Device not found")
     const now = Date.now()
-    const disabledAt = input.disabled === undefined ? current.disabledAt ?? null : input.disabled ? now : null
+    const disabledAt = input.disabled ? now : null
     config.change(
       (configuration) => {
         const device = this.configuredDevice(configuration.devices, id)
-        device.tag = input.tag ?? current.tag
-        device.iconKind = input.iconKind ?? current.iconKind as DeviceConfiguration["iconKind"]
-        if (input.disabled !== undefined) device.disabled = input.disabled
+        device.disabled = input.disabled
         if (input.disabled) device.keys = []
       },
       () => db.transaction(() => {
         this.#repo.updateProfile(id, {
-          tag: input.tag ?? current.tag,
-          iconKind: input.iconKind ?? current.iconKind,
+          tag: current.tag,
+          iconKind: current.iconKind,
           disabledAt,
           updatedAt: now,
         })
         if (input.disabled) this.#repo.revokeDeviceKeys(id, now)
       }),
     )
-    return this.get(id)
+    return this.getWithKeys(id)
   }
 
-  updateProfile(id: string, input: { readonly tag: string; readonly iconKind: DeviceConfiguration["iconKind"] }): Device {
+  updateProfile(id: string, input: { readonly tag: string; readonly iconKind: string }): Device {
+    this.requireMutable(id)
     const current = this.get(id)
     if (current.disabledAt || current.deletedAt) throw new DomainError("device_disabled", "Device is disabled", 403)
-    config.change(
-      (configuration) => {
-        const device = this.configuredDevice(configuration.devices, id)
-        device.tag = input.tag
-        device.iconKind = input.iconKind
-      },
-      () => this.#repo.updateProfile(id, { ...input, updatedAt: Date.now() }),
-    )
+    this.#repo.updateProfile(id, { ...input, updatedAt: Date.now() })
     return this.get(id)
   }
 
   delete(id: string): void {
+    this.requireMutable(id)
     const current = this.get(id)
     if (current.deletedAt) return
     config.change(
@@ -199,6 +196,7 @@ export class DeviceService {
   }
 
   async issueKey(deviceId: string): Promise<IssuedDeviceKey> {
+    this.requireMutable(deviceId)
     const device = this.get(deviceId)
     if (device.deletedAt) throw notFound("Device not found")
     if (device.disabledAt) throw new DomainError("device_disabled", "Device is disabled", 409)
@@ -227,6 +225,7 @@ export class DeviceService {
   }
 
   revokeKey(deviceId: string, keyId: string): void {
+    this.requireMutable(deviceId)
     config.change(
       (configuration) => {
         const device = this.configuredDevice(configuration.devices, deviceId)
@@ -260,6 +259,25 @@ export class DeviceService {
     }
     this.#repo.touch(row.deviceId, now)
     return { deviceId: row.deviceId, keyId: row.id }
+  }
+
+  private getWithKeys(id: string): ManagedDevice {
+    const row = this.#repo.get(id)
+    if (!row) throw notFound("Device not found")
+    return this.withKeys(row, this.#repo.keys())
+  }
+
+  private withKeys(row: DeviceRow, keys: readonly DeviceKeyRow[]): ManagedDevice {
+    return {
+      ...deviceOf(row),
+      keys: keys.filter((key) => key.deviceId === row.id).map(keyOf),
+    }
+  }
+
+  private requireMutable(id: string): void {
+    if (isVirtualDevice(id)) {
+      throw new DomainError("virtual_device_immutable", "Virtual device cannot be modified", 409)
+    }
   }
 
   private configuredDevice(devices: DeviceConfiguration[], id: string): DeviceConfiguration {

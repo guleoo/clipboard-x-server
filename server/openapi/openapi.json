@@ -47,8 +47,13 @@
       "deviceKey": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "cbx_<keyId>_<secret>",
-        "description": "Also requires X-Clipboard-X-Device-Id."
+        "bearerFormat": "cbx_<keyId>_<secret>"
+      },
+      "deviceId": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Clipboard-X-Device-Id",
+        "description": "Must match the device bound to the Bearer key."
       },
       "adminSession": {
         "type": "apiKey",
@@ -157,7 +162,7 @@
           "createdAt"
         ]
       },
-      "Device": {
+      "ManagedDevice": {
         "type": "object",
         "properties": {
           "id": {
@@ -207,6 +212,13 @@
             "minimum": 0,
             "maximum": 9007199254740991
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "client",
+              "virtual"
+            ]
+          },
           "keys": {
             "type": "array",
             "items": {
@@ -221,7 +233,9 @@
           "state",
           "lastSeenAt",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "kind",
+          "keys"
         ]
       },
       "IssuedDeviceKey": {
@@ -257,7 +271,7 @@
           "key"
         ]
       },
-      "Channel": {
+      "ManagedChannel": {
         "type": "object",
         "properties": {
           "id": {
@@ -304,13 +318,21 @@
                 },
                 "state": {
                   "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "virtual"
+                  ]
                 }
               },
               "required": [
                 "id",
                 "tag",
                 "iconKind",
-                "state"
+                "state",
+                "kind"
               ]
             }
           }
@@ -319,7 +341,8 @@
           "id",
           "name",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "members"
         ]
       },
       "Representation": {
@@ -445,12 +468,20 @@
                   "server",
                   "other"
                 ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "client",
+                  "virtual"
+                ]
               }
             },
             "required": [
               "deviceId",
               "tag",
-              "iconKind"
+              "iconKind",
+              "kind"
             ]
           },
           "contents": {
@@ -603,6 +634,43 @@
           "error"
         ]
       },
+      "Publication": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "uploadId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "previewIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transfer": {
+            "$ref": "#/components/schemas/Transfer"
+          }
+        },
+        "required": [
+          "itemId",
+          "uploadId",
+          "previewIds",
+          "contentIds",
+          "transfer"
+        ]
+      },
       "ContentRequest": {
         "type": "object",
         "properties": {
@@ -626,6 +694,104 @@
         },
         "required": [
           "transfers"
+        ]
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "iconKind": {
+            "type": "string",
+            "enum": [
+              "desktop",
+              "laptop",
+              "phone",
+              "tablet",
+              "server",
+              "other"
+            ]
+          },
+          "state": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "disabledAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "deletedAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "updatedAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "client",
+              "virtual"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "tag",
+          "iconKind",
+          "state",
+          "lastSeenAt",
+          "createdAt",
+          "updatedAt",
+          "kind"
+        ]
+      },
+      "Channel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "updatedAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "ServerStatus": {
@@ -699,43 +865,6 @@
           "activeTransfers",
           "lastSyncAt",
           "revision"
-        ]
-      },
-      "Publication": {
-        "type": "object",
-        "properties": {
-          "itemId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
-          },
-          "uploadId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
-          },
-          "previewIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "contentIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "transfer": {
-            "$ref": "#/components/schemas/Transfer"
-          }
-        },
-        "required": [
-          "itemId",
-          "uploadId",
-          "previewIds",
-          "contentIds",
-          "transfer"
         ]
       },
       "ClipboardChangePage": {
@@ -1394,7 +1523,7 @@
                     "devices": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Device"
+                        "$ref": "#/components/schemas/ManagedDevice"
                       }
                     }
                   },
@@ -1516,7 +1645,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Device"
+                  "$ref": "#/components/schemas/ManagedDevice"
                 }
               }
             }
@@ -1619,22 +1748,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "tag": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 256
-                  },
-                  "iconKind": {
-                    "type": "string",
-                    "enum": [
-                      "desktop",
-                      "laptop",
-                      "phone",
-                      "tablet",
-                      "server",
-                      "other"
-                    ]
-                  },
                   "id": {
                     "type": "string",
                     "format": "uuid",
@@ -1642,8 +1755,6 @@
                   }
                 },
                 "required": [
-                  "tag",
-                  "iconKind",
                   "id"
                 ],
                 "additionalProperties": false
@@ -1673,7 +1784,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Device"
+                  "$ref": "#/components/schemas/ManagedDevice"
                 }
               }
             }
@@ -1776,26 +1887,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "tag": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 256
-                  },
-                  "iconKind": {
-                    "type": "string",
-                    "enum": [
-                      "desktop",
-                      "laptop",
-                      "phone",
-                      "tablet",
-                      "server",
-                      "other"
-                    ]
-                  },
                   "disabled": {
                     "type": "boolean"
                   }
                 },
+                "required": [
+                  "disabled"
+                ],
                 "additionalProperties": false
               }
             }
@@ -2214,7 +2312,7 @@
                     "channels": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Channel"
+                        "$ref": "#/components/schemas/ManagedChannel"
                       }
                     }
                   },
@@ -2336,7 +2434,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Channel"
+                  "$ref": "#/components/schemas/ManagedChannel"
                 }
               }
             }
@@ -2475,7 +2573,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Channel"
+                  "$ref": "#/components/schemas/ManagedChannel"
                 }
               }
             }
@@ -3095,6 +3193,252 @@
             }
           }
         }
+      }
+    },
+    "/admin/api/v1/channels/{channelId}/items": {
+      "post": {
+        "operationId": "createAdminClipboardItem",
+        "tags": [
+          "Admin clipboard"
+        ],
+        "summary": "Publish clipboard item from the virtual device",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "x-response-mode": "raw",
+        "x-auth-required": true,
+        "responses": {
+          "201": {
+            "description": "Operation succeeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Publication"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+                  },
+                  "createdAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "contents": {
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "mimeType": {
+                          "type": "string",
+                          "maxLength": 255,
+                          "pattern": "^[a-z0-9!#$&^_.+-]+\\/[a-z0-9!#$&^_.+-]+(?:;[^\\r\\n]{1,128})?$"
+                        },
+                        "size": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "delivery": {
+                          "type": "string",
+                          "enum": [
+                            "eager",
+                            "on-demand"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mimeType",
+                        "size",
+                        "sha256",
+                        "delivery"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "previews": {
+                    "default": [],
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "contentId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "mimeType": {
+                          "type": "string",
+                          "maxLength": 255,
+                          "pattern": "^[a-z0-9!#$&^_.+-]+\\/[a-z0-9!#$&^_.+-]+(?:;[^\\r\\n]{1,128})?$"
+                        },
+                        "size": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "contentId",
+                        "mimeType",
+                        "size",
+                        "sha256",
+                        "truncated"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "createdAt",
+                  "contents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "channelId",
+            "required": true
+          }
+        ]
       }
     },
     "/admin/api/v1/items/{itemId}": {
@@ -3754,6 +4098,436 @@
         ]
       }
     },
+    "/admin/api/v1/uploads/{uploadId}/previews/{previewId}": {
+      "put": {
+        "operationId": "uploadAdminPreview",
+        "tags": [
+          "Admin clipboard"
+        ],
+        "summary": "Upload virtual device clipboard preview",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "x-response-mode": "raw",
+        "x-auth-required": true,
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "size": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "size",
+                    "sha256"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "uploadId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "previewId",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/admin/api/v1/uploads/{uploadId}/contents/{contentId}": {
+      "put": {
+        "operationId": "uploadAdminContent",
+        "tags": [
+          "Admin clipboard"
+        ],
+        "summary": "Upload virtual device clipboard content",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "x-response-mode": "raw",
+        "x-auth-required": true,
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "size": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "size",
+                    "sha256"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "uploadId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "contentId",
+            "required": true
+          }
+        ]
+      }
+    },
+    "/admin/api/v1/uploads/{uploadId}/complete": {
+      "post": {
+        "operationId": "completeAdminUpload",
+        "tags": [
+          "Admin clipboard"
+        ],
+        "summary": "Complete virtual device clipboard upload",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "x-response-mode": "raw",
+        "x-auth-required": true,
+        "responses": {
+          "200": {
+            "description": "Operation succeeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Structured product error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "uploadId",
+            "required": true
+          }
+        ]
+      }
+    },
     "/admin/api/v1/transfers": {
       "get": {
         "operationId": "listAdminTransfers",
@@ -4257,7 +5031,8 @@
         "summary": "Get current device",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -4375,7 +5150,8 @@
         "summary": "Update current device profile",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -4526,7 +5302,8 @@
         "summary": "List channels for current device",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -4655,7 +5432,8 @@
         "summary": "Get server status",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -4773,7 +5551,8 @@
         "summary": "Publish clipboard item",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -4897,11 +5676,6 @@
                     "minimum": 0,
                     "maximum": 9007199254740991
                   },
-                  "originDeviceId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
-                  },
                   "contents": {
                     "minItems": 1,
                     "maxItems": 16,
@@ -4991,13 +5765,18 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "originDeviceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
                   }
                 },
                 "required": [
                   "id",
                   "createdAt",
-                  "originDeviceId",
-                  "contents"
+                  "contents",
+                  "originDeviceId"
                 ],
                 "additionalProperties": false
               }
@@ -5023,7 +5802,8 @@
         "summary": "List clipboard items",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -5151,7 +5931,8 @@
         "summary": "List clipboard changes",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -5279,7 +6060,8 @@
         "summary": "Get clipboard item",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -5413,7 +6195,8 @@
         "summary": "Delete clipboard item",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -5542,7 +6325,8 @@
         "summary": "Download clipboard preview",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -5687,7 +6471,8 @@
         "summary": "Request clipboard content",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -5831,7 +6616,8 @@
         "summary": "Download clipboard content",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -5976,7 +6762,8 @@
         "summary": "Upload clipboard preview",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -6127,7 +6914,8 @@
         "summary": "Upload clipboard content",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -6278,7 +7066,8 @@
         "summary": "Complete upload",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -6406,7 +7195,8 @@
         "summary": "List pending device work",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -6524,7 +7314,8 @@
         "summary": "Accept device work",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -6666,7 +7457,8 @@
         "summary": "Reject device work",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -6816,7 +7608,8 @@
         "summary": "List current device transfers",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -6934,7 +7727,8 @@
         "summary": "Get current device transfer",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",
@@ -7060,7 +7854,8 @@
         "summary": "Cancel current device transfer",
         "security": [
           {
-            "deviceKey": []
+            "deviceKey": [],
+            "deviceId": []
           }
         ],
         "x-response-mode": "raw",

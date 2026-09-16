@@ -1,6 +1,6 @@
 # Clipboard X Web 架构
 
-Web 管理端是单入口、纯客户端渲染的 React SPA。Bun 负责工作区依赖、脚本和测试，Vite 负责开发服务器与生产构建。应用组合根是 `src/App.tsx`，唯一浏览器入口是 `src/main.tsx`。生产构建生成 `web/dist`，根发布流程将它和 Server 可执行文件一起组装，由 Server 同源提供。
+Web 是单入口、纯客户端渲染的 React SPA。登录后的首屏是用户级 Channel 剪切板工作区，而不是传统管理仪表盘：左侧切换 Channel，中间预览和操作剪切板内容，卡片区域独立滚动；Channel 创建、编辑和内容发布使用弹窗。设备、活动和账户页面收纳在设置菜单中。Bun 负责工作区依赖、脚本和测试，Vite 负责开发服务器与生产构建。应用组合根是 `src/App.tsx`，唯一浏览器入口是 `src/main.tsx`。生产构建生成 `web/dist`，根发布流程将它和 Server 可执行文件一起组装，由 Server 同源提供。
 
 ## 基础设施
 
@@ -22,9 +22,21 @@ Admin API 固定使用同源 `/admin/api/v1` 和 HttpOnly、SameSite=Strict 会�
 
 管理员密码和会话 Cookie 不写入浏览器存储。Zustand 仅保留当前管理员的非敏感摘要与凭据 revision；服务端始终是会话真源。服务没有 refresh token 端点，因此 401 不做伪刷新或隐式重试，而是由受认证布局返回登录 Route Node。
 
+Web 添加文本或图片时调用 Admin API 创建清单、上传预览和 eager 完整内容、再完成发布。
+服务端把来源固定为虚拟 Server 设备；Web 不生成或持有该设备的 API Key。虚拟设备在设备设置
+中只读展示，不能编辑、禁用、删除或管理 Key。
+
+设备设置先登记 Clipboard X 客户端生成的 DeviceId，再为该设备签发、轮换和吊销绑定 Key，
+并支持禁用和删除。名称与图标由客户端持有，客户端连接和资料变化时通过 Device API 主动
+同步；Web 只读展示这些资料，不提供名称或图标编辑表单。
+
+图片卡片最初只读取服务端已有缩略图。用户打开图片预览时，如果完整表示仍需来源设备，页面会
+自动创建内容物化请求并轮询 transfer；完成后卡片与详情都切换到服务端保存的完整图片，并提供
+复制图片和下载操作。
+
 ## 路由与布局
 
-`routes/base.ts` 定义登录、错误、404 与 catch-all；`routes/app.ts` 定义管理页面；`routes/user.ts` 使用 Zod 解析不可信扩展节点。即使当前没有远程路由，组合根仍显式发布空用户路由，使 `ready` 只在完整图发布后成立。
+`routes/base.ts` 定义登录、错误、404 与 catch-all；`routes/app.ts` 定义剪切板工作区和设置页面；`routes/user.ts` 使用 Zod 解析不可信扩展节点。根路径是唯一主工作区，旧的概览、Channel、剪切板和传输路径只做兼容重定向。即使当前没有远程路由，组合根仍显式发布空用户路由，使 `ready` 只在完整图发布后成立。
 
 组件 key 只映射到 `App.tsx` 的静态 lazy registry，页面按路由分包。`normal` 和 `empty` 布局通过 registry 注册；未知组件或布局不会回退到其他页面。开发环境显示诊断细节，生产环境只显示通用故障信息。
 
@@ -41,7 +53,7 @@ Admin API 固定使用同源 `/admin/api/v1` 和 HttpOnly、SameSite=Strict 会�
 - 根 `build.ts` 先执行 Vite 构建，再将 `web/dist` 复制进发布目录，与 Server 可执行文件共同交付。
 - Vite 的本地开发服务器固定使用 `3000`，代理目标只来自 `web/.env*` 中不带 `VITE_` 前缀的 `CBX_PROXY_URL`，缺失时启动失败，因此不会被代码默认值掩盖，也不会暴露到浏览器代码；开发配置的 `server.publicOrigin` 应填写浏览器实际访问的 Vite Origin。Web 代码及生产 bundle 都不读取 Server YAML。
 
-监听地址、数据库、对象目录、管理员、设备、Key、Channel 等配置只由 Server 使用 `yaml` 包解析，并由 Server 控制台负责原子回写。
+监听地址、数据库、对象目录、管理员、设备授权、Key、Channel 等配置只由 Server 使用 `yaml` 包解析，并由 Server 控制台负责原子回写。客户端维护的设备名称与图标属于 SQLite 运行数据，不进入 YAML。
 
 ## 有意省略
 

@@ -29,11 +29,9 @@ const components = {
   login: lazy(() => import("@/pages/login").then(({ LoginPage }) => ({ default: LoginPage }))),
   error: lazy(() => import("@/pages/error").then(({ ErrorPage }) => ({ default: ErrorPage }))),
   "not-found": lazy(() => import("@/pages/not-found").then(({ NotFoundPage }) => ({ default: NotFoundPage }))),
-  dashboard: lazy(() => import("@/pages/dashboard").then(({ DashboardPage }) => ({ default: DashboardPage }))),
   devices: lazy(() => import("@/pages/devices").then(({ DevicesPage }) => ({ default: DevicesPage }))),
-  channels: lazy(() => import("@/pages/channels").then(({ ChannelsPage }) => ({ default: ChannelsPage }))),
-  clipboard: lazy(() => import("@/pages/clipboard").then(({ ClipboardPage }) => ({ default: ClipboardPage }))),
   transfers: lazy(() => import("@/pages/transfers").then(({ TransfersPage }) => ({ default: TransfersPage }))),
+  clipboard: lazy(() => import("@/pages/clipboard").then(({ ClipboardPage }) => ({ default: ClipboardPage }))),
   account: lazy(() => import("@/pages/account").then(({ AccountPage }) => ({ default: AccountPage }))),
 } as const
 const layouts = { normal: NormalLayout, empty: EmptyLayout } as const

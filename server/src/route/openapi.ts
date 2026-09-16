@@ -20,6 +20,11 @@ export interface OperationOptions {
 export function operation(options: OperationOptions) {
   const status = options.status ?? 200
   const responseSchema = operationResponseSchemas[options.operationId]
+  const security = !options.auth
+    ? []
+    : options.scheme === "adminSession"
+      ? [{ adminSession: [] }]
+      : [{ deviceKey: [], deviceId: [] }]
   const success = options.binary
     ? { description: "Binary content", content: { "application/octet-stream": { schema: { type: "string", format: "binary" } } } }
     : status === 204
@@ -45,7 +50,7 @@ export function operation(options: OperationOptions) {
     tags: options.tags,
     summary: options.summary,
     auth: options.auth,
-    security: options.auth ? [{ [options.scheme ?? "deviceKey"]: [] }] : [],
+    security,
     responses,
   })
 }

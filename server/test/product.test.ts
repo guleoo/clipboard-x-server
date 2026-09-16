@@ -1,13 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import { ManagedConfigurationSchema, config } from "../src/config";
 import { db } from "../src/db";
-import { createApp } from "../src/frame/hono";
+import { createApp, generateSpecs, mountRoutes } from "../src/frame/hono";
 import { AuthError } from "../src/frame/security";
 import { zz } from "../src/frame/zod";
 import { productErrorHandler } from "../src/route/error";
 import { sameOrigin } from "../src/route/auth";
 import { validator } from "../src/route/validator";
 import { sqliteValue } from "../src/common/sqlite";
+import { operationResponseSchemas } from "../src/dto/response";
+import { routes } from "../src/route";
 
 describe("Clipboard X product contracts", () => {
   it("exposes one process-wide configuration and database facade", async () => {
@@ -26,6 +28,37 @@ describe("Clipboard X product contracts", () => {
       ...base,
       administrator: { username: "admin", password: "123456" },
     })).toThrow();
+  });
+
+  it("separates client-owned profiles from administrator device controls", () => {
+    const device = {
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      tag: "Workstation",
+      iconKind: "desktop",
+      state: "offline",
+      lastSeenAt: 0,
+      createdAt: 1,
+      updatedAt: 1,
+      kind: "client",
+    };
+
+    expect(operationResponseSchemas.updateDeviceProfile.safeParse(device).success).toBe(true);
+    expect(operationResponseSchemas.createDevice.safeParse({ ...device, keys: [] }).success).toBe(true);
+    expect(operationResponseSchemas.updateDevice.safeParse({ ...device, keys: [] }).success).toBe(true);
+    expect(operationResponseSchemas.updateDevice.safeParse(device).success).toBe(false);
+  });
+
+  it("documents both credentials required by every device operation", async () => {
+    const app = createApp();
+    mountRoutes(app, routes);
+    const document = await generateSpecs(app);
+
+    expect(document.paths["/api/v1/device"]?.get?.security).toEqual([
+      { deviceKey: [], deviceId: [] },
+    ]);
+    expect(document.paths["/admin/api/v1/devices"]?.get?.security).toEqual([
+      { adminSession: [] },
+    ]);
   });
 
   it("normalizes safe SQLite integers at raw-query boundaries", () => {

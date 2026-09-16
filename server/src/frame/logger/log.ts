@@ -15,7 +15,6 @@ import { closeRootLogger, createRootLogger } from "./transport";
 import type {
   Logger as FrameLogger,
   LogFields,
-  LogFormat,
   LogLevel,
   LogOptions,
   LogTags,
@@ -38,7 +37,6 @@ function activeRoot(): ReturnType<typeof createRootLogger> | undefined {
 
 export namespace Log {
   export type Level = LogLevel;
-  export type Format = LogFormat;
   export type TagValue = LogTagValue;
   export type Tags = LogTags;
   export type Fields = LogFields;

@@ -10,10 +10,16 @@ Clipboard X 的自托管可信中心服务。它为 GNOME 扩展提供设备认�
 bun install --frozen-lockfile
 cp config.example.yaml config.yaml
 chmod 600 config.yaml
-bun run dev
 ```
 
-Web 开发服务位于 `http://127.0.0.1:3000`，Vite API 代理只读取 `web/.env*` 中的 `CBX_PROXY_URL`。先让该地址与 Server 的监听地址保持一致，并修改 `config.yaml` 中的唯一管理员密码，再登录管理控制台。设备、API Key 与 Channel 可在 YAML 中声明，也可由控制台创建；控制台变更会原子回写同一配置文件。
+分别在两个终端启动 Server 和 Web：
+
+```sh
+bun run dev:server
+bun run dev:web
+```
+
+Web 开发服务位于 `http://127.0.0.1:3000`，Vite API 代理只读取 `web/.env*` 中的 `CBX_PROXY_URL`。先让该地址与 Server 的监听地址保持一致，并修改 `config.yaml` 中的唯一管理员密码，再登录管理控制台。添加设备时登记客户端生成的 DeviceId，再为该设备签发绑定的 API Key。DeviceId、Key、禁用状态与 Channel 配置会原子回写 YAML；客户端连接后同步的名称和图标保存在 SQLite。
 
 ## 验证与发布
 

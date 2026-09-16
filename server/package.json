@@ -5,15 +5,15 @@
   "type": "module",
   "module": "src/index.ts",
   "scripts": {
-    "dev": "bun run db:migrate && bun --hot src/index.ts",
+    "dev": "bun run scripts/db/migrate.ts --config ../config.yaml && bun --hot src/index.ts --config ../config.yaml",
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "APP_ENV=test bun test",
+    "test": "APP_ENV=test bun test --preload ./test/preload.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run scripts/db/migrate.ts",
     "build": "bun run build.ts",
     "compile": "bun run build.ts --compile",
-    "openapi": "bun run scripts/openapi.ts",
+    "openapi": "bun run scripts/openapi.ts --config ../config.example.yaml",
     "audit:objects": "bun run scripts/objects.ts audit",
     "gc:objects": "bun run scripts/objects.ts gc",
     "benchmark": "bun run scripts/benchmark.ts"

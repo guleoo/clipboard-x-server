@@ -1,5 +1,4 @@
 export type LogLevel = "debug" | "info" | "warn" | "error";
-export type LogFormat = "pretty" | "json";
 export type LogTagValue = string | number | boolean | null;
 
 export interface LogTags {
@@ -13,7 +12,6 @@ export interface LogFields {
 export interface LogTransportOptions {
   readonly enabled?: boolean;
   readonly level?: LogLevel;
-  readonly format?: LogFormat;
 }
 
 export interface LogConsoleOptions extends LogTransportOptions {}

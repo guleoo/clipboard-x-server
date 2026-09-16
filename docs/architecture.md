@@ -50,10 +50,13 @@ handler installed only by the production composition root.
 
 ## Configuration and persistence
 
-YAML is the authoritative source for all runtime options, the single administrator, devices, complete
-device API keys, channels, and memberships. Frame's global `Config` loads, imports, interpolates, maps,
-validates, and freezes static sections. The exported application `config` singleton adds the controlled
-mutation API for administrator/device/channel changes. A console mutation validates the complete
+YAML is the authoritative source for all runtime options, the single administrator, issued device API
+keys and their DeviceId bindings, disabled state, channels, and managed memberships. Client-owned device
+profiles (`tag` and `iconKind`) are runtime data in SQLite and are updated only by the client holding the
+bound key. The built-in virtual Server device is another SQLite-only record derived at startup: it is
+never written to YAML and cannot be configured through the console. Frame's global `Config` loads,
+imports, interpolates, maps, validates, and freezes static sections. The exported application `config`
+singleton adds the controlled mutation API for administrator/credential/channel changes. A console mutation validates the complete
 managed configuration, writes a human-readable block YAML document through a synced temporary file,
 atomically renames it with mode `0600`, and then updates SQLite. Startup reconciliation repairs any
 database drift from the YAML source.
@@ -73,7 +76,10 @@ routes.
 Administrator mutations use an HttpOnly, SameSite=Strict cookie and reject cross-site browser requests.
 Fetch Metadata (`Sec-Fetch-Site`) is used when present, which keeps Vite's same-origin proxy workflow
 working with only `CBX_PROXY_URL`; explicit Origin matching is the fallback for non-browser clients.
-Device requests require both a bound Bearer API key and `X-Clipboard-X-Device-Id`.
+The administrator first registers the client-generated DeviceId and then issues a key already bound to
+that device. Device requests send both the Bearer API key and `X-Clipboard-X-Device-Id`; the Server
+rejects a mismatch before serving the request. `PUT /api/v1/device/profile` updates only the
+client-owned tag and icon, and cannot change the registered DeviceId.
 
 ## Synchronization and lifecycle
 
@@ -81,6 +87,12 @@ Clipboard publication is two-phase: an immutable manifest, streamed preview/eage
 Items stay invisible until commit. On-demand content creates one durable materialization request and
 source work item; concurrent requesters reuse that work while retaining independent transfers. Channel
 changes use monotonic sequences behind opaque cursors.
+
+Every active Channel has the virtual Server device as a fixed member in SQLite. That membership cannot
+be edited or removed and is deliberately absent from YAML. The virtual device publishes complete eager
+content created through the Web and fans those changes out to real members through the normal Channel
+feed. It has no API key and every device-side receive path rejects it, so content published by other
+devices is never delivered back to the virtual identity.
 
 Items do not expire automatically. Deletion decrements object references, and GC removes only
 zero-reference objects older than the configured grace period when explicitly requested with

@@ -35,7 +35,12 @@ const document = await generateSpecs(app, {
           type: "http",
           scheme: "bearer",
           bearerFormat: "cbx_<keyId>_<secret>",
-          description: "Also requires X-Clipboard-X-Device-Id.",
+        },
+        deviceId: {
+          type: "apiKey",
+          in: "header",
+          name: "X-Clipboard-X-Device-Id",
+          description: "Must match the device bound to the Bearer key.",
         },
         adminSession: {
           type: "apiKey",

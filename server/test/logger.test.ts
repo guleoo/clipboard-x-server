@@ -7,7 +7,7 @@ import { Log } from "../src/frame/logger";
 import { createConsoleOutput } from "../src/frame/logger/console";
 import { resolveLoggerOptions } from "../src/frame/logger/config";
 import { currentLogContext } from "../src/frame/logger/context";
-import { renderJsonLine, renderPretty } from "../src/frame/logger/format";
+import { renderPretty } from "../src/frame/logger/format";
 import { safeStringify } from "../src/frame/logger/serialize";
 import { createLogTimer } from "../src/frame/logger/timer";
 import {
@@ -60,7 +60,7 @@ describe("logger", () => {
     });
   });
 
-  it("renders machine and human formats", () => {
+  it("renders human-readable log entries", () => {
     const info = {
       timestamp: "2026-09-11T00:00:00.000Z",
       level: "info",
@@ -70,13 +70,6 @@ describe("logger", () => {
       [Symbol.for("level")]: "info",
     };
 
-    expect(JSON.parse(renderJsonLine(info))).toEqual({
-      timestamp: info.timestamp,
-      level: info.level,
-      service: info.service,
-      message: info.message,
-      accountId: info.accountId,
-    });
     expect(renderPretty(info)).toBe(
       "2026-09-11T00:00:00.000Z [info] [account] Account created  accountId=account-1",
     );
@@ -94,14 +87,13 @@ describe("logger", () => {
     expect(typeof Log.Console.write).toBe("function");
   });
 
-  it("writes complete JSON Lines and closes the file transport", async () => {
+  it("writes human-readable text and closes the file transport", async () => {
     const dir = mkdtempSync(join(tmpdir(), "hono-logger-"));
     const logger = createRootLogger(
       resolveLoggerOptions({
         console: { enabled: false },
         file: {
           enabled: true,
-          format: "json",
           dir,
           filename: "test-%DATE%.log",
           zippedArchive: false,
@@ -114,14 +106,9 @@ describe("logger", () => {
 
     const filename = readdirSync(dir).find((item) => item.endsWith(".log"));
     expect(filename).toBeDefined();
-    const lines = readFileSync(join(dir, filename!), "utf8").trim().split("\n");
-    expect(lines).toHaveLength(1);
-    expect(JSON.parse(lines[0]!)).toMatchObject({
-      level: "info",
-      service: "logger-test",
-      message: "Persisted",
-      count: "1",
-    });
+    const content = readFileSync(join(dir, filename!), "utf8").trim();
+    expect(content).toContain("[info] [logger-test] Persisted  count=1");
+    expect(() => JSON.parse(content)).toThrow();
   });
 
   it("records exactly one timer terminal state", () => {

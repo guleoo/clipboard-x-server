@@ -14,8 +14,10 @@ import {
   mountRoutes,
 } from "../src/frame/hono";
 import { Database, db } from "../src/db";
+import { FrameConfig } from "../src/frame/config";
 import { register, zz } from "../src/frame/zod";
 import { validator } from "../src/frame/hono";
+import { framePath } from "./frame-path";
 
 const ExpectedFailure = ErrorCode.of(100_001_001, "Expected failure");
 
@@ -54,21 +56,21 @@ describe("frame", () => {
     const app = createApp();
     mountRoutes(app, [failures]);
 
-    const expected = await app.request("/api/failures/expected");
+    const expected = await app.request(framePath("/failures/expected"));
     expect(expected.status).toBe(400);
     expect(await expected.json()).toEqual({
       code: 400,
       msg: "Expected failure",
     });
 
-    const unexpected = await app.request("/api/failures/unexpected");
+    const unexpected = await app.request(framePath("/failures/unexpected"));
     expect(unexpected.status).toBe(500);
     expect(await unexpected.json()).toEqual({
       code: 500,
       msg: "Internal server error",
     });
 
-    const http = await app.request("/api/failures/http");
+    const http = await app.request(framePath("/failures/http"));
     expect(http.status).toBe(418);
     expect(await http.json()).toEqual({
       code: 418,
@@ -92,8 +94,14 @@ describe("frame", () => {
     const app = createApp();
     mountRoutes(app, [route], { prefix: "/internal" });
 
-    expect((await app.request("/api/admin/internal/probe")).status).toBe(200);
-    expect((await app.request("/api/internal/admin/probe")).status).toBe(404);
+    const mounted = framePath("/probe", {
+      surface: "admin",
+      prefix: "/internal",
+    })
+    expect((await app.request(mounted)).status).toBe(200);
+    const adminPrefix = FrameConfig.App.routeSurfaces.admin.replace(/^\/+|\/+$/g, "")
+    const wrongOrder = framePath(`/internal/${adminPrefix}/probe`)
+    expect((await app.request(wrongOrder)).status).toBe(404);
   });
 
   it("validates request input once and preserves the result envelope", async () => {
@@ -105,11 +113,11 @@ describe("frame", () => {
     );
     const app = createServerApp([route]);
 
-    const invalid = await app.request("/api/validation/x");
+    const invalid = await app.request(framePath("/validation/x"));
     expect(invalid.status).toBe(400);
     expect(await invalid.json()).toEqual({ code: 400, msg: "Invalid request" });
 
-    const valid = await app.request("/api/validation/ok");
+    const valid = await app.request(framePath("/validation/ok"));
     expect(await valid.json()).toEqual({
       code: 200,
       msg: "ok",

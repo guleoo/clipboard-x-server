@@ -39,8 +39,8 @@ export function TransfersPage() {
 
   return (
     <Page
-      title="传输"
-      description="查看发布与按需内容物化的进度、参与设备和失败原因。"
+      title="活动"
+      description="查看内容发布与按需同步的进度、参与设备和失败原因。"
       action={<Button variant="outline" onClick={() => transfers.refetch()} disabled={transfers.isFetching}><RefreshCwIcon className={transfers.isFetching ? "animate-spin" : ""} />刷新</Button>}
     >
       {transfers.isPending ? <LoadingState /> : transfers.error ? <ErrorState error={transfers.error} retry={() => transfers.refetch()} />

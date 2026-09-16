@@ -19,10 +19,17 @@ export const DeviceSchema = z.object({
   disabledAt: Timestamp.optional(),
   createdAt: Timestamp,
   updatedAt: Timestamp,
+  kind: z.enum(["client", "virtual"]),
   keys: z.array(DeviceKeySchema),
 })
 export const IssuedDeviceKeySchema = DeviceKeySchema.extend({ key: z.string().min(1) })
-export const ChannelMemberSchema = z.object({ id: Identifier, tag: z.string(), iconKind: z.string(), state: z.string() })
+export const ChannelMemberSchema = z.object({
+  id: Identifier,
+  tag: z.string(),
+  iconKind: z.string(),
+  state: z.string(),
+  kind: z.enum(["client", "virtual"]),
+})
 export const ChannelSchema = z.object({
   id: Identifier,
   name: z.string(),
@@ -52,7 +59,12 @@ export const ClipboardItemSchema = z.object({
   channelName: z.string(),
   createdAt: Timestamp,
   updatedAt: Timestamp,
-  origin: z.object({ deviceId: Identifier, tag: z.string(), iconKind: z.string() }),
+  origin: z.object({
+    deviceId: Identifier,
+    tag: z.string(),
+    iconKind: z.string(),
+    kind: z.enum(["client", "virtual"]),
+  }),
   contents: z.array(ClipboardRepresentationSchema),
   previews: z.array(ClipboardPreviewSchema),
 })
@@ -87,6 +99,15 @@ export const ClipboardPageSchema = z.object({
   cursor: z.string(),
   hasMore: z.boolean(),
 })
+export const PublicationSchema = z.object({
+  itemId: Identifier,
+  uploadId: Identifier,
+  previewIds: z.array(Identifier),
+  contentIds: z.array(Identifier),
+  transfer: TransferSchema,
+})
+export const UploadResultSchema = z.object({ size: z.number().int().nonnegative(), sha256: z.string() })
+export const UploadCompletionSchema = z.object({ transfer: TransferSchema })
 
 export type Administrator = z.infer<typeof AdministratorSchema>
 export type DeviceKey = z.infer<typeof DeviceKeySchema>
@@ -100,4 +121,5 @@ export type ClipboardItem = z.infer<typeof ClipboardItemSchema>
 export type TransferState = z.infer<typeof TransferStateSchema>
 export type Transfer = z.infer<typeof TransferSchema>
 export type Overview = z.infer<typeof OverviewSchema>
+export type Publication = z.infer<typeof PublicationSchema>
 export type Page<Value> = { readonly items: readonly Value[]; readonly cursor: string; readonly hasMore: boolean }

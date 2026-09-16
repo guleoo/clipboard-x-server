@@ -1,4 +1,55 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 process.env.APP_ENV ??= "test";
-process.env.APP_CONFIG_FILE ??= resolve(import.meta.dir, "../config.yaml");
+if (!process.env.APP_CONFIG_FILE) {
+  const directory = mkdtempSync(resolve(tmpdir(), "clipboard-x-server-test-"));
+  const security = resolve(import.meta.dir, "../config/security.yaml");
+  const session = resolve(import.meta.dir, "../config/session.yaml");
+  const config = resolve(directory, "config.yaml");
+  writeFileSync(config, `import:
+  - ${security}
+  - ${session}
+app:
+  name: clipboard-x-server-test
+  hostname: 127.0.0.1
+  port: 0
+  timezone: UTC
+  api-prefix: /
+  route-surfaces:
+    admin: /admin/api
+    app: /api
+database:
+  name: clipboard-x-test
+  url: ":memory:"
+  wal: false
+  schema-path: ${resolve(import.meta.dir, "../src/db/schema.ts")}
+  migrations-folder: ${resolve(import.meta.dir, "../drizzle")}
+logger:
+  console:
+    enabled: false
+  file:
+    enabled: false
+storage:
+  data-directory: ${directory}
+web:
+  root: ${resolve(import.meta.dir, "../../web/dist")}
+  cookie-secure: false
+content:
+  supported-mime-types:
+    - text/plain;charset=utf-8
+administrator:
+  username: admin
+  password: test-password
+devices: []
+channels: []
+security:
+  jwt-secret: test-only-secret-not-for-production-0001
+  password:
+    memory-cost: 19456
+    time-cost: 2
+`);
+  process.env.APP_CONFIG_FILE = config;
+  process.on("exit", () => rmSync(directory, { recursive: true, force: true }));
+}

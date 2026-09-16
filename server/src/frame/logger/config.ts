@@ -2,7 +2,6 @@ import { z } from "zod";
 import type { LogOptions } from "./type";
 
 const level = z.enum(["debug", "info", "warn", "error"]);
-const format = z.enum(["pretty", "json"]);
 const tagValue = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const maxFiles = z.union([
   z
@@ -25,13 +24,11 @@ const maxSize = z.union([
 const consoleDefaults = {
   enabled: true,
   level: "info" as const,
-  format: "pretty" as const,
 };
 
 const fileDefaults = {
   enabled: true,
   level: "info" as const,
-  format: "json" as const,
   dir: "logs",
   filename: "app-%DATE%.log",
   maxFiles: "30d",
@@ -46,7 +43,6 @@ export const LoggerOptions = z
       .object({
         enabled: z.boolean().default(consoleDefaults.enabled),
         level: level.default(consoleDefaults.level),
-        format: format.default(consoleDefaults.format),
       })
       .strict()
       .default(consoleDefaults),
@@ -54,7 +50,6 @@ export const LoggerOptions = z
       .object({
         enabled: z.boolean().default(fileDefaults.enabled),
         level: level.default(fileDefaults.level),
-        format: format.default(fileDefaults.format),
         dir: z.string().trim().min(1).default(fileDefaults.dir),
         filename: z.string().trim().min(1).default(fileDefaults.filename),
         maxFiles: maxFiles.default(fileDefaults.maxFiles),

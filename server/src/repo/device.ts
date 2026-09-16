@@ -1,11 +1,35 @@
 import { and, desc, eq, gt, isNull, or, sql } from "drizzle-orm"
 import { db } from "../db"
 import { channelMembers, deviceKeys, devices } from "../db/schema"
+import { virtualDevice } from "../common/virtual-device"
 
 export type DeviceRow = typeof devices.$inferSelect
 export type DeviceKeyRow = typeof deviceKeys.$inferSelect
 
 export class DeviceRepo {
+  synchronizeVirtualDevice(now: number): void {
+    db.insert(devices).values({
+      ...virtualDevice,
+      state: "online",
+      lastSeenAt: now,
+      disabledAt: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: devices.id,
+      set: {
+        tag: virtualDevice.tag,
+        iconKind: virtualDevice.iconKind,
+        state: "online",
+        lastSeenAt: now,
+        disabledAt: null,
+        deletedAt: null,
+        updatedAt: now,
+      },
+    }).run()
+  }
+
   secretHash(id: string): string | undefined {
     return db.select({ value: deviceKeys.secretHash }).from(deviceKeys)
       .where(eq(deviceKeys.id, id)).get()?.value
@@ -22,15 +46,13 @@ export class DeviceRepo {
 
   synchronizeDevice(input: {
     readonly id: string
-    readonly tag: string
-    readonly iconKind: string
     readonly disabledAt: number | null
     readonly now: number
   }): void {
     db.insert(devices).values({
       id: input.id,
-      tag: input.tag,
-      iconKind: input.iconKind,
+      tag: "Waiting for device profile",
+      iconKind: "other",
       state: "offline",
       lastSeenAt: 0,
       disabledAt: input.disabledAt,
@@ -40,11 +62,8 @@ export class DeviceRepo {
     }).onConflictDoUpdate({
       target: devices.id,
       set: {
-        tag: input.tag,
-        iconKind: input.iconKind,
         disabledAt: input.disabledAt,
         deletedAt: null,
-        updatedAt: input.now,
       },
     }).run()
   }
@@ -103,33 +122,6 @@ export class DeviceRepo {
 
   get(id: string): DeviceRow | undefined {
     return db.select().from(devices).where(eq(devices.id, id)).get()
-  }
-
-  saveDevice(input: {
-    readonly id: string
-    readonly tag: string
-    readonly iconKind: string
-    readonly now: number
-  }): void {
-    db.insert(devices).values({
-      id: input.id,
-      tag: input.tag,
-      iconKind: input.iconKind,
-      state: "offline",
-      lastSeenAt: 0,
-      createdAt: input.now,
-      updatedAt: input.now,
-    }).onConflictDoUpdate({
-      target: devices.id,
-      set: {
-        tag: input.tag,
-        iconKind: input.iconKind,
-        state: "offline",
-        disabledAt: null,
-        deletedAt: null,
-        updatedAt: input.now,
-      },
-    }).run()
   }
 
   updateProfile(id: string, input: {

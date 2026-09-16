@@ -11,7 +11,7 @@ function createConsoleTransport(
 ): winston.transport {
   return new winston.transports.Console({
     level: options.level,
-    format: createLogFormat(options.format, true),
+    format: createLogFormat(true),
   });
 }
 
@@ -27,7 +27,7 @@ function createFileTransport(
     maxFiles: options.maxFiles,
     maxSize: options.maxSize,
     zippedArchive: options.zippedArchive,
-    format: createLogFormat(options.format),
+    format: createLogFormat(),
   });
 }
 

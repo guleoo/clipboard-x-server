@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { KeyRoundIcon } from "lucide-react"
+import { ClipboardIcon } from "lucide-react"
 import { Navigate, useNavigate } from "react-router"
 import { useApi } from "@/api"
 import { Button } from "@/frame/components/ui/button"
@@ -17,10 +17,10 @@ function AuthFrame({ title, description, children }: {
   return (
     <main className="grid min-h-screen place-items-center bg-background p-5 text-foreground">
       <section className="surface-raised w-full max-w-md p-6 sm:p-8">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <KeyRoundIcon className="size-5" aria-hidden="true" />
+        <div className="flex size-10 items-center justify-center rounded-[8px] bg-primary text-primary-foreground">
+          <ClipboardIcon className="size-5" aria-hidden="true" />
         </div>
-        <h1 className="mt-5 text-xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="mt-5 text-xl font-semibold">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
         <div className="mt-6">{children}</div>
       </section>
@@ -50,7 +50,7 @@ export function LoginPage() {
   }
   if (authenticated) return <Navigate replace to="/" />
   return (
-    <AuthFrame title="登录管理控制台" description="使用 config.yaml 中配置的唯一管理员账户继续。">
+    <AuthFrame title="登录 Clipboard X" description="访问你的 Channels 与同步剪切板。">
       <form className="space-y-4" onSubmit={submit}>
         <div className="space-y-1.5">
           <Label htmlFor="login-username">用户名</Label>

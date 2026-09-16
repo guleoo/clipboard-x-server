@@ -5,7 +5,7 @@ import {
   Sha256Schema,
   UuidSchema,
 } from "../common/validation"
-import { zz } from "../frame/zod"
+import { zz, type RefinementCtx } from "../frame/zod"
 
 export const RepresentationManifestSchema = zz.object({
   id: ContentIdSchema,
@@ -24,13 +24,17 @@ export const PreviewManifestSchema = zz.object({
   truncated: zz.boolean(),
 }).strict()
 
-export const ItemManifestSchema = zz.object({
+const manifestFields = {
   id: UuidSchema,
   createdAt: zz.number().int().nonnegative(),
-  originDeviceId: UuidSchema,
   contents: zz.array(RepresentationManifestSchema).min(1).max(16),
   previews: zz.array(PreviewManifestSchema).max(16).default([]),
-}).strict().superRefine((manifest, context) => {
+} as const
+
+function validateManifest(
+  manifest: { readonly contents: readonly { readonly id: string }[]; readonly previews: readonly { readonly id: string; readonly contentId: string }[] },
+  context: RefinementCtx,
+): void {
   const contents = new Set(manifest.contents.map((value) => value.id))
   if (contents.size !== manifest.contents.length) {
     context.addIssue({ code: "custom", path: ["contents"], message: "Content IDs must be unique" })
@@ -44,7 +48,14 @@ export const ItemManifestSchema = zz.object({
       context.addIssue({ code: "custom", path: ["previews", index, "contentId"], message: "Preview contentId is unknown" })
     }
   }
-})
+}
+
+export const ItemManifestSchema = zz.object({
+  ...manifestFields,
+  originDeviceId: UuidSchema,
+}).strict().superRefine(validateManifest)
+
+export const AdminItemManifestSchema = zz.object(manifestFields).strict().superRefine(validateManifest)
 
 export const WorkRejectionSchema = zz.object({
   code: zz.enum(["source_content_missing", "upload_failed", "cancelled"]),

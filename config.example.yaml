@@ -24,11 +24,9 @@ logger:
   console:
     enabled: true
     level: info
-    format: pretty
   file:
     enabled: true
     level: info
-    format: json
     dir: ./data/logs
     filename: app-%DATE%.log
     max-files: 30d

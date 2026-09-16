@@ -5,6 +5,8 @@ export interface Call {
   readonly path?: Readonly<Record<string, string>>
   readonly query?: Readonly<Record<string, string | number | boolean | undefined>>
   readonly body?: unknown
+  readonly headers?: Readonly<Record<string, string>>
+  readonly timeoutMillis?: number
   readonly signal?: AbortSignal
 }
 

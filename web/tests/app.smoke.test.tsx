@@ -11,6 +11,6 @@ afterEach(cleanup)
 
 test("renders the governed login route through the application composition root", async () => {
   render(<App />)
-  expect(await screen.findByRole("heading", { name: "登录管理控制台" })).toBeTruthy()
+  expect(await screen.findByRole("heading", { name: "登录 Clipboard X" })).toBeTruthy()
   expect(screen.getByRole("textbox", { name: "用户名" })).toBeTruthy()
 })

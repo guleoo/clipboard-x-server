@@ -1,5 +1,6 @@
 import { DomainError, notFound } from "../common/error"
 import { createId } from "../common/identity"
+import { isVirtualDevice, virtualDevice } from "../common/virtual-device"
 import { config, type ChannelConfiguration } from "../config"
 import { db } from "../db"
 import { ChannelRepo, type ChannelRow } from "../repo/channel"
@@ -10,7 +11,10 @@ export interface Channel {
   readonly name: string
   readonly createdAt: number
   readonly updatedAt: number
-  readonly members?: readonly Pick<Device, "id" | "tag" | "iconKind" | "state">[]
+}
+
+export interface ManagedChannel extends Channel {
+  readonly members: readonly Pick<Device, "id" | "tag" | "iconKind" | "state" | "kind">[]
 }
 
 function channelOf(row: ChannelRow): Channel {
@@ -29,6 +33,7 @@ export class ChannelService {
         this.#repo.save({ id: channel.id, name: channel.name, now })
         this.#repo.clearMembers(channel.id)
         for (const deviceId of channel.members) this.#repo.addMember(channel.id, deviceId, now)
+        this.#repo.addMember(channel.id, virtualDevice.id, now)
       }
       for (const id of this.#repo.activeIds()) {
         if (!configuredIds.has(id)) this.#repo.archive(id, now)
@@ -36,34 +41,29 @@ export class ChannelService {
     })
   }
 
-  list(): readonly Channel[] {
+  list(): readonly ManagedChannel[] {
     const members = this.#repo.memberRows()
-    return this.#repo.list().map((row) => ({
-      ...channelOf(row),
-      members: members.filter((member) => member.channelId === row.id).map((member) => ({
-        id: member.id,
-        tag: member.tag,
-        iconKind: member.iconKind,
-        state: member.disabledAt ? "disabled" : member.state,
-      })),
-    }))
+    return this.#repo.list().map((row) => this.withMembers(row, members))
   }
 
   listForDevice(deviceId: string): readonly Channel[] {
     return this.#repo.listForDevice(deviceId).map(channelOf)
   }
 
-  create(name: string): Channel {
+  create(name: string): ManagedChannel {
     const id = createId()
     const now = Date.now()
     config.change(
       (configuration) => configuration.channels.push({ id, name, members: [] }),
-      () => this.#repo.create(id, name, now),
+      () => db.transaction(() => {
+        this.#repo.create(id, name, now)
+        this.#repo.addMember(id, virtualDevice.id, now)
+      }),
     )
-    return this.get(id)
+    return this.getWithMembers(id)
   }
 
-  update(id: string, name: string): Channel {
+  update(id: string, name: string): ManagedChannel {
     config.change(
       (configuration) => {
         this.configuredChannel(configuration.channels, id).name = name
@@ -72,7 +72,7 @@ export class ChannelService {
         if (this.#repo.update(id, name, Date.now()) === 0) throw notFound("Channel not found")
       },
     )
-    return this.get(id)
+    return this.getWithMembers(id)
   }
 
   delete(id: string): void {
@@ -90,6 +90,7 @@ export class ChannelService {
   }
 
   addMember(channelId: string, deviceId: string): void {
+    this.requireMutableMember(deviceId)
     this.get(channelId)
     if (!this.#repo.activeDeviceExists(deviceId)) throw notFound("Device not found")
     config.change(
@@ -102,6 +103,7 @@ export class ChannelService {
   }
 
   removeMember(channelId: string, deviceId: string): void {
+    this.requireMutableMember(deviceId)
     this.get(channelId)
     config.change(
       (configuration) => {
@@ -118,10 +120,47 @@ export class ChannelService {
     }
   }
 
+  requireReceiver(channelId: string, deviceId: string): void {
+    this.requireMember(channelId, deviceId)
+    if (isVirtualDevice(deviceId)) {
+      throw new DomainError("virtual_device_receive_forbidden", "Virtual device does not receive channel content", 403)
+    }
+  }
+
+  recipients(channelId: string, sourceDeviceId: string): readonly string[] {
+    this.requireMember(channelId, sourceDeviceId)
+    return this.#repo.memberIds(channelId).filter((id) => id !== sourceDeviceId && !isVirtualDevice(id))
+  }
+
   private get(id: string): Channel {
     const row = this.#repo.get(id)
     if (!row) throw notFound("Channel not found")
     return channelOf(row)
+  }
+
+  private getWithMembers(id: string): ManagedChannel {
+    const row = this.#repo.get(id)
+    if (!row) throw notFound("Channel not found")
+    return this.withMembers(row, this.#repo.memberRows())
+  }
+
+  private withMembers(row: ChannelRow, members: ReturnType<ChannelRepo["memberRows"]>): ManagedChannel {
+    return {
+      ...channelOf(row),
+      members: members.filter((member) => member.channelId === row.id).map((member) => ({
+        id: member.id,
+        tag: member.tag,
+        iconKind: member.iconKind,
+        state: isVirtualDevice(member.id) ? "online" : member.disabledAt ? "disabled" : member.state,
+        kind: isVirtualDevice(member.id) ? "virtual" : "client",
+      })),
+    }
+  }
+
+  private requireMutableMember(deviceId: string): void {
+    if (isVirtualDevice(deviceId)) {
+      throw new DomainError("virtual_device_membership_immutable", "Virtual device membership cannot be modified", 409)
+    }
   }
 
   private configuredChannel(values: ChannelConfiguration[], id: string): ChannelConfiguration {

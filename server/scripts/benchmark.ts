@@ -64,8 +64,12 @@ async function measure(name: string, operation: () => void | Promise<void>): Pro
 }
 
 try {
-  deviceService.create({ id: sourceId, tag: "Benchmark source", iconKind: "server" })
-  deviceService.create({ id: targetId, tag: "Benchmark target", iconKind: "desktop" })
+  deviceService.create({ id: sourceId })
+  await deviceService.issueKey(sourceId)
+  deviceService.updateProfile(sourceId, { tag: "Benchmark source", iconKind: "server" })
+  deviceService.create({ id: targetId })
+  await deviceService.issueKey(targetId)
+  deviceService.updateProfile(targetId, { tag: "Benchmark target", iconKind: "desktop" })
   const channel = channelService.create("Benchmark")
   channelService.addMember(channel.id, sourceId)
   channelService.addMember(channel.id, targetId)

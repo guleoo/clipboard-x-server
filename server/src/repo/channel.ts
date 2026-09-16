@@ -119,4 +119,9 @@ export class ChannelRepo {
         isNull(channels.deletedAt),
       )).get())
   }
+
+  memberIds(channelId: string): readonly string[] {
+    return db.select({ id: channelMembers.deviceId }).from(channelMembers)
+      .where(eq(channelMembers.channelId, channelId)).all().map(({ id }) => id)
+  }
 }

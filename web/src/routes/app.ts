@@ -1,10 +1,12 @@
 import type { Node } from "@/frame/router/core"
 
 export const application: readonly Node[] = [
-  { id: "app.dashboard", name: "dashboard", path: "/", title: "概览", component: "dashboard", index: true, order: 10 },
-  { id: "app.devices", name: "devices", path: "/devices", title: "设备", component: "devices", order: 20 },
-  { id: "app.channels", name: "channels", path: "/channels", title: "Channel", component: "channels", order: 30 },
-  { id: "app.clipboard", name: "clipboard", path: "/clipboard", title: "剪切板", component: "clipboard", order: 40 },
-  { id: "app.transfers", name: "transfers", path: "/transfers", title: "传输", component: "transfers", order: 50 },
-  { id: "app.account", name: "account", path: "/account", title: "管理员", component: "account", order: 60 },
+  { id: "app.clipboard", name: "clipboard", path: "/", title: "剪切板", component: "clipboard", index: true, order: 10 },
+  { id: "app.devices", name: "devices", path: "/devices", title: "设备", component: "devices", show: false },
+  { id: "app.activity", name: "activity", path: "/activity", title: "活动", component: "transfers", show: false },
+  { id: "app.account", name: "account", path: "/account", title: "账户", component: "account", show: false },
+  { id: "legacy.dashboard", name: "legacy.dashboard", path: "/dashboard", title: "剪切板", redirect: "/", show: false },
+  { id: "legacy.channels", name: "legacy.channels", path: "/channels", title: "剪切板", redirect: "/", show: false },
+  { id: "legacy.clipboard", name: "legacy.clipboard", path: "/clipboard", title: "剪切板", redirect: "/", show: false },
+  { id: "legacy.transfers", name: "legacy.transfers", path: "/transfers", title: "活动", redirect: "/activity", show: false },
 ]

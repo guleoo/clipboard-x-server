@@ -25,6 +25,8 @@ export class Client {
         response: endpoint.response,
         ...(call.query === undefined ? {} : { query: call.query }),
         ...(call.body === undefined ? {} : { body: call.body }),
+        ...(call.headers === undefined ? {} : { headers: call.headers }),
+        ...(call.timeoutMillis === undefined ? {} : { timeoutMillis: call.timeoutMillis }),
         ...(call.signal === undefined ? {} : { signal: call.signal }),
       })
       try {

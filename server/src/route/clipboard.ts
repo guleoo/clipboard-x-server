@@ -1,7 +1,8 @@
 import type { Context } from "hono"
 import { DomainError } from "../common/error"
 import { config } from "../config"
-import { ItemManifestSchema, WorkRejectionSchema } from "../dto/clipboard"
+import { virtualDevice } from "../common/virtual-device"
+import { AdminItemManifestSchema, ItemManifestSchema, WorkRejectionSchema } from "../dto/clipboard"
 import type { AppHono } from "../frame/hono"
 import { objectStore } from "../repo/object"
 import { clipboardService } from "../service/clipboard"
@@ -22,8 +23,11 @@ function binary(object: BinaryObject): Response {
   } })
 }
 
-async function upload(context: Context, kind: "preview" | "content"): Promise<Response> {
-  const deviceId = currentDeviceId(context.req.header("x-clipboard-x-device-id"))
+function requestDeviceId(context: Context): string {
+  return currentDeviceId(context.req.header("x-clipboard-x-device-id"))
+}
+
+async function upload(context: Context, kind: "preview" | "content", deviceId: string): Promise<Response> {
   const expectation = clipboardService.uploadExpectation(
     context.req.param("uploadId") ?? "", kind,
     context.req.param(kind === "preview" ? "previewId" : "contentId") ?? "", deviceId,
@@ -54,7 +58,7 @@ async function upload(context: Context, kind: "preview" | "content"): Promise<Re
 }
 
 export function registerAdminClipboardRoutes(router: AppHono): void {
-  const doc = (operationId: string, summary: string, status: 200 | 202 | 204 = 200, binaryContent = false) => operation({
+  const doc = (operationId: string, summary: string, status: 200 | 201 | 202 | 204 = 200, binaryContent = false) => operation({
     operationId, tags: ["Admin clipboard"], summary, auth: true, scheme: "adminSession", status, binary: binaryContent,
   })
   router.get("/items", doc("listAdminItems", "List clipboard items"), (context) => context.json(clipboardService.list({
@@ -65,6 +69,15 @@ export function registerAdminClipboardRoutes(router: AppHono): void {
     ...(context.req.query("cursor") ? { cursor: context.req.query("cursor") } : {}),
     limit: integerQuery(context.req.query("limit"), 50, 1, 200),
   })))
+  router.post(
+    "/channels/:channelId/items",
+    doc("createAdminClipboardItem", "Publish clipboard item from the virtual device", 201),
+    validator("json", AdminItemManifestSchema),
+    (context) => context.json(clipboardService.publishFromVirtualDevice(
+      context.req.param("channelId"),
+      context.req.valid("json"),
+    ), 201),
+  )
   router.get("/items/:itemId", doc("getAdminItem", "Get clipboard item"), (context) => context.json(clipboardService.adminItem(context.req.param("itemId"))))
   router.delete("/items/:itemId", doc("deleteAdminItem", "Delete clipboard item", 204), (context) => { clipboardService.deleteItem(context.req.param("itemId")); return context.body(null, 204) })
   router.get("/items/:itemId/previews/:previewId", doc("getAdminPreview", "Download clipboard preview", 200, true), (context) => binary(
@@ -80,6 +93,12 @@ export function registerAdminClipboardRoutes(router: AppHono): void {
   router.get("/items/:itemId/contents/:contentId", doc("getAdminContent", "Download clipboard content", 200, true), (context) => binary(
     clipboardService.adminContent(context.req.param("itemId"), context.req.param("contentId")),
   ))
+  router.put("/uploads/:uploadId/previews/:previewId", doc("uploadAdminPreview", "Upload virtual device clipboard preview"), (context) =>
+    upload(context, "preview", virtualDevice.id))
+  router.put("/uploads/:uploadId/contents/:contentId", doc("uploadAdminContent", "Upload virtual device clipboard content"), (context) =>
+    upload(context, "content", virtualDevice.id))
+  router.post("/uploads/:uploadId/complete", doc("completeAdminUpload", "Complete virtual device clipboard upload"), (context) =>
+    context.json(clipboardService.completeUpload(context.req.param("uploadId"), virtualDevice.id)))
 }
 
 export function registerDeviceClipboardRoutes(router: AppHono): void {
@@ -88,10 +107,10 @@ export function registerDeviceClipboardRoutes(router: AppHono): void {
   })
   router.get("/status", doc("getServerStatus", "Get server status", 200, false, "Device"), (context) => context.json(clipboardService.status()))
   router.post("/channels/:channelId/items", doc("createClipboardItem", "Publish clipboard item", 201), validator("json", ItemManifestSchema), (context) => context.json(
-    clipboardService.createPublication(currentDeviceId(context.req.header("x-clipboard-x-device-id")), context.req.param("channelId"), context.req.valid("json")), 201,
+    clipboardService.createPublication(requestDeviceId(context), context.req.param("channelId"), context.req.valid("json")), 201,
   ))
   router.get("/channels/:channelId/changes", doc("listClipboardChanges", "List clipboard changes"), (context) => context.json(clipboardService.changes(
-    currentDeviceId(context.req.header("x-clipboard-x-device-id")), context.req.param("channelId"), context.req.query("cursor"),
+    requestDeviceId(context), context.req.param("channelId"), context.req.query("cursor"),
     integerQuery(context.req.query("limit"), 200, 1, 1_000),
   )))
   router.get("/channels/:channelId/items", doc("listDeviceItems", "List clipboard items"), (context) => context.json(clipboardService.list({
@@ -99,44 +118,48 @@ export function registerDeviceClipboardRoutes(router: AppHono): void {
     ...(context.req.query("query") ? { query: context.req.query("query") } : {}),
     ...(context.req.query("cursor") ? { cursor: context.req.query("cursor") } : {}),
     limit: integerQuery(context.req.query("limit"), 100, 1, 200),
-    memberDeviceId: currentDeviceId(context.req.header("x-clipboard-x-device-id")),
+    memberDeviceId: requestDeviceId(context),
   })))
   router.get("/channels/:channelId/items/:itemId", doc("getDeviceItem", "Get clipboard item"), (context) => context.json(clipboardService.item(
-    currentDeviceId(context.req.header("x-clipboard-x-device-id")), context.req.param("channelId"), context.req.param("itemId"),
+    requestDeviceId(context), context.req.param("channelId"), context.req.param("itemId"),
   )))
   router.delete("/channels/:channelId/items/:itemId", doc("deleteDeviceItem", "Delete clipboard item", 204), (context) => {
-    clipboardService.deleteItem(context.req.param("itemId"), context.req.param("channelId"), currentDeviceId(context.req.header("x-clipboard-x-device-id")))
+    clipboardService.deleteItem(context.req.param("itemId"), context.req.param("channelId"), requestDeviceId(context))
     return context.body(null, 204)
   })
   router.get("/channels/:channelId/items/:itemId/previews/:previewId", doc("getDevicePreview", "Download clipboard preview", 200, true), (context) => binary(clipboardService.preview(
-    currentDeviceId(context.req.header("x-clipboard-x-device-id")), context.req.param("channelId"),
+    requestDeviceId(context), context.req.param("channelId"),
     context.req.param("itemId"), context.req.param("previewId"),
   )))
   router.post("/channels/:channelId/items/:itemId/contents/:contentId/requests", doc("requestDeviceContent", "Request clipboard content", 202), (context) => context.json(
     clipboardService.requestContent({
-      requesterKind: "device", requesterId: currentDeviceId(context.req.header("x-clipboard-x-device-id")),
-      memberDeviceId: currentDeviceId(context.req.header("x-clipboard-x-device-id")), channelId: context.req.param("channelId"),
+      requesterKind: "device", requesterId: requestDeviceId(context),
+      memberDeviceId: requestDeviceId(context), channelId: context.req.param("channelId"),
       itemId: context.req.param("itemId"), contentId: context.req.param("contentId"),
     }), 202,
   ))
   router.get("/channels/:channelId/items/:itemId/contents/:contentId", doc("getDeviceContent", "Download clipboard content", 200, true), (context) => binary(clipboardService.content(
-    currentDeviceId(context.req.header("x-clipboard-x-device-id")), context.req.param("channelId"),
+    requestDeviceId(context), context.req.param("channelId"),
     context.req.param("itemId"), context.req.param("contentId"),
   )))
-  router.put("/uploads/:uploadId/previews/:previewId", doc("uploadPreview", "Upload clipboard preview"), (context) => upload(context, "preview"))
-  router.put("/uploads/:uploadId/contents/:contentId", doc("uploadContent", "Upload clipboard content"), (context) => upload(context, "content"))
+  router.put("/uploads/:uploadId/previews/:previewId", doc("uploadPreview", "Upload clipboard preview"), (context) => upload(
+    context, "preview", requestDeviceId(context),
+  ))
+  router.put("/uploads/:uploadId/contents/:contentId", doc("uploadContent", "Upload clipboard content"), (context) => upload(
+    context, "content", requestDeviceId(context),
+  ))
   router.post("/uploads/:uploadId/complete", doc("completeUpload", "Complete upload"), (context) => context.json(
-    clipboardService.completeUpload(context.req.param("uploadId"), currentDeviceId(context.req.header("x-clipboard-x-device-id"))),
+    clipboardService.completeUpload(context.req.param("uploadId"), requestDeviceId(context)),
   ))
   router.get("/work", doc("listDeviceWork", "List pending device work", 200, false, "Work"), (context) => context.json(clipboardService.work(
-    currentDeviceId(context.req.header("x-clipboard-x-device-id")), context.req.query("cursor"), integerQuery(context.req.query("limit"), 100, 1, 1_000),
+    requestDeviceId(context), context.req.query("cursor"), integerQuery(context.req.query("limit"), 100, 1, 1_000),
   )))
   router.post("/work/:workId/accept", doc("acceptDeviceWork", "Accept device work", 200, false, "Work"), (context) => context.json(
-    clipboardService.acceptWork(currentDeviceId(context.req.header("x-clipboard-x-device-id")), context.req.param("workId")),
+    clipboardService.acceptWork(requestDeviceId(context), context.req.param("workId")),
   ))
   router.post("/work/:workId/reject", doc("rejectDeviceWork", "Reject device work", 204, false, "Work"), validator("json", WorkRejectionSchema), (context) => {
     const input = context.req.valid("json")
-    clipboardService.rejectWork(currentDeviceId(context.req.header("x-clipboard-x-device-id")), context.req.param("workId"), input.code, input.message)
+    clipboardService.rejectWork(requestDeviceId(context), context.req.param("workId"), input.code, input.message)
     return context.body(null, 204)
   })
 }

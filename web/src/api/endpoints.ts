@@ -3,6 +3,7 @@ import { Request } from "@/frame/request"
 import {
   AdministratorSchema, ChannelSchema, ClipboardItemSchema, ClipboardPageSchema, DeviceSchema,
   IssuedDeviceKeySchema, OverviewSchema, TransferSchema,
+  PublicationSchema, UploadCompletionSchema, UploadResultSchema,
 } from "./schemas"
 
 const root = "/admin/api/v1"
@@ -33,6 +34,10 @@ export const endpoints = {
   items: Request.define({ operation: "items.list", method: "GET", path: `${root}/items`, auth: true, response: "json", decode: ClipboardPageSchema.parse }),
   item: Request.define({ operation: "items.read", method: "GET", path: `${root}/items/:id`, auth: true, response: "json", decode: ClipboardItemSchema.parse }),
   itemDelete: Request.define({ operation: "items.delete", method: "DELETE", path: `${root}/items/:id`, auth: true, response: "empty", decode: empty }),
+  itemCreate: Request.define({ operation: "items.create", method: "POST", path: `${root}/channels/:channelId/items`, auth: true, response: "json", decode: PublicationSchema.parse }),
+  previewUpload: Request.define({ operation: "previews.upload", method: "PUT", path: `${root}/uploads/:uploadId/previews/:previewId`, auth: true, response: "json", decode: UploadResultSchema.parse }),
+  contentUpload: Request.define({ operation: "contents.upload", method: "PUT", path: `${root}/uploads/:uploadId/contents/:contentId`, auth: true, response: "json", decode: UploadResultSchema.parse }),
+  uploadComplete: Request.define({ operation: "uploads.complete", method: "POST", path: `${root}/uploads/:uploadId/complete`, auth: true, response: "json", decode: UploadCompletionSchema.parse }),
   contentRequest: Request.define({ operation: "contents.request", method: "POST", path: `${root}/items/:itemId/contents/:contentId/requests`, auth: true, response: "json", decode: (value) => z.object({ transfer: TransferSchema }).parse(value) }),
   preview: Request.define({ operation: "previews.read", method: "GET", path: `${root}/items/:itemId/previews/:previewId`, auth: true, response: "blob", decode: blob }),
   content: Request.define({ operation: "contents.read", method: "GET", path: `${root}/items/:itemId/contents/:contentId`, auth: true, response: "blob", decode: blob }),

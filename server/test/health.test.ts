@@ -6,6 +6,7 @@ import {
   healthRoutes,
   registerDefaultHealthChecks,
 } from "../src/frame/health";
+import { framePath } from "./frame-path";
 
 beforeAll(() => Database.init());
 
@@ -21,8 +22,8 @@ describe("health capability", () => {
     const app = createApp();
     mountRoutes(app, [healthRoutes]);
 
-    expect((await app.request("/api/health/live")).status).toBe(200);
-    const ready = await app.request("/api/health/ready");
+    expect((await app.request(framePath("/health/live"))).status).toBe(200);
+    const ready = await app.request(framePath("/health/ready"));
     expect(ready.status).toBe(503);
     expect(await ready.json()).toEqual({
       code: 503,

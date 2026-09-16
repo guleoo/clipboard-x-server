@@ -9,6 +9,7 @@ import {
   validator,
 } from "../src/frame/hono";
 import { zz } from "../src/frame/zod";
+import { framePath } from "./frame-path";
 
 describe("OpenAPI capability", () => {
   it("uses one schema for runtime validation and request documentation", async () => {
@@ -30,9 +31,9 @@ describe("OpenAPI capability", () => {
     const app = createApp();
     mountRoutes(app, [routes]);
 
-    expect((await app.request("/api/items/x")).status).toBe(400);
+    expect((await app.request(framePath("/items/x"))).status).toBe(400);
     const specs = await generateSpecs(app);
-    const operation = specs.paths["/api/items/{id}"]?.get;
+    const operation = specs.paths[framePath("/items/{id}")]?.get;
     expect(operation?.operationId).toBe("getItem");
     const extensions = operation as unknown as
       | Record<string, unknown>

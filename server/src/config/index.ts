@@ -12,6 +12,7 @@ import {
 import { dirname } from "node:path";
 import { parse, stringify } from "yaml";
 import { DeviceIconSchema, MimeTypeSchema, SafeTextSchema, UuidSchema } from "../common/validation";
+import { isVirtualDevice } from "../common/virtual-device";
 import {
   Config,
   ConfigError,
@@ -43,11 +44,11 @@ const DeviceKeyConfigurationSchema = zz.object({
 
 const DeviceConfigurationSchema = zz.object({
   id: UuidSchema,
-  tag: SafeTextSchema(256).min(1),
-  iconKind: DeviceIconSchema,
+  tag: SafeTextSchema(256).min(1).optional(),
+  iconKind: DeviceIconSchema.optional(),
   disabled: zz.boolean().default(false),
   keys: zz.array(DeviceKeyConfigurationSchema).default([]),
-}).strict();
+}).strict().transform(({ tag: _tag, iconKind: _iconKind, ...device }) => device);
 
 const ChannelConfigurationSchema = zz.object({
   id: UuidSchema,
@@ -63,6 +64,9 @@ export const ManagedConfigurationSchema = zz.object({
   const deviceIds = new Set<string>();
   const keyIds = new Set<string>();
   for (const [deviceIndex, device] of configuration.devices.entries()) {
+    if (isVirtualDevice(device.id)) {
+      context.addIssue({ code: "custom", path: ["devices", deviceIndex, "id"], message: "Virtual device id is reserved" });
+    }
     if (deviceIds.has(device.id)) {
       context.addIssue({ code: "custom", path: ["devices", deviceIndex, "id"], message: "Device id must be unique" });
     }

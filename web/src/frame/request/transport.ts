@@ -52,6 +52,8 @@ export function create(): Transport {
           responseType: request.response === "blob" ? "blob" : "json",
           ...(request.query === undefined ? {} : { params: request.query }),
           ...(request.body === undefined ? {} : { data: request.body }),
+          ...(request.headers === undefined ? {} : { headers: request.headers }),
+          ...(request.timeoutMillis === undefined ? {} : { timeout: request.timeoutMillis }),
           ...(request.signal === undefined ? {} : { signal: request.signal }),
         })
         return request.response === "empty" ? undefined : result.data

@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { KeyRoundIcon, PencilIcon, PlusIcon, PowerIcon, Trash2Icon } from "lucide-react"
+import { KeyRoundIcon, PlusIcon, PowerIcon, RotateCwIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 import { useApi, type Device, type IssuedDeviceKey } from "@/api"
 import { ConfirmAction } from "@/components/domain/confirm-action"
@@ -14,126 +14,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/frame/components/ui/dialog"
 import { Input } from "@/frame/components/ui/input"
 import { Label } from "@/frame/components/ui/label"
 import { Page } from "@/frame/layout"
 import { formatDate, messageOf } from "@/utils/format"
-
-const iconKinds = ["desktop", "laptop", "phone", "tablet", "server", "other"] as const
-
-function DeviceFields({ id, tag, iconKind, setId, setTag, setIconKind, edit = false }: {
-  readonly id: string
-  readonly tag: string
-  readonly iconKind: Device["iconKind"]
-  readonly setId: (value: string) => void
-  readonly setTag: (value: string) => void
-  readonly setIconKind: (value: Device["iconKind"]) => void
-  readonly edit?: boolean
-}) {
-  return (
-    <div className="space-y-4 py-2">
-      <div className="space-y-1.5">
-        <Label htmlFor={edit ? `edit-id-${id}` : "new-device-id"}>DeviceId</Label>
-        <Input
-          id={edit ? `edit-id-${id}` : "new-device-id"}
-          value={id}
-          onChange={(event) => setId(event.target.value)}
-          placeholder="xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
-          disabled={edit}
-          required
-        />
-        {!edit ? <p className="text-xs text-muted-foreground">填写插件生成的 UUID v4，服务器不会替换它。</p> : null}
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`${edit ? "edit" : "new"}-device-tag`}>设备名称</Label>
-        <Input id={`${edit ? "edit" : "new"}-device-tag`} value={tag} onChange={(event) => setTag(event.target.value)} maxLength={256} required />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`${edit ? "edit" : "new"}-device-icon`}>图标类型</Label>
-        <select
-          id={`${edit ? "edit" : "new"}-device-icon`}
-          className="h-8 w-full rounded-lg border bg-background px-2.5 text-sm"
-          value={iconKind}
-          onChange={(event) => setIconKind(event.target.value as Device["iconKind"])}
-        >
-          {iconKinds.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
-        </select>
-      </div>
-    </div>
-  )
-}
-
-function CreateDevice({ onCreated }: { readonly onCreated: () => void }) {
-  const api = useApi()
-  const [open, setOpen] = useState(false)
-  const [id, setId] = useState("")
-  const [tag, setTag] = useState("")
-  const [iconKind, setIconKind] = useState<Device["iconKind"]>("laptop")
-  const mutation = useMutation({
-    mutationFn: () => api.createDevice({ id, tag, iconKind }),
-    onSuccess: () => {
-      onCreated()
-      setOpen(false)
-      setId("")
-      setTag("")
-      toast.success("设备已创建")
-    },
-  })
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    mutation.mutate()
-  }
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}><PlusIcon className="size-4" />添加设备</DialogTrigger>
-      <DialogContent>
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>添加设备</DialogTitle>
-            <DialogDescription>批准一个由 Clipboard X 插件生成的设备身份。</DialogDescription>
-          </DialogHeader>
-          <DeviceFields {...{ id, tag, iconKind, setId, setTag, setIconKind }} />
-          {mutation.error ? <p className="mb-4 text-sm text-destructive" role="alert">{messageOf(mutation.error)}</p> : null}
-          <DialogFooter>
-            <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "创建中…" : "创建"}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function EditDevice({ device, onSaved }: { readonly device: Device; readonly onSaved: () => void }) {
-  const api = useApi()
-  const [open, setOpen] = useState(false)
-  const [tag, setTag] = useState(device.tag)
-  const [iconKind, setIconKind] = useState(device.iconKind)
-  const mutation = useMutation({
-    mutationFn: () => api.updateDevice(device.id, { tag, iconKind }),
-    onSuccess: () => {
-      onSaved()
-      setOpen(false)
-      toast.success("设备资料已更新")
-    },
-  })
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`编辑 ${device.tag}`} />}>
-        <PencilIcon className="size-4" />
-      </DialogTrigger>
-      <DialogContent>
-        <form onSubmit={(event) => { event.preventDefault(); mutation.mutate() }}>
-          <DialogHeader><DialogTitle>编辑设备</DialogTitle><DialogDescription>DeviceId 创建后不可修改。</DialogDescription></DialogHeader>
-          <DeviceFields id={device.id} setId={() => undefined} {...{ tag, iconKind, setTag, setIconKind }} edit />
-          {mutation.error ? <p className="mb-4 text-sm text-destructive" role="alert">{messageOf(mutation.error)}</p> : null}
-          <DialogFooter><Button type="submit" disabled={mutation.isPending}>保存</Button></DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 function IssuedKeyDialog({ issued, clear }: { readonly issued?: IssuedDeviceKey; readonly clear: () => void }) {
   return (
@@ -141,7 +26,9 @@ function IssuedKeyDialog({ issued, clear }: { readonly issued?: IssuedDeviceKey;
       <DialogContent>
         <DialogHeader>
           <DialogTitle>保存设备 API Key</DialogTitle>
-          <DialogDescription>完整 Key 已写入 config.yaml；请复制到对应设备并妥善保护配置文件。</DialogDescription>
+          <DialogDescription>
+            此 Key 已绑定到对应的 DeviceId。请把完整 Key 配置到该 Clipboard X 客户端，客户端连接后会同步名称和图标。
+          </DialogDescription>
         </DialogHeader>
         <code className="block break-all rounded-lg border bg-muted p-3 text-xs select-all">{issued?.key}</code>
         <DialogFooter>
@@ -155,67 +42,148 @@ function IssuedKeyDialog({ issued, clear }: { readonly issued?: IssuedDeviceKey;
   )
 }
 
+function CreateDeviceDialog({
+  open,
+  pending,
+  onOpenChange,
+  onCreate,
+}: {
+  readonly open: boolean
+  readonly pending: boolean
+  readonly onOpenChange: (open: boolean) => void
+  readonly onCreate: (deviceId: string) => void
+}) {
+  const [deviceId, setDeviceId] = useState("")
+  useEffect(() => {
+    if (!open) setDeviceId("")
+  }, [open])
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    onCreate(deviceId.trim())
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={submit}>
+          <DialogHeader>
+            <DialogTitle>添加设备</DialogTitle>
+            <DialogDescription>
+              输入客户端生成的 DeviceId。设备名称和图标会在客户端连接后自动同步。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-5">
+            <Label htmlFor="device-id">DeviceId</Label>
+            <Input
+              id="device-id"
+              className="mt-2 font-mono"
+              value={deviceId}
+              onChange={(event) => setDeviceId(event.target.value)}
+              placeholder="00000000-0000-4000-8000-000000000000"
+              autoComplete="off"
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button type="submit" disabled={pending || !deviceId.trim()}>{pending ? "添加中…" : "添加设备"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function DevicesPage() {
   const api = useApi()
   const client = useQueryClient()
-  const query = useQuery({ queryKey: ["devices"], queryFn: () => api.devices() })
+  const devices = useQuery({ queryKey: ["devices"], queryFn: () => api.devices() })
+  const [creating, setCreating] = useState(false)
   const [issued, setIssued] = useState<IssuedDeviceKey>()
   const refresh = () => client.invalidateQueries({ queryKey: ["devices"] })
+  const create = useMutation({
+    mutationFn: (deviceId: string) => api.createDevice(deviceId),
+    onSuccess: () => { setCreating(false); void refresh(); toast.success("设备已添加") },
+    onError: (error) => toast.error(messageOf(error)),
+  })
   const update = useMutation({
     mutationFn: ({ device, disabled }: { device: Device; disabled: boolean }) => api.updateDevice(device.id, { disabled }),
-    onSuccess: () => { refresh(); toast.success("设备状态已更新") },
+    onSuccess: () => { void refresh(); toast.success("设备状态已更新") },
     onError: (error) => toast.error(messageOf(error)),
   })
   const remove = useMutation({
     mutationFn: (device: Device) => api.deleteDevice(device.id),
-    onSuccess: () => { refresh(); toast.success("设备已删除") },
+    onSuccess: () => { void refresh(); toast.success("设备已删除") },
     onError: (error) => toast.error(messageOf(error)),
   })
   const issue = useMutation({
     mutationFn: (device: Device) => api.issueDeviceKey(device.id),
-    onSuccess: (value) => { setIssued(value); refresh() },
+    onSuccess: (value) => { setIssued(value); void refresh() },
     onError: (error) => toast.error(messageOf(error)),
   })
   const revoke = useMutation({
-    mutationFn: ({ deviceId, keyId }: { deviceId: string; keyId: string }) => api.revokeDeviceKey(deviceId, keyId),
-    onSuccess: () => { refresh(); toast.success("API Key 已吊销") },
+    mutationFn: ({ deviceId, keyId }: { readonly deviceId: string; readonly keyId: string }) =>
+      api.revokeDeviceKey(deviceId, keyId),
+    onSuccess: () => { void refresh(); toast.success("API Key 已吊销") },
     onError: (error) => toast.error(messageOf(error)),
   })
 
   return (
     <Page
       title="设备"
-      description="批准设备、维护友好资料，并管理每台设备独立的 API Key；变更会同步写入 config.yaml。"
-      action={<CreateDevice onCreated={refresh} />}
+      description="先登记客户端生成的 DeviceId，再签发绑定 Key；设备名称和图标由客户端维护并同步。"
+      action={(
+        <Button onClick={() => setCreating(true)}>
+          <PlusIcon className="size-4" />添加设备
+        </Button>
+      )}
     >
-      {query.isPending ? <LoadingState /> : query.error ? <ErrorState error={query.error} retry={() => query.refetch()} />
-        : query.data.length === 0 ? <EmptyState title="还没有设备" description="先添加插件生成的 DeviceId。" />
-        : (
-          <div className="grid gap-4 xl:grid-cols-2">
-            {query.data.map((device) => (
-              <section key={device.id} className="surface-raised p-5">
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-semibold">{device.tag}</h2>
-                      <StatusBadge value={device.state} />
-                    </div>
-                    <code className="mt-1 block truncate text-xs text-muted-foreground">{device.id}</code>
-                    <p className="mt-2 text-xs text-muted-foreground">最后在线：{formatDate(device.lastSeenAt)}</p>
+      {devices.isPending ? <LoadingState /> : devices.error ? (
+        <ErrorState error={devices.error} retry={() => { void devices.refetch() }} />
+      ) : !devices.data || devices.data.length === 0 ? (
+        <EmptyState title="还没有设备" description="添加客户端 DeviceId 后，再为它签发访问 Key。" />
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {devices.data.map((device) => (
+            <section key={device.id} className="surface-raised p-5">
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-semibold">{device.tag}</h2>
+                    <StatusBadge value={device.state} />
                   </div>
-                  <EditDevice device={device} onSaved={refresh} />
+                  <code className="mt-1 block truncate text-xs text-muted-foreground">{device.id}</code>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {device.kind === "client" ? `客户端同步资料 · ${device.iconKind}` : "服务器虚拟设备"} · 最后在线 {formatDate(device.lastSeenAt)}
+                  </p>
                 </div>
+              </div>
+              {device.kind === "virtual" ? (
+                <div className="mt-5 border-t pt-4 text-sm leading-6 text-muted-foreground">
+                  这是服务器在所有 Channel 中的固定身份，只发送从 Web 添加的内容，不接收其他设备的剪切板内容。
+                </div>
+              ) : <>
                 <div className="mt-5 border-t pt-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">API Keys</p>
-                    <Button variant="outline" size="sm" disabled={Boolean(device.disabledAt) || issue.isPending} onClick={() => issue.mutate(device)}>
-                      <KeyRoundIcon className="size-3.5" />签发/轮换
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">API Keys</p>
+                      <p className="mt-1 text-xs text-muted-foreground">新 Key 只会在签发后显示一次。</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={Boolean(device.disabledAt) || issue.isPending}
+                      onClick={() => issue.mutate(device)}
+                    >
+                      {device.keys.some((key) => !key.revokedAt) ? <RotateCwIcon className="size-3.5" /> : <KeyRoundIcon className="size-3.5" />}
+                      {device.keys.some((key) => !key.revokedAt) ? "轮换 Key" : "签发 Key"}
                     </Button>
                   </div>
-                  {device.keys.length === 0 ? <p className="text-xs text-muted-foreground">尚未签发 Key</p> : (
+                  {device.keys.length === 0 ? <p className="text-xs text-muted-foreground">当前没有 Key</p> : (
                     <ul className="space-y-2">
                       {device.keys.map((key) => (
                         <li key={key.id} className="flex items-center gap-2 rounded-lg bg-muted/55 px-3 py-2 text-xs">
+                          <span className="shrink-0 text-muted-foreground">Key ID</span>
                           <code className="min-w-0 flex-1 truncate">{key.id}</code>
                           <span className="text-muted-foreground">{key.revokedAt ? "已吊销" : key.expiresAt ? "重叠期" : "当前"}</span>
                           {!key.revokedAt ? (
@@ -246,10 +214,17 @@ export function DevicesPage() {
                     onConfirm={() => remove.mutate(device)}
                   />
                 </div>
-              </section>
-            ))}
-          </div>
-        )}
+              </>}
+            </section>
+          ))}
+        </div>
+      )}
+      <CreateDeviceDialog
+        open={creating}
+        pending={create.isPending}
+        onOpenChange={setCreating}
+        onCreate={(deviceId) => create.mutate(deviceId)}
+      />
       <IssuedKeyDialog {...(issued ? { issued } : {})} clear={() => setIssued(undefined)} />
     </Page>
   )

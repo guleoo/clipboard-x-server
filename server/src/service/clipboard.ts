@@ -1,6 +1,7 @@
 import { Cursor } from "../common/cursor"
 import { DomainError, notFound } from "../common/error"
 import { createId } from "../common/identity"
+import { isVirtualDevice, virtualDevice } from "../common/virtual-device"
 import { config } from "../config"
 import { objectStore, type StoredObject } from "../repo/object"
 import {
@@ -43,7 +44,12 @@ export interface ClipboardItem {
   readonly channelName: string
   readonly createdAt: number
   readonly updatedAt: number
-  readonly origin: { readonly deviceId: string; readonly tag: string; readonly iconKind: string }
+  readonly origin: {
+    readonly deviceId: string
+    readonly tag: string
+    readonly iconKind: string
+    readonly kind: "client" | "virtual"
+  }
   readonly contents: readonly (RepresentationManifest & { readonly availability: string })[]
   readonly previews: readonly PreviewManifest[]
 }
@@ -147,6 +153,13 @@ export class ClipboardService {
     return this.createUploadForExisting(deviceId, channelId, manifest.id)
   }
 
+  publishFromVirtualDevice(channelId: string, manifest: Omit<ItemManifest, "originDeviceId">): Publication {
+    if (manifest.contents.some((content) => content.delivery !== "eager")) {
+      throw new DomainError("invalid_request", "Virtual device publications must upload complete content", 400)
+    }
+    return this.createPublication(virtualDevice.id, channelId, { ...manifest, originDeviceId: virtualDevice.id })
+  }
+
   uploadExpectation(
     uploadId: string,
     objectKind: "preview" | "content",
@@ -216,7 +229,7 @@ export class ClipboardService {
   }
 
   changes(deviceId: string, channelId: string, cursor: string | undefined, limit: number) {
-    this.channels.requireMember(channelId, deviceId)
+    this.channels.requireReceiver(channelId, deviceId)
     const sequence = Cursor.decode(cursor)
     const rows = this.repo.changes(channelId, sequence, limit + 1)
     const page = rows.slice(0, limit)
@@ -234,7 +247,7 @@ export class ClipboardService {
   }
 
   item(deviceId: string, channelId: string, itemId: string): ClipboardItem {
-    this.channels.requireMember(channelId, deviceId)
+    this.channels.requireReceiver(channelId, deviceId)
     const row = this.itemRow(itemId)
     if (!row || row.channel_id !== channelId) throw notFound("Clipboard item not found")
     return this.itemOf(row)
@@ -268,7 +281,7 @@ export class ClipboardService {
     if (input.memberDeviceId && !input.channelId) {
       throw new DomainError("invalid_request", "Device item listing requires a channel", 400)
     }
-    if (input.memberDeviceId && input.channelId) this.channels.requireMember(input.channelId, input.memberDeviceId)
+    if (input.memberDeviceId && input.channelId) this.channels.requireReceiver(input.channelId, input.memberDeviceId)
     const cursor = readListCursor(input.cursor)
     const rows = this.repo.list({
       ...(input.channelId ? { channelId: input.channelId } : {}),
@@ -287,14 +300,14 @@ export class ClipboardService {
   }
 
   preview(deviceId: string | undefined, channelId: string, itemId: string, previewId: string): BinaryObject {
-    if (deviceId) this.channels.requireMember(channelId, deviceId)
+    if (deviceId) this.channels.requireReceiver(channelId, deviceId)
     const row = this.repo.previewObject(itemId, previewId, channelId)
     if (!row) throw notFound("Preview not found")
     return { path: row.path, mimeType: row.mime_type, size: row.size, sha256: row.sha256 }
   }
 
   content(deviceId: string | undefined, channelId: string, itemId: string, contentId: string): BinaryObject {
-    if (deviceId) this.channels.requireMember(channelId, deviceId)
+    if (deviceId) this.channels.requireReceiver(channelId, deviceId)
     const row = this.repo.contentObject(itemId, contentId, channelId)
     if (!row) throw notFound("Content not found")
     if (row.availability !== "available" || !row.path) {
@@ -312,7 +325,7 @@ export class ClipboardService {
     readonly contentId: string
   }): { readonly transfer: Transfer } {
     this.expireMaterializations()
-    if (input.memberDeviceId) this.channels.requireMember(input.channelId, input.memberDeviceId)
+    if (input.memberDeviceId) this.channels.requireReceiver(input.channelId, input.memberDeviceId)
     const row = this.repo.requestableContent(input.itemId, input.contentId)
     if (!row || row.channel_id !== input.channelId) throw notFound("Content not found")
     const transferDeviceId = input.requesterKind === "device" ? input.requesterId : row.origin_device_id
@@ -367,6 +380,9 @@ export class ClipboardService {
   }
 
   work(deviceId: string, cursor: string | undefined, limit: number) {
+    if (isVirtualDevice(deviceId)) {
+      throw new DomainError("virtual_device_receive_forbidden", "Virtual device does not receive channel content", 403)
+    }
     this.expireMaterializations()
     const sequence = Cursor.decode(cursor)
     const rows = this.repo.work(deviceId, sequence, limit + 1)
@@ -384,6 +400,9 @@ export class ClipboardService {
   }
 
   acceptWork(deviceId: string, workId: string): { readonly uploadId: string; readonly transfer: Transfer } {
+    if (isVirtualDevice(deviceId)) {
+      throw new DomainError("virtual_device_receive_forbidden", "Virtual device does not receive channel content", 403)
+    }
     const work = this.repo.workItem(workId)
     if (!work || work.source_device_id !== deviceId) throw notFound("Work item not found")
     const previous = this.repo.uploadByWork(workId)
@@ -409,6 +428,9 @@ export class ClipboardService {
   }
 
   rejectWork(deviceId: string, workId: string, code: string, message: string): void {
+    if (isVirtualDevice(deviceId)) {
+      throw new DomainError("virtual_device_receive_forbidden", "Virtual device does not receive channel content", 403)
+    }
     const work = this.repo.workItem(workId)
     if (!work || work.source_device_id !== deviceId) throw notFound("Work item not found")
     if (work.state === "rejected") return
@@ -436,6 +458,7 @@ export class ClipboardService {
       direction: "upload",
       state: "queued",
       totalBytes,
+      peerDeviceIds: this.channels.recipients(channelId, deviceId),
       expiresAt: Date.now() + 60 * 60 * 1000,
     })
     const uploadId = createId()
@@ -543,7 +566,12 @@ export class ClipboardService {
       channelName: row.channel_name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      origin: { deviceId: row.origin_device_id, tag: row.tag, iconKind: row.icon_kind },
+      origin: {
+        deviceId: row.origin_device_id,
+        tag: row.tag,
+        iconKind: row.icon_kind,
+        kind: isVirtualDevice(row.origin_device_id) ? "virtual" : "client",
+      },
       contents,
       previews,
     }

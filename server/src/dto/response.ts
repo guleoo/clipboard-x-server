@@ -15,16 +15,21 @@ const DeviceSchema = zz.object({
   deletedAt: epoch.optional(),
   createdAt: epoch,
   updatedAt: epoch,
-  keys: zz.array(DeviceKeySchema).optional(),
+  kind: zz.enum(["client", "virtual"]),
 }).meta({ $id: "Device" })
+const ManagedDeviceSchema = DeviceSchema.extend({
+  keys: zz.array(DeviceKeySchema),
+}).meta({ $id: "ManagedDevice" })
 const IssuedDeviceKeySchema = DeviceKeySchema.extend({ key: zz.string() }).meta({ $id: "IssuedDeviceKey" })
 const ChannelSchema = zz.object({
   id: UuidSchema,
   name: zz.string(),
   createdAt: epoch,
   updatedAt: epoch,
-  members: zz.array(DeviceSchema.pick({ id: true, tag: true, iconKind: true, state: true })).optional(),
 }).meta({ $id: "Channel" })
+const ManagedChannelSchema = ChannelSchema.extend({
+  members: zz.array(DeviceSchema.pick({ id: true, tag: true, iconKind: true, state: true, kind: true })),
+}).meta({ $id: "ManagedChannel" })
 const TransferSchema = zz.object({
   id: UuidSchema,
   itemId: UuidSchema,
@@ -53,7 +58,12 @@ const ItemSchema = zz.object({
   channelName: zz.string(),
   createdAt: epoch,
   updatedAt: epoch,
-  origin: zz.object({ deviceId: UuidSchema, tag: zz.string(), iconKind: DeviceIconSchema }),
+  origin: zz.object({
+    deviceId: UuidSchema,
+    tag: zz.string(),
+    iconKind: DeviceIconSchema,
+    kind: zz.enum(["client", "virtual"]),
+  }),
   contents: zz.array(RepresentationSchema),
   previews: zz.array(PreviewSchema),
 }).meta({ $id: "ClipboardItem" })
@@ -113,16 +123,20 @@ export const operationResponseSchemas: Readonly<Record<string, zz.ZodType>> = Ob
   }).meta({ $id: "AdminSession" }),
   getAdminSession: zz.object({ administrator: zz.object({ id: zz.literal(1), username: zz.string(), createdAt: epoch }) }),
   getAdminOverview: zz.record(zz.string(), zz.unknown()),
-  listDevices: zz.object({ devices: zz.array(DeviceSchema) }),
-  createDevice: DeviceSchema,
-  updateDevice: DeviceSchema,
+  listDevices: zz.object({ devices: zz.array(ManagedDeviceSchema) }),
+  createDevice: ManagedDeviceSchema,
+  updateDevice: ManagedDeviceSchema,
   createDeviceKey: IssuedDeviceKeySchema,
-  listChannels: zz.object({ channels: zz.array(ChannelSchema) }),
-  createChannel: ChannelSchema,
-  updateChannel: ChannelSchema,
+  listChannels: zz.object({ channels: zz.array(ManagedChannelSchema) }),
+  createChannel: ManagedChannelSchema,
+  updateChannel: ManagedChannelSchema,
   listAdminItems: ItemPageSchema,
+  createAdminClipboardItem: PublicationSchema,
   getAdminItem: ItemSchema,
   requestAdminContent: ContentRequestSchema,
+  uploadAdminPreview: zz.object({ size: epoch, sha256: Sha256Schema }),
+  uploadAdminContent: zz.object({ size: epoch, sha256: Sha256Schema }),
+  completeAdminUpload: ContentRequestSchema,
   listAdminTransfers: TransferListSchema,
   getAdminTransfer: TransferSchema,
   cancelAdminTransfer: TransferSchema,

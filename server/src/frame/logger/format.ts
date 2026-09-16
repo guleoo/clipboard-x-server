@@ -7,7 +7,6 @@ import {
   sanitizeFields,
   safeText,
 } from "./serialize";
-import type { LogFormat } from "./type";
 
 const prettyLineWidth = 120;
 const prettyInlineFieldLimit = 5;
@@ -125,17 +124,12 @@ export function renderPretty(info: LogInfo): string {
   return `${header}${details.length > 0 ? `\n${details.join("\n")}` : ""}`;
 }
 
-export function renderJsonLine(info: LogInfo): string {
-  const { timestamp, level, service, message, ...meta } = info;
-  return safeStringify({ timestamp, level, service, message, ...meta });
-}
-
-export function createLogFormat(format: LogFormat, colorize = false) {
+export function createLogFormat(colorize = false) {
   const formats: winston.Logform.Format[] = [];
-  if (colorize && format === "pretty") formats.push(winston.format.colorize());
+  if (colorize) formats.push(winston.format.colorize());
   formats.push(
-    winston.format.timestamp(format === "pretty" ? { format: () => DateFormat.human(now()) } : undefined),
-    winston.format.printf(format === "json" ? renderJsonLine : renderPretty),
+    winston.format.timestamp({ format: () => DateFormat.human(now()) }),
+    winston.format.printf(renderPretty),
   );
   return winston.format.combine(...formats);
 }
