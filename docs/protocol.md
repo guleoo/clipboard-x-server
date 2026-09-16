@@ -16,6 +16,11 @@ key bound to it. Every `/api/v1` request requires both `Authorization: Bearer <a
 omitted, the server stores `{ "light": "#ffffff" }`. If `dark` is omitted, clients derive a suitable
 dark color from `light`; supplying `dark` disables that linkage. Device, channel-member, and
 clipboard-item origin responses include the stored object, leaving `dark` absent when linked.
+Clients derive linked dark colors by parsing the light color into RGB channels, multiplying each
+channel by `min(1, 96 / maximum)` where `maximum` is the largest channel (use `1` when zero),
+rounding to the nearest integer, and formatting as lowercase `#RRGGBB`. For example,
+`#ffffff` derives `#606060`. The light value is used on dark backgrounds, and the dark value
+on light backgrounds; the server does not store derived values.
 Fields use camelCase, time uses epoch milliseconds, bytes are uncompressed values, and cursors are
 opaque. Admin mutations are same-origin and use an HttpOnly, SameSite=Strict session cookie.
 
