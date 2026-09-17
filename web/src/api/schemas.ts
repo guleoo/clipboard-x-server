@@ -7,11 +7,31 @@ const IconColor = z.object({ light: HexColor, dark: HexColor.optional() })
 const DeviceIcon = z.string().min(1).max(128).refine((value) => !/[\r\n\0]/u.test(value))
 
 export const AdministratorSchema = z.object({ id: z.literal(1), username: z.string(), createdAt: Timestamp })
-export const RetentionSchema = z.object({
-  maxItemsPerDevice: z.number().int().positive().optional(),
-  maxItemsPerChannel: z.number().int().positive().optional(),
-  maxAgeMillis: z.number().int().positive().optional(),
-  sweepIntervalMillis: z.number().int().min(60_000).max(86_400_000),
+export const CleanupConfigurationSchema = z.object({
+  enabled: z.boolean(),
+  triggers: z.object({
+    onStartup: z.boolean(),
+    afterPublish: z.boolean(),
+    scheduled: z.boolean(),
+    intervalMillis: z.number().int().min(60_000).max(86_400_000),
+  }),
+  clipboard: z.object({
+    maxItems: z.number().int().positive().optional(),
+    maxItemsPerChannel: z.number().int().positive().optional(),
+    maxItemsPerDevice: z.number().int().positive().optional(),
+    maxItemsPerDevicePerChannel: z.number().int().positive().optional(),
+    maxAgeMillis: z.number().int().positive().optional(),
+  }),
+  objects: z.object({
+    enabled: z.boolean(),
+    graceMillis: z.number().int().min(60_000).max(31_536_000_000),
+  }),
+  execution: z.object({
+    itemBatchSize: z.number().int().positive().max(1_000),
+    objectBatchSize: z.number().int().positive().max(1_000),
+    maxItemsPerRun: z.number().int().positive().max(1_000_000),
+    maxObjectsPerRun: z.number().int().positive().max(1_000_000),
+  }),
 })
 export const DeviceKeySchema = z.object({
   id: Identifier,
@@ -122,7 +142,7 @@ export const UploadResultSchema = z.object({ size: z.number().int().nonnegative(
 export const UploadCompletionSchema = z.object({ transfer: TransferSchema })
 
 export type Administrator = z.infer<typeof AdministratorSchema>
-export type Retention = z.infer<typeof RetentionSchema>
+export type CleanupConfiguration = z.infer<typeof CleanupConfigurationSchema>
 export type DeviceKey = z.infer<typeof DeviceKeySchema>
 export type Device = z.infer<typeof DeviceSchema>
 export type IssuedDeviceKey = z.infer<typeof IssuedDeviceKeySchema>

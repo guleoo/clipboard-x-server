@@ -4,7 +4,7 @@ import {
   AdministratorSchema, ChannelSchema, ClipboardItemSchema, ClipboardPageSchema, DeviceSchema,
   IssuedDeviceKeySchema, OverviewSchema, TransferSchema,
   PublicationSchema, UploadCompletionSchema, UploadResultSchema,
-  RetentionSchema,
+  CleanupConfigurationSchema,
 } from "./schemas"
 
 const root = "/admin/api/v1"
@@ -19,8 +19,8 @@ export const endpoints = {
   login: Request.define({ operation: "session.create", method: "POST", path: `${root}/session`, auth: false, response: "json", decode: (value) => z.object({ administrator: AdministratorSchema }).parse(value) }),
   logout: Request.define({ operation: "session.delete", method: "DELETE", path: `${root}/session`, auth: true, response: "empty", decode: empty }),
   administratorUpdate: Request.define({ operation: "administrator.update", method: "PATCH", path: `${root}/administrator`, auth: true, response: "empty", decode: empty }),
-  retention: Request.define({ operation: "retention.read", method: "GET", path: `${root}/retention`, auth: true, response: "json", decode: RetentionSchema.parse }),
-  retentionUpdate: Request.define({ operation: "retention.update", method: "PATCH", path: `${root}/retention`, auth: true, response: "json", decode: RetentionSchema.parse }),
+  cleanupConfiguration: Request.define({ operation: "configuration.cleanup.read", method: "GET", path: `${root}/configuration/cleanup`, auth: true, response: "json", decode: CleanupConfigurationSchema.parse }),
+  cleanupConfigurationUpdate: Request.define({ operation: "configuration.cleanup.update", method: "PATCH", path: `${root}/configuration/cleanup`, auth: true, response: "json", decode: CleanupConfigurationSchema.parse }),
   overview: Request.define({ operation: "overview.read", method: "GET", path: `${root}/overview`, auth: true, response: "json", decode: OverviewSchema.parse }),
   devices: Request.define({ operation: "devices.list", method: "GET", path: `${root}/devices`, auth: true, response: "json", decode: (value) => z.object({ devices: z.array(DeviceSchema) }).parse(value).devices }),
   deviceCreate: Request.define({ operation: "devices.create", method: "POST", path: `${root}/devices`, auth: true, response: "json", decode: DeviceSchema.parse }),

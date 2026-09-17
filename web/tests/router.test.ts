@@ -34,5 +34,13 @@ describe("route engine", () => {
       path: "/transfers",
       target: { kind: "redirect", redirect: "/activity" },
     })
+    expect(snapshot.routes.find((route) => route.id === "app.configuration")).toMatchObject({
+      path: "/configuration",
+      target: { kind: "component", component: "configuration" },
+    })
+    expect(snapshot.routes.find((route) => route.id === "legacy.retention")).toMatchObject({
+      path: "/retention",
+      target: { kind: "redirect", redirect: "/configuration" },
+    })
   })
 })
