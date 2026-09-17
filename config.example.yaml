@@ -47,6 +47,12 @@ lifetimes:
   key-overlap-millis: 300000
   materialization-ttl-millis: 600000
   object-gc-grace-millis: 86400000
+# Configure retention to opt into automatic server-side cleanup.
+# retention:
+#   max-items-per-device: 1000
+#   max-items-per-channel: 5000
+#   max-age-millis: 2592000000
+#   sweep-interval-millis: 3600000
 content:
   supported-mime-types:
     - text/plain;charset=utf-8

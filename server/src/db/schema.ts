@@ -74,9 +74,10 @@ export const objects = sqliteTable("objects", {
   path: text("path").notNull(),
   refCount: integer("ref_count").notNull().default(0),
   createdAt: integer("created_at").notNull(),
+  unreferencedAt: integer("unreferenced_at"),
 }, (table) => [
   uniqueIndex("objects_sha256_size").on(table.sha256, table.size),
-  index("objects_collectable").on(table.refCount, table.createdAt),
+  index("objects_collectable").on(table.refCount, table.unreferencedAt),
 ])
 
 export const clipboardItems = sqliteTable("clipboard_items", {

@@ -11,6 +11,7 @@ import {
   type UploadRow,
 } from "../repo/clipboard"
 import { channelService } from "./channel"
+import { retentionService } from "./retention"
 import { transferService, type Transfer } from "./transfer"
 
 export interface RepresentationManifest {
@@ -138,6 +139,9 @@ export class ClipboardService {
     }
     const existing = this.itemRow(manifest.id, false)
     if (existing) {
+      if (existing.deleted_at !== null) {
+        throw new DomainError("item_conflict", "ItemId has been removed from the server", 409)
+      }
       if (existing.channel_id !== channelId || existing.origin_device_id !== deviceId || !this.manifestMatches(manifest)) {
         throw new DomainError("item_conflict", "ItemId already exists with a different manifest", 409)
       }
@@ -170,6 +174,7 @@ export class ClipboardService {
     const upload = this.repo.upload(uploadId)
     if (!upload || upload.device_id !== deviceId) throw notFound("Upload session not found")
     if (upload.state === "completed") throw new DomainError("invalid_request", "Upload is already complete", 409)
+    if (upload.state !== "open") throw new DomainError("transfer_expired", "Upload session is no longer available", 410)
     if (upload.expires_at <= Date.now()) {
       this.transfers.update(upload.transfer_id, "expired", this.transfers.get(upload.transfer_id).completedBytes, {
         code: "transfer_expired",
@@ -214,6 +219,7 @@ export class ClipboardService {
     const upload = this.repo.upload(uploadId)
     if (!upload || upload.device_id !== deviceId) throw notFound("Upload session not found")
     if (upload.state === "completed") return { transfer: this.transfers.get(upload.transfer_id, deviceId) }
+    if (upload.state !== "open") throw new DomainError("transfer_expired", "Upload session is no longer available", 410)
     const missing = this.repo.missingUploadObjectCount(uploadId)
     if (missing > 0) throw new DomainError("invalid_request", "Upload session still has missing objects", 409)
 
@@ -225,6 +231,9 @@ export class ClipboardService {
       else this.completeMaterialization(upload, uploaded)
       this.repo.completeUpload(upload.id)
       this.transfers.update(upload.transfer_id, "completed", current.totalBytes)
+      if (upload.kind === "publish") {
+        retentionService.enforce(this.config.retention, { deviceId: upload.device_id, channelId: upload.channel_id })
+      }
     })
     return { transfer: this.transfers.get(upload.transfer_id, deviceId) }
   }

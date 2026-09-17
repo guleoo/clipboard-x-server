@@ -32,6 +32,10 @@ complete device API keys, channels, and memberships. The process reads it at sta
 through the console are written with a temporary file, synced, atomically renamed, and forced to mode
 `0600`. Manual changes take effect on the next process start.
 
+Server-side `retention` limits are optional and disabled by default. Enabling them removes
+older server copies at startup and during normal operation without deleting local client
+history; see [operations](operations.md) before applying a limit to existing data.
+
 The executable contains the Bun runtime but is still platform/architecture-specific. Build and
 smoke-test separate Linux x64 and arm64 artifacts on their target libc baseline. Keep `web/dist`,
 `server/drizzle`, `server/config`, and `config.yaml` beside the executable unless absolute paths are

@@ -6,6 +6,7 @@ import { registerSecurity } from "../session";
 import { administratorService } from "../service/administrator";
 import { channelService } from "../service/channel";
 import { deviceService } from "../service/device";
+import { retentionService } from "../service/retention";
 import { objectStore } from "../repo/object";
 import { config } from "../config";
 import { staticFile } from "../route/static";
@@ -51,6 +52,7 @@ export async function initialize(): Promise<void> {
   await administratorService.synchronize();
   await deviceService.synchronize();
   channelService.synchronize();
+  retentionService.start();
 }
 
 export async function startServer(routes: readonly AppRoute[]) {

@@ -43,6 +43,12 @@ export interface ItemListFilter {
   readonly cursor?: { readonly createdAt: number; readonly id: string }; readonly limit: number
 }
 
+export interface RetentionPolicy {
+  readonly maxItemsPerDevice?: number
+  readonly maxItemsPerChannel?: number
+  readonly maxAgeMillis?: number
+}
+
 export class ClipboardRepo {
   private get connection() { return db }
   private first<Row>(query: SQL): Row | undefined {
@@ -62,9 +68,8 @@ export class ClipboardRepo {
       WHERE state NOT IN ('completed', 'failed', 'cancelled', 'expired')
     `)?.count ?? 0)
     const activity = this.first<{ last_sync_at: number; revision: number }>(sql`
-      SELECT COALESCE(max(created_at), 0) AS last_sync_at,
-             COALESCE(max(sequence), 0) AS revision
-      FROM changes
+      SELECT COALESCE((SELECT max(created_at) FROM changes), 0) AS last_sync_at,
+             COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'changes'), 0) AS revision
     `)
     return { pendingItems, activeTransfers, lastSyncAt: activity?.last_sync_at ?? 0, revision: activity?.revision ?? 0 }
   }
@@ -163,8 +168,8 @@ export class ClipboardRepo {
 
   storeObject(input: { readonly id: string; readonly sha256: string; readonly size: number; readonly path: string; readonly now: number }): ObjectRow {
     this.connection.run(sql`
-      INSERT INTO objects(id, sha256, size, path, ref_count, created_at)
-      VALUES (${input.id}, ${input.sha256}, ${input.size}, ${input.path}, 0, ${input.now})
+      INSERT INTO objects(id, sha256, size, path, ref_count, created_at, unreferenced_at)
+      VALUES (${input.id}, ${input.sha256}, ${input.size}, ${input.path}, 0, ${input.now}, ${input.now})
       ON CONFLICT(sha256, size) DO NOTHING
     `)
     const row = this.first<ObjectRow>(sql`
@@ -217,6 +222,59 @@ export class ClipboardRepo {
       WHERE ${sql.join(conditions, sql` AND `)}
       ORDER BY i.created_at DESC, i.id DESC LIMIT ${input.limit}
     `)
+  }
+
+  retentionCandidates(policy: RetentionPolicy, now: number, limit: number, scope?: {
+    readonly deviceId: string; readonly channelId: string
+  }): readonly string[] {
+    const eligible = sql`
+      AND NOT EXISTS (
+        SELECT 1 FROM uploads u WHERE u.item_id = i.id AND u.state <> 'completed' AND u.expires_at > ${now}
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM materialization_requests m WHERE m.item_id = i.id AND m.active_key IS NOT NULL AND m.expires_at > ${now}
+      )
+    `
+    if (scope) {
+      const excess: SQL[] = []
+      if (policy.maxItemsPerDevice !== undefined) excess.push(sql`
+        i.id IN (SELECT id FROM clipboard_items
+          WHERE origin_device_id = ${scope.deviceId} AND visible = 1 AND deleted_at IS NULL
+          ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ${policy.maxItemsPerDevice})
+      `)
+      if (policy.maxItemsPerChannel !== undefined) excess.push(sql`
+        i.id IN (SELECT id FROM clipboard_items
+          WHERE channel_id = ${scope.channelId} AND visible = 1 AND deleted_at IS NULL
+          ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ${policy.maxItemsPerChannel})
+      `)
+      if (policy.maxAgeMillis !== undefined) excess.push(sql`
+        i.created_at < ${now - policy.maxAgeMillis}
+          AND (i.origin_device_id = ${scope.deviceId} OR i.channel_id = ${scope.channelId})
+      `)
+      if (excess.length === 0) return []
+      return this.all<{ id: string }>(sql`
+        SELECT i.id FROM clipboard_items i
+        WHERE i.visible = 1 AND i.deleted_at IS NULL AND (${sql.join(excess, sql` OR `)})
+          ${eligible}
+        ORDER BY i.created_at, i.id LIMIT ${limit}
+      `).map((row) => row.id)
+    }
+    const excess: SQL[] = []
+    if (policy.maxItemsPerDevice !== undefined) excess.push(sql`device_position > ${policy.maxItemsPerDevice}`)
+    if (policy.maxItemsPerChannel !== undefined) excess.push(sql`channel_position > ${policy.maxItemsPerChannel}`)
+    if (policy.maxAgeMillis !== undefined) excess.push(sql`created_at < ${now - policy.maxAgeMillis}`)
+    if (excess.length === 0) return []
+    return this.all<{ id: string }>(sql`
+      WITH ranked AS (
+        SELECT id, origin_device_id, channel_id, created_at,
+          row_number() OVER (PARTITION BY origin_device_id ORDER BY created_at DESC, id DESC) AS device_position,
+          row_number() OVER (PARTITION BY channel_id ORDER BY created_at DESC, id DESC) AS channel_position
+        FROM clipboard_items WHERE visible = 1 AND deleted_at IS NULL
+      )
+      SELECT i.id FROM ranked i WHERE (${sql.join(excess, sql` OR `)})
+        ${eligible}
+      ORDER BY i.created_at, i.id LIMIT ${limit}
+    `).map((row) => row.id)
   }
 
   previewObject(itemId: string, previewId: string, channelId: string):
@@ -327,20 +385,57 @@ export class ClipboardRepo {
   }
 
   deleteItem(item: ItemRow, now: number): void {
-    const references = this.all<{ object_id: string }>(sql`
+    this.removeItem(item, now, true)
+  }
+
+  pruneItem(id: string, now: number): boolean {
+    const item = this.item(id, false)
+    if (!item || !item.visible || item.deleted_at !== null) return false
+    this.removeItem(item, now, false)
+    return true
+  }
+
+  private removeItem(item: ItemRow, now: number, notifyClients: boolean): void {
+    this.connection.run(sql`
+      UPDATE transfers SET state = 'expired', error_code = 'item_removed',
+        error_message = 'Clipboard item was removed', updated_at = ${now}
+      WHERE item_id = ${item.id} AND state NOT IN ('completed', 'failed', 'cancelled', 'expired')
+    `)
+    this.connection.run(sql`
+      UPDATE materialization_requests SET active_key = NULL, state = 'expired', updated_at = ${now}
+      WHERE item_id = ${item.id} AND active_key IS NOT NULL
+    `)
+    this.connection.run(sql`
+      UPDATE work_queue SET state = 'expired', updated_at = ${now}
+      WHERE item_id = ${item.id} AND state = 'queued'
+    `)
+    this.connection.run(sql`
+      UPDATE uploads SET state = 'expired' WHERE item_id = ${item.id} AND state <> 'completed'
+    `)
+    const references = this.all<{ object_id: string; count: number }>(sql`
+      SELECT object_id, count(*) AS count FROM (
       SELECT object_id FROM representations WHERE item_id = ${item.id} AND object_id IS NOT NULL
       UNION ALL SELECT object_id FROM previews WHERE item_id = ${item.id} AND object_id IS NOT NULL
+      ) GROUP BY object_id
     `)
     for (const reference of references) this.connection.run(sql`
-      UPDATE objects SET ref_count = max(0, ref_count - 1) WHERE id = ${reference.object_id}
+      UPDATE objects SET ref_count = max(0, ref_count - ${reference.count}),
+        unreferenced_at = CASE WHEN ref_count <= ${reference.count} THEN ${now} ELSE NULL END
+      WHERE id = ${reference.object_id}
     `)
+    this.connection.run(sql`DELETE FROM upload_objects WHERE upload_id IN (
+      SELECT id FROM uploads WHERE item_id = ${item.id}
+    )`)
+    this.connection.run(sql`DELETE FROM previews WHERE item_id = ${item.id}`)
+    this.connection.run(sql`DELETE FROM representations WHERE item_id = ${item.id}`)
     this.connection.run(sql`
       UPDATE clipboard_items SET deleted_at = ${now}, updated_at = ${now} WHERE id = ${item.id}
     `)
-    this.connection.run(sql`
+    if (notifyClients) this.connection.run(sql`
       INSERT INTO changes(channel_id, kind, item_id, reason, created_at)
       VALUES (${item.channel_id}, 'remove', ${item.id}, 'deleted', ${now})
     `)
+    else this.connection.run(sql`DELETE FROM changes WHERE item_id = ${item.id} AND kind = 'upsert'`)
   }
 
   eagerUploadObjects(itemId: string) {
@@ -445,6 +540,6 @@ export class ClipboardRepo {
     `)
   }
   private incrementObjectReference(id: string): void {
-    this.connection.run(sql`UPDATE objects SET ref_count = ref_count + 1 WHERE id = ${id}`)
+    this.connection.run(sql`UPDATE objects SET ref_count = ref_count + 1, unreferenced_at = NULL WHERE id = ${id}`)
   }
 }

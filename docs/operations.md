@@ -14,6 +14,31 @@ To restore, stop the service, move the current data directory aside, restore `co
 
 Before upgrades, back up data and run the new executable against a copy. Migrations are transactional and only move forward; a database newer than the binary fails explicitly.
 
+## Server-side retention
+
+Retention is opt-in. Add only the limits you want to `config.yaml`, then restart the server:
+
+```yaml
+retention:
+  max-items-per-device: 1000
+  max-items-per-channel: 5000
+  max-age-millis: 2592000000
+  sweep-interval-millis: 3600000
+```
+
+The device limit counts a device's items across all Channels, including publications from the
+virtual Server device. The Channel limit counts items from all its devices. Items are ordered by
+their creation timestamp, then ID; the oldest are removed first. Omit any limit to leave that
+dimension unlimited. With no limits configured, automatic retention and GC are disabled.
+
+The server enforces limits when a publication finishes, on startup, and at each configured
+sweep interval (default one hour). Active uploads and content requests are deferred until a
+later sweep. Retention removes only the server copy and does not emit a `remove` sync event;
+client history follows each client's own retention policy. A removed item ID remains reserved
+and cannot be published again. Back up before enabling limits: server-side removal is irreversible
+without a backup. If a client retained only a preview, it can no longer request full content from
+the server after that item has been removed.
+
 ## Object audit and collection
 
 Both commands use the same data environment as the server and should normally run while the service is stopped for a stable report:
@@ -25,9 +50,11 @@ bun run gc:objects -- --config /path/to/config.yaml
 bun run server/scripts/objects.ts gc --delete --config /path/to/config.yaml
 ```
 
-Audit is read-only. GC is also report-only by default and deletes only zero-reference objects older
-than `lifetimes.object-gc-grace-millis` when `--delete` is supplied. Deletion is irreversible without
-a backup.
+Audit is read-only. The manual GC command is report-only by default. `--delete` removes only
+unreferenced objects older than `lifetimes.object-gc-grace-millis`, measured from the time the last
+reference was released. When retention is enabled, the server runs the same object collection
+automatically at startup and on each sweep. An object still referenced by another item or upload
+is not removed. File deletion is irreversible without a backup.
 
 ## Failure drills
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ManagedConfigurationSchema, config } from "../src/config";
+import { ManagedConfigurationSchema, RetentionOptions, config } from "../src/config";
 import { db } from "../src/db";
 import { createApp, generateSpecs, mountRoutes } from "../src/frame/hono";
 import { AuthError } from "../src/frame/security";
@@ -28,6 +28,15 @@ describe("Clipboard X product contracts", () => {
       ...base,
       administrator: { username: "admin", password: "123456" },
     })).toThrow();
+  });
+
+  it("keeps retention opt-in and validates positive limits", () => {
+    expect(config.retention).toEqual({ sweepIntervalMillis: 3_600_000 });
+    expect(RetentionOptions.parse({ maxItemsPerDevice: 10, maxItemsPerChannel: 20, maxAgeMillis: 60_000 }))
+      .toEqual({ maxItemsPerDevice: 10, maxItemsPerChannel: 20, maxAgeMillis: 60_000, sweepIntervalMillis: 3_600_000 });
+    expect(() => RetentionOptions.parse({ maxItemsPerDevice: 0 })).toThrow();
+    expect(() => RetentionOptions.parse({ maxItemsPerChannel: -1 })).toThrow();
+    expect(() => RetentionOptions.parse({ sweepIntervalMillis: 100 })).toThrow();
   });
 
   it("separates client-owned profiles from administrator device controls", () => {

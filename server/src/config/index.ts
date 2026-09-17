@@ -122,6 +122,13 @@ const LifetimesOptions = zz.object({
   objectGcGraceMillis: positiveInteger.min(60_000).max(365 * 24 * 60 * 60 * 1_000).default(86_400_000),
 }).strict().default({ keyOverlapMillis: 300_000, materializationTtlMillis: 600_000, objectGcGraceMillis: 86_400_000 });
 
+export const RetentionOptions = zz.object({
+  maxItemsPerDevice: positiveInteger.optional(),
+  maxItemsPerChannel: positiveInteger.optional(),
+  maxAgeMillis: positiveInteger.optional(),
+  sweepIntervalMillis: positiveInteger.min(60_000).max(86_400_000).default(3_600_000),
+}).strict().default({ sweepIntervalMillis: 3_600_000 });
+
 const ContentOptions = zz.object({
   supportedMimeTypes: zz.array(MimeTypeSchema).min(1).max(64).default([
     "text/plain;charset=utf-8",
@@ -238,6 +245,7 @@ const storage = Config.section("storage", StorageOptions);
 const web = Config.section("web", WebOptions);
 const limits = Config.section("limits", LimitsOptions);
 const lifetimes = Config.section("lifetimes", LifetimesOptions);
+const retention = Config.section("retention", RetentionOptions);
 const content = Config.section("content", ContentOptions);
 const http = Config.section("http", HttpOptions);
 
@@ -258,6 +266,7 @@ export const config = Object.freeze({
   keyOverlapMillis: lifetimes.keyOverlapMillis,
   materializationTtlMillis: lifetimes.materializationTtlMillis,
   objectGcGraceMillis: lifetimes.objectGcGraceMillis,
+  retention,
   supportedMimeTypes: content.supportedMimeTypes,
   jsonBodyLimitBytes: http.jsonBodyLimitBytes,
   rateLimit: http.rateLimit,

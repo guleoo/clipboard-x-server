@@ -1,13 +1,13 @@
 import { readdir, rm, stat } from "node:fs/promises"
 import { basename, join } from "node:path"
-import { and, eq, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 import { config } from "../src/config"
 import { Database, db } from "../src/db"
-import { objects as objectRecords } from "../src/db/schema"
 import { databaseConfig } from "../src/frame/db"
 import { Lifecycle } from "../src/frame/core"
 import { objectStore } from "../src/repo/object"
 import { sqliteValue } from "../src/common/sqlite"
+import { objectCollector } from "../src/service/object-gc"
 
 interface ObjectRow {
   readonly id: string
@@ -77,9 +77,7 @@ async function audit(): Promise<readonly AuditIssue[]> {
 
 async function garbageCollect(removeFiles: boolean): Promise<void> {
   const cutoff = Date.now() - config.objectGcGraceMillis
-  const rows = sqliteValue(db.all<ObjectRow>(sql`
-    SELECT * FROM objects WHERE ref_count = 0 AND created_at <= ${cutoff} ORDER BY created_at
-  `))
+  const plan = objectCollector.plan()
   const temporaryDirectory = join(config.objectDirectory, ".tmp")
   const staleParts: string[] = []
   for (const entry of await readdir(temporaryDirectory, { withFileTypes: true }).catch(() => [])) {
@@ -90,20 +88,13 @@ async function garbageCollect(removeFiles: boolean): Promise<void> {
   console.log(JSON.stringify({
     event: "objects.gc.plan",
     mode: removeFiles ? "delete" : "report",
-    objectCount: rows.length,
-    objectBytes: rows.reduce((sum, row) => sum + row.size, 0),
+    ...plan,
     temporaryFileCount: staleParts.length,
   }))
   if (!removeFiles) return
-  for (const row of rows) {
-    const deleted = db.delete(objectRecords)
-      .where(and(eq(objectRecords.id, row.id), eq(objectRecords.refCount, 0)))
-      .returning({ id: objectRecords.id })
-      .all()
-    if (deleted.length > 0) await rm(row.path, { force: true })
-  }
+  const deletedObjects = objectCollector.collect()
   for (const path of staleParts) await rm(path, { force: true })
-  console.log(JSON.stringify({ event: "objects.gc.complete", deletedObjects: rows.length, deletedTemporaryFiles: staleParts.length }))
+  console.log(JSON.stringify({ event: "objects.gc.complete", deletedObjects, deletedTemporaryFiles: staleParts.length }))
 }
 
 const command = process.argv[2]
