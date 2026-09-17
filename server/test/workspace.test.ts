@@ -22,6 +22,9 @@ describe("workspace development commands", () => {
     expect(server.scripts?.dev).toBe(
       "bun run scripts/db/migrate.ts --config ../config.yaml && bun --hot src/index.ts --config ../config.yaml",
     );
+    expect(server.scripts?.start).toBe(
+      "bun src/index.ts --config ../config.yaml",
+    );
     expect(await Bun.file(resolve(root, "server/scripts/dev.ts")).exists()).toBe(false);
   });
 });

@@ -21,6 +21,8 @@ bun run dev:web
 
 Web 开发服务位于 `http://127.0.0.1:3000`，Vite API 代理只读取 `web/.env*` 中的 `CBX_PROXY_URL`。先让该地址与 Server 的监听地址保持一致，并修改 `config.yaml` 中的唯一管理员密码，再登录管理控制台。添加设备时登记客户端生成的 DeviceId，再为该设备签发绑定的 API Key。DeviceId、Key、禁用状态与 Channel 配置会原子回写 YAML；客户端连接后同步的名称和图标保存在 SQLite。
 
+根目录 `config.yaml` 是 `dev:server` 与 `server` 包 `start` 脚本实际读取的配置。`server/config-dev.yaml` 和 `server/config-test.yaml` 是完整、互相独立的环境配置，需要使用 `--config` 显式选择；应用配置已关闭 mode 文件与 `import` 合并，不会把三份配置叠加为一份。
+
 ## 验证与发布
 
 ```sh

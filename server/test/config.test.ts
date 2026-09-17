@@ -11,6 +11,36 @@ import {
 } from "../src/frame/config";
 
 describe("configuration", () => {
+  it("keeps the committed development and test configurations standalone", () => {
+    const requiredSections = [
+      "administrator",
+      "app",
+      "channels",
+      "content",
+      "database",
+      "devices",
+      "http",
+      "lifetimes",
+      "limits",
+      "logger",
+      "security",
+      "session",
+      "storage",
+      "web",
+    ];
+
+    for (const filename of ["config-dev.yaml", "config-test.yaml"]) {
+      const value = loadYamlConfigSync({
+        filePath: join(import.meta.dir, "..", filename),
+        mode: filename === "config-dev.yaml" ? "dev" : "test",
+        mergeModeFile: false,
+        mergeImportFiles: false,
+      });
+      expect(Object.keys(value).sort()).toEqual(requiredSections);
+      expect(value.import).toBeUndefined();
+    }
+  });
+
   it("applies context, base, imports, and mode in the governed order", () => {
     const root = mkdtempSync(join(tmpdir(), "hono-config-"));
     writeFileSync(
