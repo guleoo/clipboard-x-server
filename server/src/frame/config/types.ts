@@ -21,6 +21,8 @@ export interface LoadYamlConfigOptions {
   readonly mode?: string;
   /** Merge the sibling `<name>-<mode>.yaml` file when mode is set. Defaults to true. */
   readonly mergeModeFile?: boolean;
+  /** Merge files declared by the YAML `import` field. Defaults to true. */
+  readonly mergeImportFiles?: boolean;
   readonly context?: ConfigObject;
   readonly fieldNameMapper?:
     | BuiltinFieldNameMapperName
@@ -30,5 +32,6 @@ export interface LoadYamlConfigOptions {
 export interface LoadContext {
   readonly env: NodeJS.ProcessEnv;
   readonly stack: readonly string[];
+  readonly mergeImportFiles: boolean;
   readonly fieldNameMapper: ConfigFieldNameMapper;
 }

@@ -1,8 +1,5 @@
 # Copy to config.yaml before starting the server. This file contains plaintext
 # administrator and device credentials; keep its permissions at 0600.
-import:
-  - ./server/config/security.yaml
-  - ./server/config/session.yaml
 app:
   name: clipboard-x-server
   hostname: 127.0.0.1
@@ -66,6 +63,17 @@ http:
   rate-limit:
     limit: 600
     window-millis: 60000
+security:
+  jwt-algorithm: HS256
+  token-prefix: Bearer
+  access-token-ttl-millis: 900000
+  password:
+    memory-cost: 65536
+    time-cost: 3
+session:
+  ttl-millis: 604800000
+  touch-interval-millis: 300000
+  token-bytes: 32
 administrator:
   username: admin
   password: change-this-password

@@ -67,7 +67,11 @@ describe("Clipboard X product contracts", () => {
     expect(existsSync(overridePath)).toBe(false);
     try {
       writeFileSync(overridePath, "retention:\n  max-items-per-device: 4\n");
-      expect(configLoadOptions).toMatchObject({ mode: "test", mergeModeFile: false });
+      expect(configLoadOptions).toMatchObject({
+        mode: "test",
+        mergeModeFile: false,
+        mergeImportFiles: false,
+      });
       expect(RetentionOptions.parse(loadYamlConfigSync(configLoadOptions).retention))
         .toEqual(config.retention);
     } finally {

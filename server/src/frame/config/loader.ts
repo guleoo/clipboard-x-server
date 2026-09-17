@@ -70,7 +70,7 @@ async function loadFile(path: string, context: LoadContext): Promise<ConfigObjec
   const root = parseYaml(text, path);
   const nested = { ...context, stack: [...context.stack, path] };
   let result = contentOf(root, context, path);
-  for (const specifier of importsOf(root, path)) {
+  for (const specifier of context.mergeImportFiles ? importsOf(root, path) : []) {
     result = deepMergeConfig(result, await loadFile(importPath(specifier, path), nested));
   }
   return result;
@@ -89,7 +89,7 @@ function loadFileSync(path: string, context: LoadContext): ConfigObject {
   const root = parseYaml(text, path);
   const nested = { ...context, stack: [...context.stack, path] };
   let result = contentOf(root, context, path);
-  for (const specifier of importsOf(root, path)) {
+  for (const specifier of context.mergeImportFiles ? importsOf(root, path) : []) {
     result = deepMergeConfig(result, loadFileSync(importPath(specifier, path), nested));
   }
   return result;
@@ -113,6 +113,7 @@ function loadContext(options: LoadYamlConfigOptions): LoadContext {
   return {
     env: options.env ?? process.env,
     stack: [],
+    mergeImportFiles: options.mergeImportFiles ?? true,
     fieldNameMapper: fieldNameMappers.get(options.fieldNameMapper ?? DEFAULT_MAPPER),
   };
 }

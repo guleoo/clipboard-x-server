@@ -38,7 +38,7 @@ history; see [operations](operations.md) before applying a limit to existing dat
 
 The executable contains the Bun runtime but is still platform/architecture-specific. Build and
 smoke-test separate Linux x64 and arm64 artifacts on their target libc baseline. Keep `web/dist`,
-`server/drizzle`, `server/config`, and `config.yaml` beside the executable unless absolute paths are
+`server/drizzle` and `config.yaml` beside the executable unless absolute paths are
 configured.
 
 ## systemd

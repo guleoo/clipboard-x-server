@@ -36,6 +36,7 @@ export const configLoadOptions = Object.freeze({
   filePath: configPath,
   mode: configMode,
   mergeModeFile: false,
+  mergeImportFiles: false,
 } satisfies LoadYamlConfigOptions);
 
 /** All Frame modules share this process-wide immutable configuration source. */

@@ -1,7 +1,0 @@
-security:
-  jwt-algorithm: HS256
-  token-prefix: Bearer
-  access-token-ttl-millis: 900000
-  password:
-    memory-cost: 65536
-    time-cost: 3

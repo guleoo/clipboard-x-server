@@ -59,6 +59,20 @@ describe("configuration", () => {
       .toEqual({ value: "base" });
   });
 
+  it("can ignore imports while keeping import merging enabled by default", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hono-config-imports-disabled-"));
+    writeFileSync(join(root, "config.yaml"), "import:\n  - ./imported.yaml\nvalue: base\n");
+    writeFileSync(join(root, "imported.yaml"), "value: imported\n");
+
+    expect(loadYamlConfigSync({ cwd: root })).toEqual({ value: "imported" });
+    expect(loadYamlConfigSync({ cwd: root, mergeImportFiles: false }))
+      .toEqual({ value: "base" });
+    expect(await loadYamlConfig({ cwd: root, mergeImportFiles: false }))
+      .toEqual({ value: "base" });
+    expect(new ConfigManager({ cwd: root, mergeImportFiles: false }).get())
+      .toEqual({ value: "base" });
+  });
+
   it("supports registered field mappers and immutable parsed sections", () => {
     const root = mkdtempSync(join(tmpdir(), "hono-config-manager-"));
     writeFileSync(join(root, "config.yaml"), "feature_value:\n  enabled: true\n");

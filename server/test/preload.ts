@@ -5,13 +5,8 @@ import { resolve } from "node:path";
 process.env.APP_ENV ??= "test";
 if (!process.env.APP_CONFIG_FILE) {
   const directory = mkdtempSync(resolve(tmpdir(), "clipboard-x-server-test-"));
-  const security = resolve(import.meta.dir, "../config/security.yaml");
-  const session = resolve(import.meta.dir, "../config/session.yaml");
   const config = resolve(directory, "config.yaml");
-  writeFileSync(config, `import:
-  - ${security}
-  - ${session}
-app:
+  writeFileSync(config, `app:
   name: clipboard-x-server-test
   hostname: 127.0.0.1
   port: 0
@@ -49,6 +44,10 @@ security:
   password:
     memory-cost: 19456
     time-cost: 2
+session:
+  ttl-millis: 604800000
+  touch-interval-millis: 300000
+  token-bytes: 32
 `);
   process.env.APP_CONFIG_FILE = config;
   process.on("exit", () => rmSync(directory, { recursive: true, force: true }));
