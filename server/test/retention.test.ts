@@ -1,10 +1,11 @@
 import { beforeAll, describe, expect, it, spyOn } from "bun:test"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname } from "node:path"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
 import { Database as SQLite } from "bun:sqlite"
 import { sql } from "drizzle-orm"
 import { sqliteValue } from "../src/common/sqlite"
 import { config } from "../src/config"
+import { createApp, mountRoutes } from "../src/frame/hono"
 import { Database, db } from "../src/db"
 import { databaseConfig } from "../src/frame/db"
 import { ClipboardRepo } from "../src/repo/clipboard"
@@ -12,6 +13,10 @@ import { objectStore } from "../src/repo/object"
 import { objectCollector } from "../src/service/object-gc"
 import { retentionService } from "../src/service/retention"
 import { clipboardService } from "../src/service/clipboard"
+import { administratorService } from "../src/service/administrator"
+import { registerSecurity } from "../src/session"
+import { routes } from "../src/route"
+import { productErrorHandler } from "../src/route/error"
 
 const repo = new ClipboardRepo()
 const deviceA = crypto.randomUUID()
@@ -48,6 +53,53 @@ beforeAll(async () => {
 })
 
 describe("server-only retention", () => {
+  it("authenticates retention settings, persists changes, and reconfigures the active scheduler", async () => {
+    await administratorService.synchronize()
+    registerSecurity()
+    const app = createApp()
+    app.onError(productErrorHandler)
+    mountRoutes(app, routes)
+    const path = "/admin/api/v1/retention"
+    expect((await app.request(path)).status).toBe(401)
+    const session = await administratorService.login("admin", "test-password")
+    const headers = {
+      Cookie: `clipboard_x_admin=${session.token}`,
+      "Content-Type": "application/json",
+      "Sec-Fetch-Site": "same-origin",
+    }
+    expect(await (await app.request(path, { headers })).json()).toEqual(config.retention)
+    const original = config.retention
+    const sweep = spyOn(retentionService, "sweep")
+    try {
+      const invalid = await app.request(path, { method: "PATCH", headers, body: JSON.stringify({ maxItemsPerDevice: 0 }) })
+      expect(invalid.status).toBe(400)
+      const saved = await app.request(path, { method: "PATCH", headers, body: JSON.stringify({ maxItemsPerDevice: 10, sweepIntervalMillis: 60_000 }) })
+      expect(saved.status).toBe(200)
+      expect(await saved.json()).toEqual({ maxItemsPerDevice: 10, sweepIntervalMillis: 60_000 })
+      expect(sweep).toHaveBeenCalledTimes(1)
+      expect(config.retention.maxItemsPerDevice).toBe(10)
+      expect(readFileSync(config.path, "utf8")).toContain("max-items-per-device: 10\n")
+      expect(await (await app.request(path, { headers })).json()).toEqual(config.retention)
+      const overridePath = join(dirname(config.path), "config-test.yaml")
+      expect(existsSync(overridePath)).toBe(false)
+      const savedYaml = readFileSync(config.path, "utf8")
+      try {
+        writeFileSync(overridePath, "retention:\n  max-items-per-device: 4\n")
+        const conflict = await app.request(path, {
+          method: "PATCH", headers, body: JSON.stringify({ maxItemsPerDevice: 20 }),
+        })
+        expect(conflict.status).toBe(409)
+        expect(await conflict.json()).toMatchObject({ error: { code: "configuration_conflict" } })
+        expect(readFileSync(config.path, "utf8")).toBe(savedYaml)
+      } finally {
+        rmSync(overridePath, { force: true })
+      }
+    } finally {
+      sweep.mockRestore()
+      config.updateRetention(original)
+      retentionService.configure()
+    }
+  })
   it("starts the GC grace period at migration for previously unreferenced objects", () => {
     const legacy = new SQLite(":memory:")
     try {

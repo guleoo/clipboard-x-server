@@ -11,6 +11,7 @@ export type ErrorCode =
   | "channel_forbidden"
   | "not_found"
   | "item_conflict"
+  | "configuration_conflict"
   | "content_not_ready"
   | "source_content_missing"
   | "too_large"

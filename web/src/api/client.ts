@@ -1,6 +1,6 @@
 import type { Client as RequestClient } from "@/frame/request"
 import { endpoints } from "./endpoints"
-import type { Device, Publication } from "./schemas"
+import type { Device, Publication, Retention } from "./schemas"
 
 export interface PublishSource {
   readonly content: Blob
@@ -23,6 +23,8 @@ export class Client {
   readonly login
   readonly logout
   readonly updateAdministrator
+  readonly retention
+  readonly updateRetention
   readonly overview
   readonly devices
   readonly createDevice
@@ -52,6 +54,8 @@ export class Client {
     const login = request.bind(endpoints.login)
     const logout = request.bind(endpoints.logout)
     const administratorUpdate = request.bind(endpoints.administratorUpdate)
+    const retention = request.bind(endpoints.retention)
+    const retentionUpdate = request.bind(endpoints.retentionUpdate)
     const overview = request.bind(endpoints.overview)
     const devices = request.bind(endpoints.devices)
     const deviceCreate = request.bind(endpoints.deviceCreate)
@@ -83,6 +87,8 @@ export class Client {
     this.login = (input: { readonly username: string; readonly password: string }) => login({ body: input })
     this.logout = () => logout({})
     this.updateAdministrator = (input: { readonly username: string; readonly password: string }) => administratorUpdate({ body: input })
+    this.retention = () => retention({})
+    this.updateRetention = (input: Retention) => retentionUpdate({ body: input })
     this.overview = () => overview({})
     this.devices = () => devices({})
     this.createDevice = (id: string): Promise<Device> => deviceCreate({ body: { id } })

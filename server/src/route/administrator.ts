@@ -1,11 +1,13 @@
 import { deleteCookie, setCookie } from "hono/cookie";
 import type { AppHono } from "../frame/hono";
 import { validator } from "./validator";
-import { config } from "../config";
+import { config, RetentionOptions, RetentionOverrideError } from "../config";
+import { DomainError } from "../common/error";
 import { CredentialsSchema } from "../dto/administrator";
 import { administratorService } from "../service/administrator";
 import { adminCookieName, currentSessionId } from "./auth";
 import { operation } from "./openapi";
+import { retentionService } from "../service/retention";
 
 function setSessionCookie(
   context: Parameters<typeof setCookie>[0],
@@ -44,6 +46,41 @@ export function registerPublicAdministratorRoutes(router: AppHono): void {
 }
 
 export function registerProtectedAdministratorRoutes(router: AppHono): void {
+  router.get(
+    "/retention",
+    operation({
+      operationId: "getAdminRetention",
+      tags: ["Admin configuration"],
+      summary: "Get server clipboard retention policy",
+      auth: true,
+      scheme: "adminSession",
+    }),
+    (context) => context.json(config.retention),
+  );
+  router.patch(
+    "/retention",
+    operation({
+      operationId: "updateAdminRetention",
+      tags: ["Admin configuration"],
+      summary: "Update server clipboard retention policy",
+      auth: true,
+      scheme: "adminSession",
+    }),
+    validator("json", RetentionOptions),
+    (context) => {
+      let policy: typeof config.retention;
+      try {
+        policy = config.updateRetention(context.req.valid("json"));
+      } catch (cause) {
+        if (cause instanceof RetentionOverrideError) {
+          throw new DomainError("configuration_conflict", cause.message, 409);
+        }
+        throw cause;
+      }
+      retentionService.configure();
+      return context.json(policy);
+    },
+  );
   router.get(
     "/session",
     operation({

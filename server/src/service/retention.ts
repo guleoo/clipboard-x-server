@@ -9,27 +9,38 @@ const logger = Log.create({ service: "retention" })
 export class RetentionService {
   private readonly repo = new ClipboardRepo()
   private timer?: ReturnType<typeof setInterval>
+  private registered = false
 
   start(): void {
+    if (!this.registered) {
+      Lifecycle.register({
+        name: "clipboard-retention",
+        on: "shutdown",
+        phase: "stop",
+        event: () => this.stop(),
+      })
+      this.registered = true
+    }
+    this.configure()
+  }
+
+  configure(): void {
+    this.stop()
     const policy = config.retention
     if (policy.maxItemsPerDevice === undefined && policy.maxItemsPerChannel === undefined
       && policy.maxAgeMillis === undefined) return
-    if (this.timer) return
-    this.sweep()
     this.timer = setInterval(() => {
       try { this.sweep() }
       catch (error) { logger.error("Retention sweep failed", { error }) }
     }, policy.sweepIntervalMillis)
     this.timer.unref()
-    Lifecycle.register({
-      name: "clipboard-retention",
-      on: "shutdown",
-      phase: "stop",
-      event: () => {
-        if (this.timer) clearInterval(this.timer)
-        this.timer = undefined
-      },
-    })
+    try { this.sweep() }
+    catch (error) { logger.error("Retention sweep failed", { error }) }
+  }
+
+  private stop(): void {
+    if (this.timer) clearInterval(this.timer)
+    this.timer = undefined
   }
 
   sweep(): void {

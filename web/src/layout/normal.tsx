@@ -9,6 +9,7 @@ import {
   SettingsIcon,
   SunIcon,
   UserRoundIcon,
+  ArchiveIcon,
 } from "lucide-react"
 import { Navigate, NavLink, useLocation, useNavigate } from "react-router"
 import { useApi } from "@/api"
@@ -107,6 +108,9 @@ function AuthenticatedLayout() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/activity")}>
               <HistoryIcon />活动
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/retention")}>
+              <ArchiveIcon />保留策略
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/account")}>
               <UserRoundIcon />账户

@@ -33,6 +33,7 @@ const components = {
   transfers: lazy(() => import("@/pages/transfers").then(({ TransfersPage }) => ({ default: TransfersPage }))),
   clipboard: lazy(() => import("@/pages/clipboard").then(({ ClipboardPage }) => ({ default: ClipboardPage }))),
   account: lazy(() => import("@/pages/account").then(({ AccountPage }) => ({ default: AccountPage }))),
+  retention: lazy(() => import("@/pages/retention").then(({ RetentionPage }) => ({ default: RetentionPage }))),
 } as const
 const layouts = { normal: NormalLayout, empty: EmptyLayout } as const
 

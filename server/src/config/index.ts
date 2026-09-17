@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
-import { parse, stringify } from "yaml";
+import { parse, parseDocument, stringify } from "yaml";
 import { DeviceIconSchema, MimeTypeSchema, SafeTextSchema, UuidSchema } from "../common/validation";
 import { isVirtualDevice } from "../common/virtual-device";
 import {
@@ -21,6 +21,7 @@ import {
   configPath,
   fieldNameMappers,
   isConfigObject,
+  loadYamlConfigSync,
 } from "../frame/config";
 import { SecurityConfig } from "../frame/security";
 import { SessionConfig } from "../frame/session";
@@ -156,6 +157,8 @@ export type DeviceConfiguration = ManagedConfiguration["devices"][number];
 export type DeviceKeyConfiguration = DeviceConfiguration["keys"][number];
 export type ChannelConfiguration = ManagedConfiguration["channels"][number];
 
+export class RetentionOverrideError extends ConfigError {}
+
 export function deviceKeyId(value: string): string {
   const match = deviceKeyPattern.exec(value);
   if (!match?.[1]) throw new Error("Invalid device API key");
@@ -213,14 +216,14 @@ function renderManaged(value: ManagedConfiguration): string {
   })}`;
 }
 
-function writeManaged(value: ManagedConfiguration): void {
+function writeConfig(contents: string): void {
   const directory = dirname(configPath);
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   const temporaryPath = `${configPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
   let descriptor: number | undefined;
   try {
     descriptor = openSync(temporaryPath, "wx", 0o600);
-    writeFileSync(descriptor, renderManaged(value), "utf8");
+    writeFileSync(descriptor, contents, "utf8");
     fsyncSync(descriptor);
     closeSync(descriptor);
     descriptor = undefined;
@@ -239,13 +242,26 @@ function writeManaged(value: ManagedConfiguration): void {
   }
 }
 
+function writeManaged(value: ManagedConfiguration): void {
+  writeConfig(renderManaged(value));
+}
+
+function renderRetention(value: zz.output<typeof RetentionOptions>): string {
+  const document = parseDocument(readFileSync(configPath, "utf8"));
+  if (document.errors.length || !isConfigObject(document.toJS())) {
+    throw new ConfigError("Configuration root must be a valid YAML object", { path: configPath });
+  }
+  document.set("retention", sourceValue(value));
+  return document.toString({ indent: 2, lineWidth: 0 });
+}
+
 let managed = managedFromConfig();
 
 const storage = Config.section("storage", StorageOptions);
 const web = Config.section("web", WebOptions);
 const limits = Config.section("limits", LimitsOptions);
 const lifetimes = Config.section("lifetimes", LifetimesOptions);
-const retention = Config.section("retention", RetentionOptions);
+let retention = RetentionOptions.parse(Config.section("retention", RetentionOptions));
 const content = Config.section("content", ContentOptions);
 const http = Config.section("http", HttpOptions);
 
@@ -266,7 +282,7 @@ export const config = Object.freeze({
   keyOverlapMillis: lifetimes.keyOverlapMillis,
   materializationTtlMillis: lifetimes.materializationTtlMillis,
   objectGcGraceMillis: lifetimes.objectGcGraceMillis,
-  retention,
+  get retention() { return retention; },
   supportedMimeTypes: content.supportedMimeTypes,
   jsonBodyLimitBytes: http.jsonBodyLimitBytes,
   rateLimit: http.rateLimit,
@@ -276,6 +292,22 @@ export const config = Object.freeze({
   sessionTokenBytes: SessionConfig.tokenBytes,
   read(): ManagedConfiguration {
     return cloneManaged(managed);
+  },
+  updateRetention(input: zz.input<typeof RetentionOptions>): zz.output<typeof RetentionOptions> {
+    const next = RetentionOptions.parse(input);
+    const previous = readFileSync(configPath, "utf8");
+    writeConfig(renderRetention(next));
+    try {
+      const effective = RetentionOptions.parse(loadYamlConfigSync({ filePath: configPath, mode: configMode }).retention);
+      if (JSON.stringify(effective) !== JSON.stringify(next)) {
+        throw new RetentionOverrideError("Retention is overridden by an imported or environment configuration", { path: configPath });
+      }
+      retention = effective;
+      return effective;
+    } catch (cause) {
+      writeConfig(previous);
+      throw cause;
+    }
   },
   change<Value>(
     mutate: (draft: ManagedConfiguration) => Value,

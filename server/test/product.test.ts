@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { ManagedConfigurationSchema, RetentionOptions, config } from "../src/config";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { ManagedConfigurationSchema, RetentionOptions, RetentionOverrideError, config } from "../src/config";
 import { db } from "../src/db";
 import { createApp, generateSpecs, mountRoutes } from "../src/frame/hono";
 import { AuthError } from "../src/frame/security";
@@ -39,6 +41,40 @@ describe("Clipboard X product contracts", () => {
     expect(() => RetentionOptions.parse({ sweepIntervalMillis: 100 })).toThrow();
   });
 
+  it("writes retention to formatted YAML and updates the active policy", () => {
+    const original = config.retention;
+    const before = readFileSync(config.path, "utf8");
+    try {
+      expect(() => config.updateRetention({ maxItemsPerChannel: 0 })).toThrow();
+      expect(readFileSync(config.path, "utf8")).toBe(before);
+      const saved = config.updateRetention({ maxItemsPerDevice: 12, maxAgeMillis: 86_400_000 });
+      expect(saved).toEqual({ maxItemsPerDevice: 12, maxAgeMillis: 86_400_000, sweepIntervalMillis: 3_600_000 });
+      expect(config.retention).toEqual(saved);
+      const yaml = readFileSync(config.path, "utf8");
+      expect(yaml).toContain("max-items-per-device: 12\n");
+      expect(yaml).toContain("max-age-millis: 86400000\n");
+      expect(yaml).toContain("  - ");
+      expect(() => config.updateRetention({ maxItemsPerDevice: -1 })).toThrow();
+      expect(readFileSync(config.path, "utf8")).toBe(yaml);
+    } finally {
+      config.updateRetention(original);
+    }
+  });
+
+  it("rolls back edits when a mode-specific YAML file overrides retention", () => {
+    const overridePath = join(dirname(config.path), "config-test.yaml");
+    const original = readFileSync(config.path, "utf8");
+    expect(existsSync(overridePath)).toBe(false);
+    try {
+      writeFileSync(overridePath, "retention:\n  max-items-per-device: 4\n");
+      expect(() => config.updateRetention({ maxItemsPerDevice: 12 })).toThrow(RetentionOverrideError);
+      expect(readFileSync(config.path, "utf8")).toBe(original);
+      expect(config.retention).toEqual({ sweepIntervalMillis: 3_600_000 });
+    } finally {
+      rmSync(overridePath, { force: true });
+    }
+  });
+
   it("separates client-owned profiles from administrator device controls", () => {
     const device = {
       id: "123e4567-e89b-42d3-a456-426614174000",
@@ -67,6 +103,9 @@ describe("Clipboard X product contracts", () => {
       { deviceKey: [], deviceId: [] },
     ]);
     expect(document.paths["/admin/api/v1/devices"]?.get?.security).toEqual([
+      { adminSession: [] },
+    ]);
+    expect(document.paths["/admin/api/v1/retention"]?.patch?.security).toEqual([
       { adminSession: [] },
     ]);
   });
