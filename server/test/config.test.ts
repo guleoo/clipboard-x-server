@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   ConfigManager,
   fieldNameMappers,
+  loadYamlConfig,
   loadYamlConfigSync,
 } from "../src/frame/config";
 
@@ -42,6 +43,20 @@ describe("configuration", () => {
       nestedValue: { count: 2 },
       copied: 2,
     });
+  });
+
+  it("can keep mode metadata without merging the mode-specific file", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hono-config-mode-disabled-"));
+    writeFileSync(join(root, "config.yaml"), "value: base\n");
+    writeFileSync(join(root, "config-prod.yaml"), "value: mode\n");
+
+    expect(loadYamlConfigSync({ cwd: root, mode: "prod" })).toEqual({ value: "mode" });
+    expect(loadYamlConfigSync({ cwd: root, mode: "prod", mergeModeFile: false }))
+      .toEqual({ value: "base" });
+    expect(await loadYamlConfig({ cwd: root, mode: "prod", mergeModeFile: false }))
+      .toEqual({ value: "base" });
+    expect(new ConfigManager({ cwd: root, mode: "prod", mergeModeFile: false }).get())
+      .toEqual({ value: "base" });
   });
 
   it("supports registered field mappers and immutable parsed sections", () => {

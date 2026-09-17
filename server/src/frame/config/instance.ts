@@ -1,6 +1,7 @@
 import { ConfigManager } from "./manager";
 import { resolveConfigRoot } from "./resolver";
 import { join, resolve } from "node:path";
+import type { LoadYamlConfigOptions } from "./types";
 
 export function resolveConfigMode(env: NodeJS.ProcessEnv = process.env): string {
   const mode = env.APP_ENV ?? env.NODE_ENV ?? "dev";
@@ -31,9 +32,11 @@ export function resolveConfigPath(
 
 export const configMode = resolveConfigMode();
 export const configPath = resolveConfigPath();
-
-/** All Frame modules share this process-wide immutable configuration source. */
-export const Config = new ConfigManager({
+export const configLoadOptions = Object.freeze({
   filePath: configPath,
   mode: configMode,
-});
+  mergeModeFile: false,
+} satisfies LoadYamlConfigOptions);
+
+/** All Frame modules share this process-wide immutable configuration source. */
+export const Config = new ConfigManager(configLoadOptions);

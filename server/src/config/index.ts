@@ -17,6 +17,7 @@ import {
   Config,
   ConfigError,
   FrameConfig,
+  configLoadOptions,
   configMode,
   configPath,
   fieldNameMappers,
@@ -298,7 +299,7 @@ export const config = Object.freeze({
     const previous = readFileSync(configPath, "utf8");
     writeConfig(renderRetention(next));
     try {
-      const effective = RetentionOptions.parse(loadYamlConfigSync({ filePath: configPath, mode: configMode }).retention);
+      const effective = RetentionOptions.parse(loadYamlConfigSync(configLoadOptions).retention);
       if (JSON.stringify(effective) !== JSON.stringify(next)) {
         throw new RetentionOverrideError("Retention is overridden by an imported or environment configuration", { path: configPath });
       }

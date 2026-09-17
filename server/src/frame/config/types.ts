@@ -19,6 +19,8 @@ export interface LoadYamlConfigOptions {
   readonly env?: NodeJS.ProcessEnv;
   readonly cwd?: string;
   readonly mode?: string;
+  /** Merge the sibling `<name>-<mode>.yaml` file when mode is set. Defaults to true. */
+  readonly mergeModeFile?: boolean;
   readonly context?: ConfigObject;
   readonly fieldNameMapper?:
     | BuiltinFieldNameMapperName

@@ -137,7 +137,7 @@ export async function loadYamlConfig(
         await loadFile(path, context),
       )
     : await loadFile(path, context);
-  if (options.mode) {
+  if (options.mode && (options.mergeModeFile ?? true)) {
     const overridePath = modePath(path, options.mode);
     if (await fileExists(overridePath)) {
       result = deepMergeConfig(result, await loadFile(overridePath, context));
@@ -160,7 +160,7 @@ export function loadYamlConfigSync(
         loadFileSync(path, context),
       )
     : loadFileSync(path, context);
-  if (options.mode) {
+  if (options.mode && (options.mergeModeFile ?? true)) {
     const overridePath = modePath(path, options.mode);
     if (existsSync(overridePath)) {
       result = deepMergeConfig(result, loadFileSync(overridePath, context));

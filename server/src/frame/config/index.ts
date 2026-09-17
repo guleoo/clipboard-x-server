@@ -3,7 +3,7 @@ import { Config, configMode } from "./instance";
 import { AppOptions, LoggerConfigOptions } from "./schema";
 
 export * from "./error";
-export { Config, configMode, configPath, resolveConfigMode, resolveConfigPath } from "./instance";
+export { Config, configLoadOptions, configMode, configPath, resolveConfigMode, resolveConfigPath } from "./instance";
 export * from "./loader";
 export * from "./manager";
 export * from "./mapper";

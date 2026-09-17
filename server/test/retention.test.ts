@@ -85,12 +85,13 @@ describe("server-only retention", () => {
       const savedYaml = readFileSync(config.path, "utf8")
       try {
         writeFileSync(overridePath, "retention:\n  max-items-per-device: 4\n")
-        const conflict = await app.request(path, {
+        const unaffected = await app.request(path, {
           method: "PATCH", headers, body: JSON.stringify({ maxItemsPerDevice: 20 }),
         })
-        expect(conflict.status).toBe(409)
-        expect(await conflict.json()).toMatchObject({ error: { code: "configuration_conflict" } })
-        expect(readFileSync(config.path, "utf8")).toBe(savedYaml)
+        expect(unaffected.status).toBe(200)
+        expect(await unaffected.json()).toEqual({ maxItemsPerDevice: 20, sweepIntervalMillis: 3_600_000 })
+        expect(config.retention.maxItemsPerDevice).toBe(20)
+        expect(readFileSync(config.path, "utf8")).not.toBe(savedYaml)
       } finally {
         rmSync(overridePath, { force: true })
       }

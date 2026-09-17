@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ManagedConfigurationSchema, RetentionOptions, RetentionOverrideError, config } from "../src/config";
+import { ManagedConfigurationSchema, RetentionOptions, config } from "../src/config";
 import { db } from "../src/db";
+import { configLoadOptions, loadYamlConfigSync } from "../src/frame/config";
 import { createApp, generateSpecs, mountRoutes } from "../src/frame/hono";
 import { AuthError } from "../src/frame/security";
 import { zz } from "../src/frame/zod";
@@ -61,15 +62,14 @@ describe("Clipboard X product contracts", () => {
     }
   });
 
-  it("rolls back edits when a mode-specific YAML file overrides retention", () => {
+  it("ignores mode-specific YAML for the writable application configuration", () => {
     const overridePath = join(dirname(config.path), "config-test.yaml");
-    const original = readFileSync(config.path, "utf8");
     expect(existsSync(overridePath)).toBe(false);
     try {
       writeFileSync(overridePath, "retention:\n  max-items-per-device: 4\n");
-      expect(() => config.updateRetention({ maxItemsPerDevice: 12 })).toThrow(RetentionOverrideError);
-      expect(readFileSync(config.path, "utf8")).toBe(original);
-      expect(config.retention).toEqual({ sweepIntervalMillis: 3_600_000 });
+      expect(configLoadOptions).toMatchObject({ mode: "test", mergeModeFile: false });
+      expect(RetentionOptions.parse(loadYamlConfigSync(configLoadOptions).retention))
+        .toEqual(config.retention);
     } finally {
       rmSync(overridePath, { force: true });
     }
