@@ -94,6 +94,9 @@ content created through the Web and fans those changes out to real members throu
 feed. It has no API key and every device-side receive path rejects it, so content published by other
 devices is never delivered back to the virtual identity.
 
-Items do not expire automatically. Deletion decrements object references, and GC removes only
-zero-reference objects older than the configured grace period when explicitly requested with
-`--delete`. The trusted self-hosted Server can read uploaded content; it is not end-to-end encrypted.
+Server cleanup is disabled by default. When enabled, one hierarchical policy controls trigger timing,
+global/device/Channel/device-in-Channel/age item limits, unreferenced-object grace, and bounded work per
+run. It removes only server copies and preserves client-local history. Synchronization changes,
+deletion tombstones, and transfer history are deliberately excluded because pruning them requires an
+offline cursor reset protocol. The manual object command still requires `--delete`. The trusted
+self-hosted Server can read uploaded content; it is not end-to-end encrypted.

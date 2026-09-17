@@ -1,13 +1,13 @@
 import { deleteCookie, setCookie } from "hono/cookie";
 import type { AppHono } from "../frame/hono";
 import { validator } from "./validator";
-import { config, RetentionOptions, RetentionOverrideError } from "../config";
+import { CleanupOptions, CleanupOverrideError, config } from "../config";
 import { DomainError } from "../common/error";
 import { CredentialsSchema } from "../dto/administrator";
 import { administratorService } from "../service/administrator";
 import { adminCookieName, currentSessionId } from "./auth";
 import { operation } from "./openapi";
-import { retentionService } from "../service/retention";
+import { cleanupService } from "../service/cleanup";
 
 function setSessionCookie(
   context: Parameters<typeof setCookie>[0],
@@ -47,38 +47,39 @@ export function registerPublicAdministratorRoutes(router: AppHono): void {
 
 export function registerProtectedAdministratorRoutes(router: AppHono): void {
   router.get(
-    "/retention",
+    "/configuration/cleanup",
     operation({
-      operationId: "getAdminRetention",
+      operationId: "getAdminCleanupConfiguration",
       tags: ["Admin configuration"],
-      summary: "Get server clipboard retention policy",
+      summary: "Get server cleanup configuration",
       auth: true,
       scheme: "adminSession",
     }),
-    (context) => context.json(config.retention),
+    (context) => context.json(config.cleanup),
   );
   router.patch(
-    "/retention",
+    "/configuration/cleanup",
     operation({
-      operationId: "updateAdminRetention",
+      operationId: "updateAdminCleanupConfiguration",
       tags: ["Admin configuration"],
-      summary: "Update server clipboard retention policy",
+      summary: "Update server cleanup configuration",
       auth: true,
       scheme: "adminSession",
     }),
-    validator("json", RetentionOptions),
+    validator("json", CleanupOptions),
     (context) => {
-      let policy: typeof config.retention;
+      const previous = config.cleanup;
+      let cleanup: typeof config.cleanup;
       try {
-        policy = config.updateRetention(context.req.valid("json"));
+        cleanup = config.updateCleanup(context.req.valid("json"));
       } catch (cause) {
-        if (cause instanceof RetentionOverrideError) {
+        if (cause instanceof CleanupOverrideError) {
           throw new DomainError("configuration_conflict", cause.message, 409);
         }
         throw cause;
       }
-      retentionService.configure();
-      return context.json(policy);
+      cleanupService.configure({ runNow: cleanupService.tightens(previous, cleanup) });
+      return context.json(cleanup);
     },
   );
   router.get(

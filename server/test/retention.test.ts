@@ -4,14 +4,14 @@ import { dirname, join } from "node:path"
 import { Database as SQLite } from "bun:sqlite"
 import { sql } from "drizzle-orm"
 import { sqliteValue } from "../src/common/sqlite"
-import { config } from "../src/config"
+import { CleanupOptions, config } from "../src/config"
 import { createApp, mountRoutes } from "../src/frame/hono"
 import { Database, db } from "../src/db"
 import { databaseConfig } from "../src/frame/db"
-import { ClipboardRepo } from "../src/repo/clipboard"
+import { ClipboardRepo, type ClipboardCleanupPolicy } from "../src/repo/clipboard"
 import { objectStore } from "../src/repo/object"
 import { objectCollector } from "../src/service/object-gc"
-import { retentionService } from "../src/service/retention"
+import { cleanupService } from "../src/service/cleanup"
 import { clipboardService } from "../src/service/clipboard"
 import { administratorService } from "../src/service/administrator"
 import { registerSecurity } from "../src/session"
@@ -41,6 +41,26 @@ function addItem(channelId: string, deviceId: string, createdAt: number, objectI
   return id
 }
 
+function cleanupPolicy(
+  clipboard: ClipboardCleanupPolicy = {},
+  execution: Record<string, number> = {},
+) {
+  return CleanupOptions.parse({
+    enabled: true,
+    clipboard,
+    objects: { enabled: false },
+    execution,
+  })
+}
+
+function objectCleanup() {
+  return CleanupOptions.parse({
+    enabled: true,
+    clipboard: {},
+    objects: { enabled: true, graceMillis: config.cleanup.objects.graceMillis },
+  })
+}
+
 beforeAll(async () => {
   Database.init()
   Database.migrate({ migrationsFolder: databaseConfig.migrationsFolder })
@@ -52,14 +72,14 @@ beforeAll(async () => {
   db.run(sql`INSERT INTO channel_members (channel_id, device_id, joined_at) VALUES (${channelA}, ${deviceA}, 1)`)
 })
 
-describe("server-only retention", () => {
-  it("authenticates retention settings, persists changes, and reconfigures the active scheduler", async () => {
+describe("server-only cleanup", () => {
+  it("authenticates cleanup settings, persists changes, and reconfigures the active scheduler", async () => {
     await administratorService.synchronize()
     registerSecurity()
     const app = createApp()
     app.onError(productErrorHandler)
     mountRoutes(app, routes)
-    const path = "/admin/api/v1/retention"
+    const path = "/admin/api/v1/configuration/cleanup"
     expect((await app.request(path)).status).toBe(401)
     const session = await administratorService.login("admin", "test-password")
     const headers = {
@@ -67,39 +87,67 @@ describe("server-only retention", () => {
       "Content-Type": "application/json",
       "Sec-Fetch-Site": "same-origin",
     }
-    expect(await (await app.request(path, { headers })).json()).toEqual(config.retention)
-    const original = config.retention
-    const sweep = spyOn(retentionService, "sweep")
+    expect(await (await app.request(path, { headers })).json()).toEqual(config.cleanup)
+    const original = config.cleanup
+    const sweep = spyOn(cleanupService, "sweep")
     try {
-      const invalid = await app.request(path, { method: "PATCH", headers, body: JSON.stringify({ maxItemsPerDevice: 0 }) })
+      const invalid = await app.request(path, { method: "PATCH", headers, body: JSON.stringify({
+        enabled: true, clipboard: { maxItemsPerDevice: 0 },
+      }) })
       expect(invalid.status).toBe(400)
-      const saved = await app.request(path, { method: "PATCH", headers, body: JSON.stringify({ maxItemsPerDevice: 10, sweepIntervalMillis: 60_000 }) })
+      const input = { enabled: true, clipboard: { maxItemsPerDevice: 10 }, triggers: { intervalMillis: 60_000 } }
+      const saved = await app.request(path, { method: "PATCH", headers, body: JSON.stringify(input) })
       expect(saved.status).toBe(200)
-      expect(await saved.json()).toEqual({ maxItemsPerDevice: 10, sweepIntervalMillis: 60_000 })
+      expect(await saved.json()).toEqual(CleanupOptions.parse(input))
       expect(sweep).toHaveBeenCalledTimes(1)
-      expect(config.retention.maxItemsPerDevice).toBe(10)
+      expect(config.cleanup.clipboard.maxItemsPerDevice).toBe(10)
       expect(readFileSync(config.path, "utf8")).toContain("max-items-per-device: 10\n")
-      expect(await (await app.request(path, { headers })).json()).toEqual(config.retention)
+      expect(await (await app.request(path, { headers })).json()).toEqual(config.cleanup)
       const overridePath = join(dirname(config.path), "config-test.yaml")
       expect(existsSync(overridePath)).toBe(false)
       const savedYaml = readFileSync(config.path, "utf8")
       try {
-        writeFileSync(overridePath, "retention:\n  max-items-per-device: 4\n")
+        writeFileSync(overridePath, "cleanup:\n  enabled: false\n")
+        const next = { enabled: true, clipboard: { maxItemsPerDevice: 20 } }
         const unaffected = await app.request(path, {
-          method: "PATCH", headers, body: JSON.stringify({ maxItemsPerDevice: 20 }),
+          method: "PATCH", headers, body: JSON.stringify(next),
         })
         expect(unaffected.status).toBe(200)
-        expect(await unaffected.json()).toEqual({ maxItemsPerDevice: 20, sweepIntervalMillis: 3_600_000 })
-        expect(config.retention.maxItemsPerDevice).toBe(20)
+        expect(await unaffected.json()).toEqual(CleanupOptions.parse(next))
+        expect(config.cleanup.clipboard.maxItemsPerDevice).toBe(20)
+        expect(sweep).toHaveBeenCalledTimes(1)
         expect(readFileSync(config.path, "utf8")).not.toBe(savedYaml)
       } finally {
         rmSync(overridePath, { force: true })
       }
     } finally {
       sweep.mockRestore()
-      config.updateRetention(original)
-      retentionService.configure()
+      config.updateCleanup(original)
+      cleanupService.configure()
     }
+  })
+
+  it("runs immediately only when a saved policy becomes destructive or stricter", () => {
+    const disabled = CleanupOptions.parse(undefined)
+    const inert = CleanupOptions.parse({ enabled: true, objects: { enabled: false } })
+    const limited = CleanupOptions.parse({
+      enabled: true,
+      clipboard: { maxItemsPerChannel: 100 },
+      objects: { enabled: false },
+    })
+    const tighter = CleanupOptions.parse({
+      enabled: true,
+      clipboard: { maxItemsPerChannel: 50 },
+      objects: { enabled: false },
+    })
+    expect(cleanupService.tightens(disabled, inert)).toBe(false)
+    expect(cleanupService.tightens(disabled, limited)).toBe(true)
+    expect(cleanupService.tightens(limited, tighter)).toBe(true)
+    expect(cleanupService.tightens(tighter, limited)).toBe(false)
+    expect(cleanupService.tightens(limited, CleanupOptions.parse({
+      ...limited,
+      objects: { enabled: true, graceMillis: 60_000 },
+    }))).toBe(true)
   })
   it("starts the GC grace period at migration for previously unreferenced objects", () => {
     const legacy = new SQLite(":memory:")
@@ -124,7 +172,7 @@ describe("server-only retention", () => {
     const other = addItem(channelA, deviceB, 40)
     const revision = repo.statusMetrics().revision
 
-    expect(retentionService.enforce({ maxItemsPerChannel: 2 })).toBe(1)
+    expect(cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerChannel: 2 }))).toBe(1)
     expect(repo.item(first)).toBeUndefined()
     expect(repo.item(second)).toBeDefined()
     expect(repo.item(other)).toBeDefined()
@@ -132,17 +180,62 @@ describe("server-only retention", () => {
       .toEqual([[second, "upsert"], [other, "upsert"]])
     expect(repo.statusMetrics().revision).toBe(revision)
 
-    expect(retentionService.enforce({ maxItemsPerDevice: 1 }, { deviceId: deviceA, channelId: channelA })).toBe(1)
+    expect(cleanupService.enforceClipboard(
+      cleanupPolicy({ maxItemsPerDevice: 1 }),
+      { deviceId: deviceA, channelId: channelA },
+    )).toBe(1)
     expect(repo.item(second)).toBeUndefined()
     expect(repo.item(third)).toBeDefined()
     expect(repo.item(other)).toBeDefined()
     expect(repo.changes(channelA, 0, 20).some(({ kind }) => kind === "remove")).toBe(false)
     expect(repo.statusMetrics().revision).toBe(revision)
     const another = addItem(channelB, deviceB, 50)
-    expect(retentionService.enforce({ maxItemsPerDevice: 1 })).toBe(1)
+    expect(cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerDevice: 1 }))).toBe(1)
     expect(repo.item(other)).toBeUndefined()
     expect(repo.item(another)).toBeDefined()
-    expect(retentionService.enforce({ maxItemsPerDevice: 1, maxItemsPerChannel: 2 })).toBe(0)
+    expect(cleanupService.enforceClipboard(cleanupPolicy({
+      maxItemsPerDevice: 1,
+      maxItemsPerChannel: 2,
+    }))).toBe(0)
+  })
+
+  it("supports global, device-in-channel, and bounded per-run cleanup", () => {
+    const device = crypto.randomUUID()
+    const channel = crypto.randomUUID()
+    const otherChannel = crypto.randomUUID()
+    db.run(sql`INSERT INTO devices (id, tag, icon_kind, created_at, updated_at)
+      VALUES (${device}, 'Cleanup device', 'laptop', 1, 1)`)
+    db.run(sql`INSERT INTO channels (id, name, created_at, updated_at)
+      VALUES (${channel}, 'Cleanup channel', 1, 1), (${otherChannel}, 'Other channel', 1, 1)`)
+    const first = addItem(channel, device, 1_000)
+    addItem(channel, device, 1_001)
+    addItem(channel, device, 1_002)
+    const outside = addItem(otherChannel, device, 1_003)
+
+    expect(cleanupService.enforceClipboard(
+      cleanupPolicy({ maxItemsPerDevicePerChannel: 2 }),
+      { deviceId: device, channelId: channel },
+    )).toBe(1)
+    expect(repo.item(first)).toBeUndefined()
+    expect(repo.item(outside)).toBeDefined()
+
+    addItem(channel, device, 1_004)
+    addItem(channel, device, 1_005)
+    const bounded = cleanupPolicy(
+      { maxItemsPerDevice: 1 },
+      { itemBatchSize: 1, maxItemsPerRun: 2 },
+    )
+    expect(cleanupService.enforceClipboard(bounded)).toBe(2)
+    const remaining = sqliteValue(db.all<{ count: number }>(sql`
+      SELECT count(*) AS count FROM clipboard_items
+      WHERE origin_device_id = ${device} AND visible = 1 AND deleted_at IS NULL
+    `))[0]?.count
+    expect(remaining).toBe(3)
+
+    const visibleBefore = sqliteValue(db.all<{ count: number }>(sql`
+      SELECT count(*) AS count FROM clipboard_items WHERE visible = 1 AND deleted_at IS NULL
+    `))[0]!.count
+    expect(cleanupService.enforceClipboard(cleanupPolicy({ maxItems: visibleBefore - 1 }))).toBe(1)
   })
 
   it("keeps active materializations until finished and releases shared object references", () => {
@@ -156,14 +249,20 @@ describe("server-only retention", () => {
       (id, active_key, channel_id, item_id, content_id, source_device_id, state, created_at, updated_at, expires_at)
       VALUES (${requestId}, ${earlier}, ${channelC}, ${earlier}, 'primary', ${deviceC}, 'waiting-for-peer', 1, 1, ${Date.now() + 60_000})`)
 
-    expect(retentionService.enforce({ maxItemsPerDevice: 1 }, { deviceId: deviceC, channelId: channelC })).toBe(0)
+    expect(cleanupService.enforceClipboard(
+      cleanupPolicy({ maxItemsPerDevice: 1 }),
+      { deviceId: deviceC, channelId: channelC },
+    )).toBe(0)
     db.run(sql`UPDATE materialization_requests SET active_key = NULL WHERE id = ${requestId}`)
-    expect(retentionService.enforce({ maxItemsPerDevice: 1 }, { deviceId: deviceC, channelId: channelC })).toBe(1)
+    expect(cleanupService.enforceClipboard(
+      cleanupPolicy({ maxItemsPerDevice: 1 }),
+      { deviceId: deviceC, channelId: channelC },
+    )).toBe(1)
     expect(repo.item(earlier)).toBeUndefined()
     expect(repo.item(later)).toBeDefined()
     expect(objectReferences(objectId)).toBe(1)
 
-    expect(retentionService.enforce({ maxAgeMillis: 1 })).toBeGreaterThanOrEqual(1)
+    expect(cleanupService.enforceClipboard(cleanupPolicy({ maxAgeMillis: 1 }))).toBeGreaterThanOrEqual(1)
     expect(objectReferences(objectId)).toBe(0)
     expect(sqliteValue(db.all<{ count: number }>(sql`SELECT count(*) AS count FROM representations WHERE item_id IN (${earlier}, ${later})`))[0]?.count).toBe(0)
     expect(repo.changes(channelC, 0, 20).some(({ kind }) => kind === "remove")).toBe(false)
@@ -183,9 +282,15 @@ describe("server-only retention", () => {
     db.run(sql`INSERT INTO uploads
       (id, item_id, channel_id, device_id, transfer_id, kind, state, created_at, expires_at)
       VALUES (${uploadId}, ${old}, ${channelC}, ${deviceC}, ${transferId}, 'materialize', 'open', 1, ${Date.now() + 60_000})`)
-    expect(retentionService.enforce({ maxItemsPerDevice: 1 }, { deviceId: deviceC, channelId: channelC })).toBe(0)
+    expect(cleanupService.enforceClipboard(
+      cleanupPolicy({ maxItemsPerDevice: 1 }),
+      { deviceId: deviceC, channelId: channelC },
+    )).toBe(0)
     db.run(sql`UPDATE uploads SET state = 'completed' WHERE id = ${uploadId}`)
-    expect(retentionService.enforce({ maxItemsPerDevice: 1 }, { deviceId: deviceC, channelId: channelC })).toBe(1)
+    expect(cleanupService.enforceClipboard(
+      cleanupPolicy({ maxItemsPerDevice: 1 }),
+      { deviceId: deviceC, channelId: channelC },
+    )).toBe(1)
     expect(repo.item(old)).toBeUndefined()
     expect(repo.item(current)).toBeDefined()
   })
@@ -200,17 +305,17 @@ describe("server-only retention", () => {
       VALUES (${objectId}, ${sha256}, 1, ${path}, 1, 1, NULL)`)
     const id = addItem(channelA, deviceB, Date.now(), objectId, sha256)
     expect(objectCollector.plan().objectCount).toBe(0)
-    expect(objectCollector.collect()).toBe(0)
+    expect(objectCollector.collect(Date.now(), objectCleanup())).toBe(0)
     expect(existsSync(path)).toBe(true)
 
     repo.transaction(() => repo.pruneItem(id, Date.now()))
     expect(objectReferences(objectId)).toBe(0)
     expect(objectCollector.plan().objectCount).toBe(0)
     expect(existsSync(path)).toBe(true)
-    db.run(sql`UPDATE objects SET unreferenced_at = ${Date.now() - config.objectGcGraceMillis - 1}
+    db.run(sql`UPDATE objects SET unreferenced_at = ${Date.now() - config.cleanup.objects.graceMillis - 1}
       WHERE id = ${objectId}`)
     expect(objectCollector.plan().objectCount).toBe(1)
-    expect(objectCollector.collect()).toBe(1)
+    expect(objectCollector.collect(Date.now(), objectCleanup())).toBe(1)
     expect(existsSync(path)).toBe(false)
     expect(objectReferences(objectId)).toBeUndefined()
   })
@@ -222,7 +327,7 @@ describe("server-only retention", () => {
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, "x")
     db.run(sql`INSERT INTO objects (id, sha256, size, path, ref_count, created_at, unreferenced_at)
-      VALUES (${objectId}, ${sha256}, 1, ${path}, 0, 1, ${Date.now() - config.objectGcGraceMillis - 1})`)
+      VALUES (${objectId}, ${sha256}, 1, ${path}, 0, 1, ${Date.now() - config.cleanup.objects.graceMillis - 1})`)
     const transferId = crypto.randomUUID()
     const uploadId = crypto.randomUUID()
     db.run(sql`INSERT INTO transfers
@@ -236,19 +341,42 @@ describe("server-only retention", () => {
       VALUES (${uploadId}, 'content', 'primary', 1, ${sha256}, 'text/plain', ${objectId})`)
 
     expect(objectCollector.plan().objectCount).toBe(0)
-    expect(objectCollector.collect()).toBe(0)
+    expect(objectCollector.collect(Date.now(), objectCleanup())).toBe(0)
     expect(existsSync(path)).toBe(true)
     db.run(sql`DELETE FROM upload_objects WHERE upload_id = ${uploadId}`)
-    expect(objectCollector.collect()).toBe(1)
+    expect(objectCollector.collect(Date.now(), objectCleanup())).toBe(1)
     expect(existsSync(path)).toBe(false)
+  })
+
+  it("bounds object collection work per run", () => {
+    const now = Date.now()
+    const paths: string[] = []
+    for (const fill of ["e", "f"]) {
+      const id = crypto.randomUUID()
+      const sha256 = fill.repeat(64)
+      const path = objectStore.path(sha256)
+      paths.push(path)
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, fill)
+      db.run(sql`INSERT INTO objects (id, sha256, size, path, ref_count, created_at, unreferenced_at)
+        VALUES (${id}, ${sha256}, 1, ${path}, 0, 1, ${now - config.cleanup.objects.graceMillis - 1})`)
+    }
+    const bounded = CleanupOptions.parse({
+      enabled: true,
+      objects: { enabled: true, graceMillis: config.cleanup.objects.graceMillis },
+      execution: { objectBatchSize: 1, maxObjectsPerRun: 1 },
+    })
+    expect(objectCollector.collect(now, bounded)).toBe(1)
+    expect(paths.filter(existsSync)).toHaveLength(1)
+    expect(objectCollector.collect(now, bounded)).toBe(1)
+    expect(paths.filter(existsSync)).toHaveLength(0)
   })
 
   it("enforces limits after a publication completes its upload", () => {
     const recent = addItem(channelA, deviceA, Date.now())
     const older = crypto.randomUUID()
-    const original = retentionService.enforce.bind(retentionService)
-    const enforce = spyOn(retentionService, "enforce").mockImplementation((_policy, scope) =>
-      original({ maxItemsPerDevice: 1 }, scope))
+    const afterPublish = spyOn(cleanupService, "afterPublish").mockImplementation((scope) =>
+      cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerDevice: 1 }), scope))
     try {
       const publication = clipboardService.createPublication(deviceA, channelA, {
         id: older,
@@ -259,12 +387,12 @@ describe("server-only retention", () => {
       })
       expect(publication.transfer.state).toBe("completed")
       expect(clipboardService.completeUpload(publication.uploadId, deviceA).transfer.state).toBe("completed")
-      expect(enforce).toHaveBeenCalledTimes(1)
+      expect(afterPublish).toHaveBeenCalledTimes(1)
       expect(repo.item(older)).toBeUndefined()
       expect(repo.item(recent)).toBeDefined()
       expect(repo.changes(channelA, 0, 100).some(({ item_id }) => item_id === older)).toBe(false)
     } finally {
-      enforce.mockRestore()
+      afterPublish.mockRestore()
     }
   })
 
@@ -294,8 +422,8 @@ describe("server-only retention", () => {
       .toThrow("Upload session is no longer available")
   })
 
-  it("preserves explicit deletion events and leaves retention disabled by default", () => {
-    expect(retentionService.enforce(config.retention)).toBe(0)
+  it("preserves explicit deletion events and leaves cleanup disabled by default", () => {
+    expect(cleanupService.enforceClipboard(config.cleanup)).toBe(0)
     const id = addItem(channelA, deviceA, Date.now())
     repo.transaction(() => repo.deleteItem(repo.item(id)!, Date.now()))
     expect(repo.changes(channelA, 0, 100).at(-1)).toMatchObject({ item_id: id, kind: "remove", reason: "deleted" })

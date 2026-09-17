@@ -34,4 +34,4 @@ bun run compile
 
 `dist/` 包含可执行文件（或 Server bundle）、`web/dist`、`server/drizzle` 与完整 YAML 配置示例。所有配置项都以单一 YAML 文件为权威来源；启动时用 `--config <path>` 指定文件，默认读取当前目录的 `config.yaml`。编译产物通过 `--migrate` 显式执行迁移。生产配置见 [部署文档](docs/deployment.md)，备份、恢复、对象审计及 GC 见 [运维文档](docs/operations.md)，系统边界见 [架构文档](docs/architecture.md)，API 见 [协议文档](docs/protocol.md)。
 
-默认上限为单对象 80 MiB、单条目 256 MiB、预览 1 MiB；按需物化超时 10 分钟，对象删除宽限期 24 小时。条目不自动过期。服务器能够读取所有已上传内容，本项目不提供端到端加密。
+默认上限为单对象 80 MiB、单条目 256 MiB、预览 1 MiB；按需物化超时 10 分钟。服务端自动清理默认关闭，启用后由 `cleanup` 配置统一控制条目限制、对象回收宽限期与单轮预算。服务器能够读取所有已上传内容，本项目不提供端到端加密。

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ManagedConfigurationSchema, RetentionOptions, config } from "../src/config";
+import { CleanupOptions, ManagedConfigurationSchema, config } from "../src/config";
 import { db } from "../src/db";
 import { configLoadOptions, loadYamlConfigSync } from "../src/frame/config";
 import { createApp, generateSpecs, mountRoutes } from "../src/frame/hono";
@@ -33,32 +33,53 @@ describe("Clipboard X product contracts", () => {
     })).toThrow();
   });
 
-  it("keeps retention opt-in and validates positive limits", () => {
-    expect(config.retention).toEqual({ sweepIntervalMillis: 3_600_000 });
-    expect(RetentionOptions.parse({ maxItemsPerDevice: 10, maxItemsPerChannel: 20, maxAgeMillis: 60_000 }))
-      .toEqual({ maxItemsPerDevice: 10, maxItemsPerChannel: 20, maxAgeMillis: 60_000, sweepIntervalMillis: 3_600_000 });
-    expect(() => RetentionOptions.parse({ maxItemsPerDevice: 0 })).toThrow();
-    expect(() => RetentionOptions.parse({ maxItemsPerChannel: -1 })).toThrow();
-    expect(() => RetentionOptions.parse({ sweepIntervalMillis: 100 })).toThrow();
+  it("keeps cleanup opt-in and validates the complete policy", () => {
+    expect(config.cleanup).toEqual(CleanupOptions.parse(undefined));
+    const parsed = CleanupOptions.parse({
+      enabled: true,
+      triggers: { intervalMillis: 60_000 },
+      clipboard: {
+        maxItems: 100,
+        maxItemsPerDevice: 10,
+        maxItemsPerChannel: 20,
+        maxItemsPerDevicePerChannel: 5,
+        maxAgeMillis: 60_000,
+      },
+      objects: { enabled: true, graceMillis: 60_000 },
+      execution: { itemBatchSize: 10, objectBatchSize: 20, maxItemsPerRun: 100, maxObjectsPerRun: 200 },
+    });
+    expect(parsed.enabled).toBe(true);
+    expect(parsed.clipboard.maxItemsPerDevicePerChannel).toBe(5);
+    expect(() => CleanupOptions.parse({ clipboard: { maxItemsPerDevice: 0 } })).toThrow();
+    expect(() => CleanupOptions.parse({ objects: { graceMillis: 100 } })).toThrow();
+    expect(() => CleanupOptions.parse({ triggers: { intervalMillis: 100 } })).toThrow();
+    expect(() => CleanupOptions.parse({ execution: { itemBatchSize: 1_001 } })).toThrow();
   });
 
-  it("writes retention to formatted YAML and updates the active policy", () => {
-    const original = config.retention;
+  it("writes cleanup configuration to formatted YAML and updates the active policy", () => {
+    const original = config.cleanup;
     const before = readFileSync(config.path, "utf8");
     try {
-      expect(() => config.updateRetention({ maxItemsPerChannel: 0 })).toThrow();
+      expect(() => config.updateCleanup({ clipboard: { maxItemsPerChannel: 0 } })).toThrow();
       expect(readFileSync(config.path, "utf8")).toBe(before);
-      const saved = config.updateRetention({ maxItemsPerDevice: 12, maxAgeMillis: 86_400_000 });
-      expect(saved).toEqual({ maxItemsPerDevice: 12, maxAgeMillis: 86_400_000, sweepIntervalMillis: 3_600_000 });
-      expect(config.retention).toEqual(saved);
+      const saved = config.updateCleanup({
+        enabled: true,
+        clipboard: { maxItemsPerDevice: 12, maxAgeMillis: 86_400_000 },
+      });
+      expect(saved).toEqual(CleanupOptions.parse({
+        enabled: true,
+        clipboard: { maxItemsPerDevice: 12, maxAgeMillis: 86_400_000 },
+      }));
+      expect(config.cleanup).toEqual(saved);
       const yaml = readFileSync(config.path, "utf8");
+      expect(yaml).toContain("cleanup:\n");
       expect(yaml).toContain("max-items-per-device: 12\n");
       expect(yaml).toContain("max-age-millis: 86400000\n");
       expect(yaml).toContain("  - ");
-      expect(() => config.updateRetention({ maxItemsPerDevice: -1 })).toThrow();
+      expect(() => config.updateCleanup({ clipboard: { maxItemsPerDevice: -1 } })).toThrow();
       expect(readFileSync(config.path, "utf8")).toBe(yaml);
     } finally {
-      config.updateRetention(original);
+      config.updateCleanup(original);
     }
   });
 
@@ -66,14 +87,14 @@ describe("Clipboard X product contracts", () => {
     const overridePath = join(dirname(config.path), "config-test.yaml");
     expect(existsSync(overridePath)).toBe(false);
     try {
-      writeFileSync(overridePath, "retention:\n  max-items-per-device: 4\n");
+      writeFileSync(overridePath, "cleanup:\n  enabled: true\n");
       expect(configLoadOptions).toMatchObject({
         mode: "test",
         mergeModeFile: false,
         mergeImportFiles: false,
       });
-      expect(RetentionOptions.parse(loadYamlConfigSync(configLoadOptions).retention))
-        .toEqual(config.retention);
+      expect(CleanupOptions.parse(loadYamlConfigSync(configLoadOptions).cleanup))
+        .toEqual(config.cleanup);
     } finally {
       rmSync(overridePath, { force: true });
     }
@@ -109,7 +130,7 @@ describe("Clipboard X product contracts", () => {
     expect(document.paths["/admin/api/v1/devices"]?.get?.security).toEqual([
       { adminSession: [] },
     ]);
-    expect(document.paths["/admin/api/v1/retention"]?.patch?.security).toEqual([
+    expect(document.paths["/admin/api/v1/configuration/cleanup"]?.patch?.security).toEqual([
       { adminSession: [] },
     ]);
   });

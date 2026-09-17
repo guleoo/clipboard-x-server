@@ -43,9 +43,11 @@ export interface ItemListFilter {
   readonly cursor?: { readonly createdAt: number; readonly id: string }; readonly limit: number
 }
 
-export interface RetentionPolicy {
-  readonly maxItemsPerDevice?: number
+export interface ClipboardCleanupPolicy {
+  readonly maxItems?: number
   readonly maxItemsPerChannel?: number
+  readonly maxItemsPerDevice?: number
+  readonly maxItemsPerDevicePerChannel?: number
   readonly maxAgeMillis?: number
 }
 
@@ -224,7 +226,7 @@ export class ClipboardRepo {
     `)
   }
 
-  retentionCandidates(policy: RetentionPolicy, now: number, limit: number, scope?: {
+  cleanupCandidates(policy: ClipboardCleanupPolicy, now: number, limit: number, scope?: {
     readonly deviceId: string; readonly channelId: string
   }): readonly string[] {
     const eligible = sql`
@@ -247,6 +249,12 @@ export class ClipboardRepo {
           WHERE channel_id = ${scope.channelId} AND visible = 1 AND deleted_at IS NULL
           ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ${policy.maxItemsPerChannel})
       `)
+      if (policy.maxItemsPerDevicePerChannel !== undefined) excess.push(sql`
+        i.id IN (SELECT id FROM clipboard_items
+          WHERE origin_device_id = ${scope.deviceId} AND channel_id = ${scope.channelId}
+            AND visible = 1 AND deleted_at IS NULL
+          ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ${policy.maxItemsPerDevicePerChannel})
+      `)
       if (policy.maxAgeMillis !== undefined) excess.push(sql`
         i.created_at < ${now - policy.maxAgeMillis}
           AND (i.origin_device_id = ${scope.deviceId} OR i.channel_id = ${scope.channelId})
@@ -260,15 +268,23 @@ export class ClipboardRepo {
       `).map((row) => row.id)
     }
     const excess: SQL[] = []
+    if (policy.maxItems !== undefined) excess.push(sql`global_position > ${policy.maxItems}`)
     if (policy.maxItemsPerDevice !== undefined) excess.push(sql`device_position > ${policy.maxItemsPerDevice}`)
     if (policy.maxItemsPerChannel !== undefined) excess.push(sql`channel_position > ${policy.maxItemsPerChannel}`)
+    if (policy.maxItemsPerDevicePerChannel !== undefined) {
+      excess.push(sql`device_channel_position > ${policy.maxItemsPerDevicePerChannel}`)
+    }
     if (policy.maxAgeMillis !== undefined) excess.push(sql`created_at < ${now - policy.maxAgeMillis}`)
     if (excess.length === 0) return []
     return this.all<{ id: string }>(sql`
       WITH ranked AS (
         SELECT id, origin_device_id, channel_id, created_at,
+          row_number() OVER (ORDER BY created_at DESC, id DESC) AS global_position,
           row_number() OVER (PARTITION BY origin_device_id ORDER BY created_at DESC, id DESC) AS device_position,
-          row_number() OVER (PARTITION BY channel_id ORDER BY created_at DESC, id DESC) AS channel_position
+          row_number() OVER (PARTITION BY channel_id ORDER BY created_at DESC, id DESC) AS channel_position,
+          row_number() OVER (
+            PARTITION BY origin_device_id, channel_id ORDER BY created_at DESC, id DESC
+          ) AS device_channel_position
         FROM clipboard_items WHERE visible = 1 AND deleted_at IS NULL
       )
       SELECT i.id FROM ranked i WHERE (${sql.join(excess, sql` OR `)})

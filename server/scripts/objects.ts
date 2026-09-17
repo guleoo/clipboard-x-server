@@ -76,7 +76,7 @@ async function audit(): Promise<readonly AuditIssue[]> {
 }
 
 async function garbageCollect(removeFiles: boolean): Promise<void> {
-  const cutoff = Date.now() - config.objectGcGraceMillis
+  const cutoff = Date.now() - config.cleanup.objects.graceMillis
   const plan = objectCollector.plan()
   const temporaryDirectory = join(config.objectDirectory, ".tmp")
   const staleParts: string[] = []
@@ -92,7 +92,11 @@ async function garbageCollect(removeFiles: boolean): Promise<void> {
     temporaryFileCount: staleParts.length,
   }))
   if (!removeFiles) return
-  const deletedObjects = objectCollector.collect()
+  const deletedObjects = objectCollector.collect(Date.now(), {
+    ...config.cleanup,
+    enabled: true,
+    objects: { ...config.cleanup.objects, enabled: true },
+  })
   for (const path of staleParts) await rm(path, { force: true })
   console.log(JSON.stringify({ event: "objects.gc.complete", deletedObjects, deletedTemporaryFiles: staleParts.length }))
 }

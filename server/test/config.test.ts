@@ -16,6 +16,7 @@ describe("configuration", () => {
       "administrator",
       "app",
       "channels",
+      "cleanup",
       "content",
       "database",
       "devices",

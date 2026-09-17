@@ -121,15 +121,53 @@ const LimitsOptions = zz.object({
 const LifetimesOptions = zz.object({
   keyOverlapMillis: nonnegativeInteger.max(86_400_000).default(300_000),
   materializationTtlMillis: positiveInteger.min(30_000).max(86_400_000).default(600_000),
-  objectGcGraceMillis: positiveInteger.min(60_000).max(365 * 24 * 60 * 60 * 1_000).default(86_400_000),
-}).strict().default({ keyOverlapMillis: 300_000, materializationTtlMillis: 600_000, objectGcGraceMillis: 86_400_000 });
+}).strict().default({ keyOverlapMillis: 300_000, materializationTtlMillis: 600_000 });
 
-export const RetentionOptions = zz.object({
-  maxItemsPerDevice: positiveInteger.optional(),
+const CleanupTriggersOptions = zz.object({
+  onStartup: zz.boolean().default(true),
+  afterPublish: zz.boolean().default(true),
+  scheduled: zz.boolean().default(true),
+  intervalMillis: positiveInteger.min(60_000).max(86_400_000).default(3_600_000),
+}).strict().default({ onStartup: true, afterPublish: true, scheduled: true, intervalMillis: 3_600_000 });
+
+const CleanupClipboardOptions = zz.object({
+  maxItems: positiveInteger.optional(),
   maxItemsPerChannel: positiveInteger.optional(),
+  maxItemsPerDevice: positiveInteger.optional(),
+  maxItemsPerDevicePerChannel: positiveInteger.optional(),
   maxAgeMillis: positiveInteger.optional(),
-  sweepIntervalMillis: positiveInteger.min(60_000).max(86_400_000).default(3_600_000),
-}).strict().default({ sweepIntervalMillis: 3_600_000 });
+}).strict().default({});
+
+const CleanupObjectsOptions = zz.object({
+  enabled: zz.boolean().default(true),
+  graceMillis: positiveInteger.min(60_000).max(365 * 24 * 60 * 60 * 1_000).default(86_400_000),
+}).strict().default({ enabled: true, graceMillis: 86_400_000 });
+
+const CleanupExecutionOptions = zz.object({
+  itemBatchSize: positiveInteger.max(1_000).default(100),
+  objectBatchSize: positiveInteger.max(1_000).default(100),
+  maxItemsPerRun: positiveInteger.max(1_000_000).default(10_000),
+  maxObjectsPerRun: positiveInteger.max(1_000_000).default(10_000),
+}).strict().default({
+  itemBatchSize: 100,
+  objectBatchSize: 100,
+  maxItemsPerRun: 10_000,
+  maxObjectsPerRun: 10_000,
+});
+
+export const CleanupOptions = zz.object({
+  enabled: zz.boolean().default(false),
+  triggers: CleanupTriggersOptions,
+  clipboard: CleanupClipboardOptions,
+  objects: CleanupObjectsOptions,
+  execution: CleanupExecutionOptions,
+}).strict().default({
+  enabled: false,
+  triggers: { onStartup: true, afterPublish: true, scheduled: true, intervalMillis: 3_600_000 },
+  clipboard: {},
+  objects: { enabled: true, graceMillis: 86_400_000 },
+  execution: { itemBatchSize: 100, objectBatchSize: 100, maxItemsPerRun: 10_000, maxObjectsPerRun: 10_000 },
+});
 
 const ContentOptions = zz.object({
   supportedMimeTypes: zz.array(MimeTypeSchema).min(1).max(64).default([
@@ -158,7 +196,7 @@ export type DeviceConfiguration = ManagedConfiguration["devices"][number];
 export type DeviceKeyConfiguration = DeviceConfiguration["keys"][number];
 export type ChannelConfiguration = ManagedConfiguration["channels"][number];
 
-export class RetentionOverrideError extends ConfigError {}
+export class CleanupOverrideError extends ConfigError {}
 
 export function deviceKeyId(value: string): string {
   const match = deviceKeyPattern.exec(value);
@@ -247,12 +285,12 @@ function writeManaged(value: ManagedConfiguration): void {
   writeConfig(renderManaged(value));
 }
 
-function renderRetention(value: zz.output<typeof RetentionOptions>): string {
+function renderCleanup(value: zz.output<typeof CleanupOptions>): string {
   const document = parseDocument(readFileSync(configPath, "utf8"));
   if (document.errors.length || !isConfigObject(document.toJS())) {
     throw new ConfigError("Configuration root must be a valid YAML object", { path: configPath });
   }
-  document.set("retention", sourceValue(value));
+  document.set("cleanup", sourceValue(value));
   return document.toString({ indent: 2, lineWidth: 0 });
 }
 
@@ -262,7 +300,7 @@ const storage = Config.section("storage", StorageOptions);
 const web = Config.section("web", WebOptions);
 const limits = Config.section("limits", LimitsOptions);
 const lifetimes = Config.section("lifetimes", LifetimesOptions);
-let retention = RetentionOptions.parse(Config.section("retention", RetentionOptions));
+let cleanup = CleanupOptions.parse(Config.section("cleanup", CleanupOptions));
 const content = Config.section("content", ContentOptions);
 const http = Config.section("http", HttpOptions);
 
@@ -282,8 +320,7 @@ export const config = Object.freeze({
   maxPreviewBytes: limits.maxPreviewBytes,
   keyOverlapMillis: lifetimes.keyOverlapMillis,
   materializationTtlMillis: lifetimes.materializationTtlMillis,
-  objectGcGraceMillis: lifetimes.objectGcGraceMillis,
-  get retention() { return retention; },
+  get cleanup() { return cleanup; },
   supportedMimeTypes: content.supportedMimeTypes,
   jsonBodyLimitBytes: http.jsonBodyLimitBytes,
   rateLimit: http.rateLimit,
@@ -294,16 +331,16 @@ export const config = Object.freeze({
   read(): ManagedConfiguration {
     return cloneManaged(managed);
   },
-  updateRetention(input: zz.input<typeof RetentionOptions>): zz.output<typeof RetentionOptions> {
-    const next = RetentionOptions.parse(input);
+  updateCleanup(input: zz.input<typeof CleanupOptions>): zz.output<typeof CleanupOptions> {
+    const next = CleanupOptions.parse(input);
     const previous = readFileSync(configPath, "utf8");
-    writeConfig(renderRetention(next));
+    writeConfig(renderCleanup(next));
     try {
-      const effective = RetentionOptions.parse(loadYamlConfigSync(configLoadOptions).retention);
+      const effective = CleanupOptions.parse(loadYamlConfigSync(configLoadOptions).cleanup);
       if (JSON.stringify(effective) !== JSON.stringify(next)) {
-        throw new RetentionOverrideError("Retention is overridden by an imported or environment configuration", { path: configPath });
+        throw new CleanupOverrideError("Cleanup is overridden by an imported or environment configuration", { path: configPath });
       }
-      retention = effective;
+      cleanup = effective;
       return effective;
     } catch (cause) {
       writeConfig(previous);

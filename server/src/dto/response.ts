@@ -1,6 +1,6 @@
 import { zz } from "../frame/zod"
 import { DeviceIconColorSchema, DeviceIconSchema, MimeTypeSchema, Sha256Schema, UuidSchema } from "../common/validation"
-import { RetentionOptions } from "../config"
+import { CleanupOptions } from "../config"
 
 const epoch = zz.number().int().nonnegative()
 const DeviceKeySchema = zz.object({
@@ -94,8 +94,8 @@ export const ErrorResponseSchema = zz.object({ error: zz.object({
 }) }).meta({ $id: "ErrorResponse" })
 
 export const operationResponseSchemas: Readonly<Record<string, zz.ZodType>> = Object.freeze({
-  getAdminRetention: RetentionOptions,
-  updateAdminRetention: RetentionOptions,
+  getAdminCleanupConfiguration: CleanupOptions,
+  updateAdminCleanupConfiguration: CleanupOptions,
   getLiveness: HealthSchema,
   getReadiness: HealthSchema,
   getDevice: DeviceSchema,

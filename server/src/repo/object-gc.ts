@@ -24,10 +24,10 @@ export class ObjectGcRepo {
     return { objectCount: result?.count ?? 0, objectBytes: result?.bytes ?? 0 }
   }
 
-  candidates(cutoff: number): readonly CollectableObject[] {
+  candidates(cutoff: number, limit: number): readonly CollectableObject[] {
     return sqliteValue(db.all<CollectableObject>(sql`
       SELECT o.id, o.sha256, o.path, o.size FROM objects o WHERE ${this.filter(cutoff)}
-      ORDER BY o.unreferenced_at, o.id LIMIT 100
+      ORDER BY o.unreferenced_at, o.id LIMIT ${limit}
     `))
   }
 

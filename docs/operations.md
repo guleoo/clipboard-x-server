@@ -14,27 +14,47 @@ To restore, stop the service, move the current data directory aside, restore `co
 
 Before upgrades, back up data and run the new executable against a copy. Migrations are transactional and only move forward; a database newer than the binary fails explicitly.
 
-## Server-side retention
+## Server-side cleanup
 
-Retention is opt-in. Add only the limits you want to `config.yaml`, then restart the server:
+Cleanup is opt-in and can be edited from the Web configuration page. The complete YAML structure is:
 
 ```yaml
-retention:
-  max-items-per-device: 1000
-  max-items-per-channel: 5000
-  max-age-millis: 2592000000
-  sweep-interval-millis: 3600000
+cleanup:
+  enabled: true
+  triggers:
+    on-startup: true
+    after-publish: true
+    scheduled: true
+    interval-millis: 3600000
+  clipboard:
+    max-items: 10000
+    max-items-per-channel: 5000
+    max-items-per-device: 1000
+    max-items-per-device-per-channel: 500
+    max-age-millis: 2592000000
+  objects:
+    enabled: true
+    grace-millis: 86400000
+  execution:
+    item-batch-size: 100
+    object-batch-size: 100
+    max-items-per-run: 10000
+    max-objects-per-run: 10000
 ```
 
-The device limit counts a device's items across all Channels, including publications from the
-virtual Server device. The Channel limit counts items from all its devices. Items are ordered by
-their creation timestamp, then ID; the oldest are removed first. Omit any limit to leave that
-dimension unlimited. With no limits configured, automatic retention and GC are disabled.
+The global limit counts every visible item. The device limit counts one device across all Channels,
+including publications from the virtual Server device; the Channel limit counts every device in that
+Channel; the device-in-Channel limit controls their intersection. Items are ordered by creation time,
+then ID, and the oldest eligible items are removed first. Omit a clipboard limit to leave only that
+dimension unlimited. `cleanup.enabled` is the master switch, while object collection has its own
+sub-switch and grace period. Per-run limits bound cleanup load; remaining candidates wait for the next
+trigger.
 
-The server enforces limits when a publication finishes, on startup, and at each configured
-sweep interval (default one hour). Active uploads and content requests are deferred until a
-later sweep. Retention removes only the server copy and does not emit a `remove` sync event;
-client history follows each client's own retention policy. A removed item ID remains reserved
+The trigger switches independently control cleanup after publication, at startup, and on the
+configured interval (default one hour). Saving a stricter policy from the Web page also runs one
+bounded cleanup immediately. Active uploads and content requests are deferred until a later run.
+Cleanup removes only the server copy and does not emit a `remove` sync event; client history follows
+each client's own policy. A removed item ID remains reserved
 and cannot be published again. Back up before enabling limits: server-side removal is irreversible
 without a backup. If a client retained only a preview, it can no longer request full content from
 the server after that item has been removed.
@@ -51,9 +71,9 @@ bun run server/scripts/objects.ts gc --delete --config /path/to/config.yaml
 ```
 
 Audit is read-only. The manual GC command is report-only by default. `--delete` removes only
-unreferenced objects older than `lifetimes.object-gc-grace-millis`, measured from the time the last
-reference was released. When retention is enabled, the server runs the same object collection
-automatically at startup and on each sweep. An object still referenced by another item or upload
+unreferenced objects older than `cleanup.objects.grace-millis`, measured from the time the last
+reference was released. When cleanup and object collection are enabled, the server runs the same
+collection according to the configured triggers and execution budget. An object still referenced by another item or upload
 is not removed. File deletion is irreversible without a backup.
 
 ## Failure drills
@@ -63,7 +83,7 @@ is not removed. File deletion is irreversible without a backup.
 3. Stop the temporary server and record duration plus audit result.
 4. For a missing-object drill, remove one object only in the disposable restore and confirm strict audit reports `missing_file`; never mutate production data for the drill.
 
-Logs are newline-delimited JSON and omit request/response bodies, credentials, cookies, and full object paths. Monitor 5xx responses, `failed`/`expired` transfers, readiness, disk usage, and audit failures. Rotate service logs through the process supervisor.
+Console and file logs use human-readable text and omit request/response bodies, credentials, cookies, and full object paths. Monitor 5xx responses, `failed`/`expired` transfers, readiness, disk usage, and audit failures. Rotate service logs through the process supervisor.
 
 Run `bun run test:network` where local listening is permitted to verify real Bun `Fetch` streaming in addition to the default port-free Hono route tests.
 

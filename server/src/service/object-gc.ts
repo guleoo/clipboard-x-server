@@ -7,14 +7,19 @@ export class ObjectCollector {
   private readonly repo = new ObjectGcRepo()
 
   plan(now = Date.now()) {
-    return this.repo.plan(now - config.objectGcGraceMillis)
+    return this.repo.plan(now - config.cleanup.objects.graceMillis)
   }
 
-  collect(now = Date.now()): number {
-    const cutoff = now - config.objectGcGraceMillis
+  collect(now = Date.now(), options = config.cleanup): number {
+    if (!options.enabled || !options.objects.enabled) return 0
+    const cutoff = now - options.objects.graceMillis
     let removed = 0
-    while (true) {
-      const candidates = this.repo.candidates(cutoff)
+    while (removed < options.execution.maxObjectsPerRun) {
+      const limit = Math.min(
+        options.execution.objectBatchSize,
+        options.execution.maxObjectsPerRun - removed,
+      )
+      const candidates = this.repo.candidates(cutoff, limit)
       let collected = 0
       for (const object of candidates) {
         if (object.path !== objectStore.path(object.sha256)) {
@@ -26,8 +31,9 @@ export class ObjectCollector {
           collected += 1
         }
       }
-      if (candidates.length < 100 || collected === 0) return removed
+      if (candidates.length < limit || collected === 0) return removed
     }
+    return removed
   }
 }
 
