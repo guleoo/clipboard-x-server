@@ -11,6 +11,10 @@ Before a client connects, the administrator registers the client-generated Devic
 key bound to it. Every `/api/v1` request requires both `Authorization: Bearer <apiKey>` and
 `X-Clipboard-X-Device-Id: <deviceId>`; the header must match the device bound to the key.
 `PUT /api/v1/device/profile` accepts `{ tag, iconKind, iconColor? }` and updates only client-owned profile data.
+`iconKind` is a nonempty, unconstrained plain-text icon identifier (up to 128 characters, excluding
+CR, LF, and NUL); it is not a server-controlled enum and does not transfer image bytes. Device,
+channel-member, and clipboard-item origin responses return the same identifier. Each client
+maps known identifiers to local icons and uses a generic fallback for unknown ones.
 `iconColor` is an optional object: `{ "light": "#ffffff", "dark": "#505050" }`. Colors use lowercase
 `#RRGGBB`; `light` is required within the object, while `dark` is optional. If the whole field is
 omitted, the server stores `{ "light": "#ffffff" }`. If `dark` is omitted, clients derive a suitable

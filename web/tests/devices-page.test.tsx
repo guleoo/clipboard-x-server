@@ -2,6 +2,7 @@ import { afterEach, expect, mock, test } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import type { Device } from "../src/api"
 import type { Client } from "../src/api/client"
+import { DeviceSchema } from "../src/api/schemas"
 
 if (!("document" in globalThis)) GlobalRegistrator.register({ url: "http://localhost" })
 
@@ -56,8 +57,10 @@ test("registers the client DeviceId without asking the administrator for client-
 })
 
 test("shows each client's configured device icon beside its name", async () => {
-  const kinds = ["desktop", "laptop", "phone", "tablet", "server", "other"] as const
-  const icons = ["monitor", "laptop", "smartphone", "tablet", "server", "circle-user-round"]
+  const kinds = ["computer", "laptop", "tablet", "server", "android", "apple", "windows",
+    "linux", "debian", "archlinux", "unknown-os", "__proto__"] as const
+  const icons = ["computer", "laptop", "tablet", "server", "android-fill", "apple-fill",
+    "windows-fill", "linux", "debian", "archlinux", "computer", "computer"]
   const devices: Device[] = kinds.map((iconKind, index) => ({
     id: `device-${index}`,
     tag: `Device ${index}`,
@@ -70,6 +73,8 @@ test("shows each client's configured device icon beside its name", async () => {
     kind: "client",
     keys: [],
   }))
+  expect(DeviceSchema.parse(devices[9]).iconKind).toBe("archlinux")
+  expect(DeviceSchema.parse(devices[10]).iconKind).toBe("unknown-os")
   const api = { devices: mock(async () => devices) }
   const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
@@ -83,8 +88,9 @@ test("shows each client's configured device icon beside its name", async () => {
 
   await screen.findByRole("heading", { name: "Device 0" })
   for (const [index, kind] of icons.entries()) {
-    const icon = screen.getByRole("heading", { name: `Device ${index}` }).parentElement?.querySelector("svg")
-    expect(icon?.getAttribute("class")).toContain(`lucide-${kind}`)
+    const icon = screen.getByRole("heading", { name: `Device ${index}` }).parentElement
+      ?.querySelector<HTMLSpanElement>("span[aria-hidden]")
+    expect(icon?.style.maskImage).toContain(`/icons/device/${kind}-symbolic.svg`)
     expect(icon?.style.getPropertyValue("--device-icon-light")).toBe("#123456")
     expect(icon?.style.getPropertyValue("--device-icon-dark")).toBe("#45abc9")
   }

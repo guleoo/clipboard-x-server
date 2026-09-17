@@ -4,6 +4,7 @@ const Identifier = z.string().min(1)
 const Timestamp = z.number().int().nonnegative()
 const HexColor = z.string().regex(/^#[0-9a-f]{6}$/u)
 const IconColor = z.object({ light: HexColor, dark: HexColor.optional() })
+const DeviceIcon = z.string().min(1).max(128).refine((value) => !/[\r\n\0]/u.test(value))
 
 export const AdministratorSchema = z.object({ id: z.literal(1), username: z.string(), createdAt: Timestamp })
 export const DeviceKeySchema = z.object({
@@ -15,7 +16,7 @@ export const DeviceKeySchema = z.object({
 export const DeviceSchema = z.object({
   id: Identifier,
   tag: z.string(),
-  iconKind: z.enum(["desktop", "laptop", "phone", "tablet", "server", "other"]),
+  iconKind: DeviceIcon,
   iconColor: IconColor,
   state: z.string(),
   lastSeenAt: Timestamp,
@@ -29,7 +30,7 @@ export const IssuedDeviceKeySchema = DeviceKeySchema.extend({ key: z.string().mi
 export const ChannelMemberSchema = z.object({
   id: Identifier,
   tag: z.string(),
-  iconKind: z.string(),
+  iconKind: DeviceIcon,
   iconColor: IconColor,
   state: z.string(),
   kind: z.enum(["client", "virtual"]),
@@ -66,7 +67,7 @@ export const ClipboardItemSchema = z.object({
   origin: z.object({
     deviceId: Identifier,
     tag: z.string(),
-    iconKind: z.string(),
+    iconKind: DeviceIcon,
     iconColor: IconColor,
     kind: z.enum(["client", "virtual"]),
   }),

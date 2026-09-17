@@ -7,7 +7,7 @@ export const MimeTypeSchema = z.string().max(255).regex(
   /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+(?:;[^\r\n]{1,128})?$/iu,
 )
 export const SafeTextSchema = (maximum: number) => z.string().max(maximum).refine((value) => !/[\r\n\0]/u.test(value))
-export const DeviceIconSchema = z.enum(["desktop", "laptop", "phone", "tablet", "server", "other"])
+export const DeviceIconSchema = SafeTextSchema(128).min(1)
 const HexColorSchema = z.string().regex(/^#[0-9a-f]{6}$/u)
 export const DeviceIconColorSchema = z.object({
   light: HexColorSchema,

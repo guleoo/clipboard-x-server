@@ -1,19 +1,6 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import {
-  CircleUserRoundIcon,
-  KeyRoundIcon,
-  LaptopIcon,
-  MonitorIcon,
-  PlusIcon,
-  PowerIcon,
-  RotateCwIcon,
-  ServerIcon,
-  SmartphoneIcon,
-  TabletIcon,
-  Trash2Icon,
-  type LucideIcon,
-} from "lucide-react"
+import { KeyRoundIcon, PlusIcon, PowerIcon, RotateCwIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 import { useApi, type Device, type IssuedDeviceKey } from "@/api"
 import { ConfirmAction } from "@/components/domain/confirm-action"
@@ -33,13 +20,17 @@ import { Label } from "@/frame/components/ui/label"
 import { Page } from "@/frame/layout"
 import { formatDate, messageOf } from "@/utils/format"
 
-const deviceIcons: Record<Device["iconKind"], LucideIcon> = {
-  desktop: MonitorIcon,
-  laptop: LaptopIcon,
-  phone: SmartphoneIcon,
-  tablet: TabletIcon,
-  server: ServerIcon,
-  other: CircleUserRoundIcon,
+const deviceIcons: Readonly<Record<string, string>> = {
+  computer: "computer-symbolic.svg",
+  laptop: "laptop-symbolic.svg",
+  tablet: "tablet-symbolic.svg",
+  server: "server-symbolic.svg",
+  android: "android-fill-symbolic.svg",
+  apple: "apple-fill-symbolic.svg",
+  windows: "windows-fill-symbolic.svg",
+  linux: "linux-symbolic.svg",
+  debian: "debian-symbolic.svg",
+  archlinux: "archlinux-symbolic.svg",
 }
 
 function darkIconColor(light: string): string {
@@ -50,19 +41,22 @@ function darkIconColor(light: string): string {
 }
 
 function DeviceHeading({ device }: { readonly device: Device }) {
-  const Icon = deviceIcons[device.iconKind]
+  const icon = Object.hasOwn(deviceIcons, device.iconKind)
+    ? deviceIcons[device.iconKind]
+    : deviceIcons.computer
   const colors = {
     "--device-icon-light": device.iconColor.dark ?? darkIconColor(device.iconColor.light),
     "--device-icon-dark": device.iconColor.light,
+    maskImage: `url("/icons/device/${icon}")`,
+    maskPosition: "center",
+    maskRepeat: "no-repeat",
+    maskSize: "contain",
   } as CSSProperties
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <Icon
-        className="size-5 shrink-0 text-[var(--device-icon-light)] dark:text-[var(--device-icon-dark)]"
-        style={colors}
-        aria-hidden="true"
-      />
+      <span className="size-5 shrink-0 bg-[var(--device-icon-light)] dark:bg-[var(--device-icon-dark)]"
+        style={colors} aria-hidden="true" />
       <h2 className="min-w-0 truncate font-semibold">{device.tag}</h2>
     </div>
   )

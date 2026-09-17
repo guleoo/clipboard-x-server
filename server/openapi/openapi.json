@@ -175,14 +175,8 @@
           },
           "iconKind": {
             "type": "string",
-            "enum": [
-              "desktop",
-              "laptop",
-              "phone",
-              "tablet",
-              "server",
-              "other"
-            ]
+            "minLength": 1,
+            "maxLength": 128
           },
           "iconColor": {
             "type": "object",
@@ -325,14 +319,8 @@
                 },
                 "iconKind": {
                   "type": "string",
-                  "enum": [
-                    "desktop",
-                    "laptop",
-                    "phone",
-                    "tablet",
-                    "server",
-                    "other"
-                  ]
+                  "minLength": 1,
+                  "maxLength": 128
                 },
                 "iconColor": {
                   "type": "object",
@@ -496,14 +484,8 @@
               },
               "iconKind": {
                 "type": "string",
-                "enum": [
-                  "desktop",
-                  "laptop",
-                  "phone",
-                  "tablet",
-                  "server",
-                  "other"
-                ]
+                "minLength": 1,
+                "maxLength": 128
               },
               "iconColor": {
                 "type": "object",
@@ -763,14 +745,8 @@
           },
           "iconKind": {
             "type": "string",
-            "enum": [
-              "desktop",
-              "laptop",
-              "phone",
-              "tablet",
-              "server",
-              "other"
-            ]
+            "minLength": 1,
+            "maxLength": 128
           },
           "iconColor": {
             "type": "object",
@@ -5344,14 +5320,8 @@
                   },
                   "iconKind": {
                     "type": "string",
-                    "enum": [
-                      "desktop",
-                      "laptop",
-                      "phone",
-                      "tablet",
-                      "server",
-                      "other"
-                    ]
+                    "minLength": 1,
+                    "maxLength": 128
                   },
                   "iconColor": {
                     "type": "object",

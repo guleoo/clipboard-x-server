@@ -84,6 +84,20 @@ describe("pre-registered devices with client-owned profiles", () => {
       iconColor: { light: "#db9421" } }).iconColor).toEqual({ light: "#db9421" })
   })
 
+  it("stores arbitrary icon identifiers without prescribing a client's icon library", async () => {
+    const deviceId = crypto.randomUUID()
+    deviceService.create({ id: deviceId })
+    const profile = { tag: "Arch workstation", iconKind: "archlinux" }
+    expect(DeviceProfileSchema.safeParse(profile).success).toBe(true)
+    expect(deviceService.updateProfile(deviceId, profile).iconKind).toBe("archlinux")
+    await deviceService.synchronize()
+    expect(deviceService.get(deviceId).iconKind).toBe("archlinux")
+    expect(DeviceProfileSchema.safeParse({ ...profile, iconKind: "future-os" }).success).toBe(true)
+    for (const iconKind of ["", "x".repeat(129), "bad\nvalue", "bad\0value"]) {
+      expect(DeviceProfileSchema.safeParse({ ...profile, iconKind }).success).toBe(false)
+    }
+  })
+
   it("rejects issuing a key before its DeviceId is registered", async () => {
     await expect(deviceService.issueKey(crypto.randomUUID())).rejects.toMatchObject({
       errorCode: "not_found",
