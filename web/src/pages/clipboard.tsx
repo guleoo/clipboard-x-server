@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { HashIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
-import { useApi, type Channel, type ClipboardItem } from "@/api"
+import { useApi, type Channel, type ClipboardItem, type Transfer } from "@/api"
 import { ChannelEditor } from "@/components/domain/channel-editor"
 import { ClipboardItemCard } from "@/components/domain/clipboard-item"
 import { ConfirmAction } from "@/components/domain/confirm-action"
@@ -36,6 +36,49 @@ function ChannelList({ channels, selected, select }: {
         </button>
       ))}
     </nav>
+  )
+}
+
+function columnCount(): number {
+  if (window.innerWidth >= 1536) return 3
+  if (window.innerWidth >= 640) return 2
+  return 1
+}
+
+function ClipboardFeed({ items, transfers, remove }: {
+  readonly items: readonly ClipboardItem[]
+  readonly transfers: ReadonlyMap<string, Transfer>
+  readonly remove: (item: ClipboardItem) => void
+}) {
+  const [count, setCount] = useState(columnCount)
+  useEffect(() => {
+    const update = () => setCount(columnCount())
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
+  const columns = useMemo(() => {
+    const result = Array.from({ length: count }, () => [] as ClipboardItem[])
+    const newestFirst = [...items].sort((left, right) =>
+      right.createdAt - left.createdAt || right.id.localeCompare(left.id))
+    newestFirst.forEach((item, index) => result[index % count]!.push(item))
+    return result
+  }, [count, items])
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+      {columns.map((column, index) => (
+        <div key={index} className="min-w-0" data-testid="clipboard-column">
+          {column.map((item) => (
+            <ClipboardItemCard
+              key={item.id}
+              item={item}
+              {...(transfers.get(item.id) ? { transfer: transfers.get(item.id)! } : {})}
+              remove={remove}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -196,16 +239,11 @@ export function ClipboardPage() {
               </label>
               {items.isPending ? <LoadingState /> : items.error ? <ErrorState error={items.error} retry={() => items.refetch()} />
                 : items.data.items.length ? (
-                  <div className="columns-1 gap-4 sm:columns-2 2xl:columns-3">
-                    {items.data.items.map((item) => (
-                      <ClipboardItemCard
-                        key={item.id}
-                        item={item}
-                        {...(recentTransferByItem.get(item.id) ? { transfer: recentTransferByItem.get(item.id)! } : {})}
-                        remove={(value) => removeItem.mutate(value)}
-                      />
-                    ))}
-                  </div>
+                  <ClipboardFeed
+                    items={items.data.items}
+                    transfers={recentTransferByItem}
+                    remove={(value) => removeItem.mutate(value)}
+                  />
                 ) : (
                   <div className="grid min-h-72 place-items-center border-y border-dashed text-center">
                     <div>

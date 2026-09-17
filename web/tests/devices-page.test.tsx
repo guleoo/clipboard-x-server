@@ -54,3 +54,38 @@ test("registers the client DeviceId without asking the administrator for client-
 
   await waitFor(() => expect(createDevice).toHaveBeenCalledWith(deviceId))
 })
+
+test("shows each client's configured device icon beside its name", async () => {
+  const kinds = ["desktop", "laptop", "phone", "tablet", "server", "other"] as const
+  const icons = ["monitor", "laptop", "smartphone", "tablet", "server", "circle-user-round"]
+  const devices: Device[] = kinds.map((iconKind, index) => ({
+    id: `device-${index}`,
+    tag: `Device ${index}`,
+    iconKind,
+    iconColor: { light: "#45abc9", dark: "#123456" },
+    state: "offline",
+    lastSeenAt: 0,
+    createdAt: 1,
+    updatedAt: 1,
+    kind: "client",
+    keys: [],
+  }))
+  const api = { devices: mock(async () => devices) }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+  render(
+    <ApiProvider client={api as unknown as Client}>
+      <QueryClientProvider client={query}>
+        <DevicesPage />
+      </QueryClientProvider>
+    </ApiProvider>,
+  )
+
+  await screen.findByRole("heading", { name: "Device 0" })
+  for (const [index, kind] of icons.entries()) {
+    const icon = screen.getByRole("heading", { name: `Device ${index}` }).parentElement?.querySelector("svg")
+    expect(icon?.getAttribute("class")).toContain(`lucide-${kind}`)
+    expect(icon?.style.getPropertyValue("--device-icon-light")).toBe("#123456")
+    expect(icon?.style.getPropertyValue("--device-icon-dark")).toBe("#45abc9")
+  }
+})

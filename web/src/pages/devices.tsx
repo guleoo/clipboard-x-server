@@ -1,6 +1,19 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { KeyRoundIcon, PlusIcon, PowerIcon, RotateCwIcon, Trash2Icon } from "lucide-react"
+import {
+  CircleUserRoundIcon,
+  KeyRoundIcon,
+  LaptopIcon,
+  MonitorIcon,
+  PlusIcon,
+  PowerIcon,
+  RotateCwIcon,
+  ServerIcon,
+  SmartphoneIcon,
+  TabletIcon,
+  Trash2Icon,
+  type LucideIcon,
+} from "lucide-react"
 import { toast } from "sonner"
 import { useApi, type Device, type IssuedDeviceKey } from "@/api"
 import { ConfirmAction } from "@/components/domain/confirm-action"
@@ -19,6 +32,41 @@ import { Input } from "@/frame/components/ui/input"
 import { Label } from "@/frame/components/ui/label"
 import { Page } from "@/frame/layout"
 import { formatDate, messageOf } from "@/utils/format"
+
+const deviceIcons: Record<Device["iconKind"], LucideIcon> = {
+  desktop: MonitorIcon,
+  laptop: LaptopIcon,
+  phone: SmartphoneIcon,
+  tablet: TabletIcon,
+  server: ServerIcon,
+  other: CircleUserRoundIcon,
+}
+
+function darkIconColor(light: string): string {
+  const channels = [1, 3, 5].map((index) => Number.parseInt(light.slice(index, index + 2), 16))
+  const highest = Math.max(...channels)
+  const scale = highest > 96 ? 96 / highest : 1
+  return `#${channels.map((value) => Math.round(value * scale).toString(16).padStart(2, "0")).join("")}`
+}
+
+function DeviceHeading({ device }: { readonly device: Device }) {
+  const Icon = deviceIcons[device.iconKind]
+  const colors = {
+    "--device-icon-light": device.iconColor.dark ?? darkIconColor(device.iconColor.light),
+    "--device-icon-dark": device.iconColor.light,
+  } as CSSProperties
+
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <Icon
+        className="size-5 shrink-0 text-[var(--device-icon-light)] dark:text-[var(--device-icon-dark)]"
+        style={colors}
+        aria-hidden="true"
+      />
+      <h2 className="min-w-0 truncate font-semibold">{device.tag}</h2>
+    </div>
+  )
+}
 
 function IssuedKeyDialog({ issued, clear }: { readonly issued?: IssuedDeviceKey; readonly clear: () => void }) {
   return (
@@ -149,12 +197,12 @@ export function DevicesPage() {
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-semibold">{device.tag}</h2>
+                    <DeviceHeading device={device} />
                     <StatusBadge value={device.state} />
                   </div>
                   <code className="mt-1 block truncate text-xs text-muted-foreground">{device.id}</code>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {device.kind === "client" ? `客户端同步资料 · ${device.iconKind}` : "服务器虚拟设备"} · 最后在线 {formatDate(device.lastSeenAt)}
+                    {device.kind === "client" ? "客户端同步资料" : "服务器虚拟设备"} · 最后在线 {formatDate(device.lastSeenAt)}
                   </p>
                 </div>
               </div>
