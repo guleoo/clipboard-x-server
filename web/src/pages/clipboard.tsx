@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { HashIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
@@ -85,6 +85,8 @@ function ClipboardFeed({ items, transfers, remove }: {
 export function ClipboardPage() {
   const api = useApi()
   const queryClient = useQueryClient()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   const [search, setSearch] = useSearchParams()
   const selectedId = search.get("channelId") ?? undefined
   const queryText = search.get("query") ?? ""
@@ -106,11 +108,29 @@ export function ClipboardPage() {
     ...(queryText ? { query: queryText } : {}),
     limit: 100,
   }), [current, queryText])
-  const items = useQuery({
+  const items = useInfiniteQuery({
     queryKey: ["items", filters],
-    queryFn: () => api.items(filters),
+    queryFn: ({ pageParam }) => api.items({ ...filters, ...(pageParam ? { cursor: pageParam } : {}) }),
+    initialPageParam: "",
+    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.cursor : undefined,
     enabled: Boolean(current),
   })
+  const visibleItems = useMemo(() => items.data?.pages.flatMap((page) => page.items) ?? [], [items.data])
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }, [current?.id, queryText])
+  useEffect(() => {
+    if (!items.hasNextPage || items.isFetchingNextPage || items.isFetchNextPageError
+      || !scrollRef.current || !loadMoreRef.current || typeof window.IntersectionObserver === "undefined") return
+    let requested = false
+    const observer = new window.IntersectionObserver((entries) => {
+      if (requested || !entries.some((entry) => entry.isIntersecting)) return
+      requested = true
+      void items.fetchNextPage()
+    }, { root: scrollRef.current, rootMargin: "0px 0px 240px 0px" })
+    observer.observe(loadMoreRef.current)
+    return () => observer.disconnect()
+  }, [items.data?.pages.length, items.hasNextPage, items.isFetchingNextPage, items.isFetchNextPageError, items.fetchNextPage])
   const transfers = useQuery({
     queryKey: ["transfers"],
     queryFn: () => api.transfers(32),
@@ -229,7 +249,7 @@ export function ClipboardPage() {
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" aria-label="剪切板内容">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" aria-label="剪切板内容">
           {current ? (
             <>
               <label className="relative mb-5 block max-w-md">
@@ -237,10 +257,10 @@ export function ClipboardPage() {
                 <SearchIcon className="pointer-events-none absolute left-2.5 top-2 size-4 text-muted-foreground" aria-hidden="true" />
                 <Input className="pl-8" value={queryText} placeholder="搜索当前 Channel" onChange={(event) => setQuery(event.target.value)} />
               </label>
-              {items.isPending ? <LoadingState /> : items.error ? <ErrorState error={items.error} retry={() => items.refetch()} />
-                : items.data.items.length ? (
+              {items.isPending ? <LoadingState /> : items.error && !items.data ? <ErrorState error={items.error} retry={() => items.refetch()} />
+                : visibleItems.length ? (
                   <ClipboardFeed
-                    items={items.data.items}
+                    items={visibleItems}
                     transfers={recentTransferByItem}
                     remove={(value) => removeItem.mutate(value)}
                   />
@@ -252,6 +272,13 @@ export function ClipboardPage() {
                     </div>
                   </div>
                 )}
+              {items.hasNextPage ? (
+                <div ref={loadMoreRef} className="flex min-h-16 items-center justify-center py-4">
+                  <Button variant="outline" disabled={items.isFetchingNextPage} onClick={() => void items.fetchNextPage()}>
+                    {items.isFetchingNextPage ? "正在加载" : items.isFetchNextPageError ? "加载失败，重试" : "加载更多"}
+                  </Button>
+                </div>
+              ) : null}
             </>
           ) : channels.data.length === 0 ? (
             <div className="grid min-h-96 place-items-center text-center">
