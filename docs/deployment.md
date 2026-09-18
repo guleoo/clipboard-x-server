@@ -10,16 +10,16 @@ bun run typecheck
 bun test
 bun run compile
 cd dist
-cp config.example.yaml config.yaml
-chmod 600 config.yaml
-./clipboard-x-server --config ./config.yaml
+cp server/config.example.yaml server/config.yaml
+chmod 600 server/config.yaml
+./clipboard-x-server --config ./server/config.yaml
 ```
 
 For a compiled release, run the explicit migration operation before the first start and every upgrade:
 
 ```sh
-./clipboard-x-server --config ./config.yaml --migrate
-./clipboard-x-server --config ./config.yaml
+./clipboard-x-server --config ./server/config.yaml --migrate
+./clipboard-x-server --config ./server/config.yaml
 ```
 
 Before starting, set a unique `administrator.password`. For production, also set
@@ -38,8 +38,7 @@ history; see [operations](operations.md) before applying a limit to existing dat
 
 The executable contains the Bun runtime but is still platform/architecture-specific. Build and
 smoke-test separate Linux x64 and arm64 artifacts on their target libc baseline. Keep `web/dist`,
-`server/drizzle` and `config.yaml` beside the executable unless absolute paths are
-configured.
+`server/drizzle` and `server/config.yaml` in the release layout unless absolute paths are configured.
 
 ## systemd
 
@@ -48,7 +47,7 @@ account to update it from the console. Install the release under `/opt/clipboard
 
 ```sh
 install -d -o clipboard-x -g clipboard-x -m 0700 /var/lib/clipboard-x-server
-install -o clipboard-x -g clipboard-x -m 0600 config.yaml /var/lib/clipboard-x-server/config.yaml
+install -o clipboard-x -g clipboard-x -m 0600 server/config.yaml /var/lib/clipboard-x-server/config.yaml
 systemctl enable --now clipboard-x-server
 ```
 
@@ -57,17 +56,17 @@ Use the supplied Nginx example or an equivalent TLS reverse proxy. Preserve stre
 
 ## Container
 
-Copy `config.example.yaml` to `config.yaml`. Set `app.hostname: 0.0.0.0`,
-`web.root: ./web/dist`, `database.url: ./data/clipboard-x.db`, and
-`storage.data-directory: ./data`, then ensure UID/GID 10001 can update the file:
+Copy `server/config.example.yaml` to `server/config.yaml`. Set `app.hostname: 0.0.0.0`,
+keep `web.root: ../web/dist`, `database.url: ../data/clipboard-x.db`, and
+`storage.data-directory: ../data`, then ensure UID/GID 10001 can update the file:
 
 ```sh
-chown 10001:10001 config.yaml
-chmod 600 config.yaml
+chown 10001:10001 server/config.yaml
+chmod 600 server/config.yaml
 docker compose up --build -d
 ```
 
-Compose bind-mounts `config.yaml` read-write at `/app/config.yaml` and persists `/app/data` in a named
+Compose bind-mounts `server/config.yaml` read-write at `/app/server/config.yaml` and persists `/app/data` in a named
 volume. Do not bake the real configuration into an image or commit it to source control.
 
 The built-in health paths are unauthenticated: `/health/live` checks the process, while

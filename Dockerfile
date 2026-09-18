@@ -1,6 +1,6 @@
 FROM oven/bun:1.3.14 AS build
 WORKDIR /src
-COPY package.json bun.lock bunfig.toml tsconfig.json tsconfig.base.json build.ts config.example.yaml ./
+COPY package.json bun.lock bunfig.toml tsconfig.json tsconfig.base.json build.ts ./
 COPY web ./web
 COPY server ./server
 RUN bun install --frozen-lockfile
@@ -18,6 +18,6 @@ COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/server/drizzle ./ser
 USER 10001:10001
 VOLUME ["/app/data"]
 EXPOSE 28787
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD ["/app/clipboard-x-server", "--config", "/app/config.yaml", "--healthcheck"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD ["/app/clipboard-x-server", "--config", "/app/server/config.yaml", "--healthcheck"]
 ENTRYPOINT ["/app/clipboard-x-server"]
-CMD ["--config", "/app/config.yaml", "--migrate", "--serve"]
+CMD ["--config", "/app/server/config.yaml", "--migrate", "--serve"]

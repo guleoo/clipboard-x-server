@@ -11,7 +11,7 @@ import {
 } from "../src/frame/config";
 
 describe("configuration", () => {
-  it("keeps the committed development and test configurations standalone", () => {
+  it("keeps every committed Server configuration standalone", () => {
     const requiredSections = [
       "administrator",
       "app",
@@ -30,10 +30,14 @@ describe("configuration", () => {
       "web",
     ];
 
-    for (const filename of ["config-dev.yaml", "config-test.yaml"]) {
+    for (const [filename, mode] of [
+      ["config.example.yaml", "prod"],
+      ["config-dev.yaml", "dev"],
+      ["config-test.yaml", "test"],
+    ] as const) {
       const value = loadYamlConfigSync({
         filePath: join(import.meta.dir, "..", filename),
-        mode: filename === "config-dev.yaml" ? "dev" : "test",
+        mode,
         mergeModeFile: false,
         mergeImportFiles: false,
       });

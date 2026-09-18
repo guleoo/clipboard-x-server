@@ -9,6 +9,7 @@
     "server"
   ],
   "scripts": {
+    "start": "bun run --cwd server start",
     "dev:server": "bun run --cwd server dev",
     "dev:web": "bun run --cwd web dev",
     "typecheck": "bun run --parallel --filter '*' typecheck",
@@ -16,9 +17,9 @@
     "test:network": "bun run --filter '@clipboard-x/server' test:network",
     "build": "bun run build.ts",
     "compile": "bun run build.ts --compile",
-    "openapi:check": "bun run server/scripts/openapi.ts --check --config config.example.yaml",
-    "audit:objects": "bun run --filter '@clipboard-x/server' audit:objects",
-    "gc:objects": "bun run --filter '@clipboard-x/server' gc:objects",
+    "openapi:check": "bun run --cwd server openapi:check",
+    "audit:objects": "bun run --cwd server audit:objects",
+    "gc:objects": "bun run --cwd server gc:objects",
     "benchmark": "bun run --filter '@clipboard-x/server' benchmark",
     "audit:licenses": "bun run scripts/licenses.ts"
   }
