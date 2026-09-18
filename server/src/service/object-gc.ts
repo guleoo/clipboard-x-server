@@ -1,37 +1,43 @@
-import { rmSync } from "node:fs"
-import { config } from "../config"
 import { ObjectGcRepo } from "../repo/object-gc"
 import { objectStore } from "../repo/object"
+
+export const OBJECT_COLLECTION_GRACE_MILLIS = 86_400_000
+const OBJECT_BATCH_SIZE = 50
+
+interface CollectionOptions {
+  readonly shouldContinue?: () => boolean
+}
+
+function yieldToRuntime(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
 
 export class ObjectCollector {
   private readonly repo = new ObjectGcRepo()
 
   plan(now = Date.now()) {
-    return this.repo.plan(now - config.cleanup.objects.graceMillis)
+    return this.repo.plan(now - OBJECT_COLLECTION_GRACE_MILLIS)
   }
 
-  collect(now = Date.now(), options = config.cleanup): number {
-    if (!options.enabled || !options.objects.enabled) return 0
-    const cutoff = now - options.objects.graceMillis
+  async collect(now = Date.now(), options: CollectionOptions = {}): Promise<number> {
+    const cutoff = now - OBJECT_COLLECTION_GRACE_MILLIS
+    const shouldContinue = options.shouldContinue ?? (() => true)
     let removed = 0
-    while (removed < options.execution.maxObjectsPerRun) {
-      const limit = Math.min(
-        options.execution.objectBatchSize,
-        options.execution.maxObjectsPerRun - removed,
-      )
-      const candidates = this.repo.candidates(cutoff, limit)
+    while (shouldContinue()) {
+      const candidates = this.repo.candidates(cutoff, OBJECT_BATCH_SIZE)
       let collected = 0
       for (const object of candidates) {
         if (object.path !== objectStore.path(object.sha256)) {
           throw new Error(`Object ${object.id} has an unexpected storage path`)
         }
         if (this.repo.delete(object.id, cutoff)) {
-          rmSync(object.path, { force: true })
+          await objectStore.remove(object.path)
           removed += 1
           collected += 1
         }
       }
-      if (candidates.length < limit || collected === 0) return removed
+      if (candidates.length < OBJECT_BATCH_SIZE || collected === 0) return removed
+      await yieldToRuntime()
     }
     return removed
   }

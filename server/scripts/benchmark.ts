@@ -11,6 +11,7 @@ const loads = {
   materializations: 200,
   progressUpdates: 100_000,
   metadataItems: 100_000,
+  cleanupCandidates: 1_000,
   objectBytes: 80 * 1024 * 1024,
 } as const
 
@@ -39,17 +40,19 @@ await Bun.write(configurationPath, stringify({
 }, { indent: 2, lineWidth: 0 }))
 process.env.APP_CONFIG_FILE = configurationPath
 
-const [{ Database, db }, { databaseConfig }, { Lifecycle }, { objectStore },
+const [{ Database, db }, { databaseConfig }, { Lifecycle }, { objectStore }, { ClipboardRepo },
   { channelService }, { clipboardService }, { deviceService }, { transferService }] = await Promise.all([
   import("../src/db"),
   import("../src/frame/db"),
   import("../src/frame/core"),
   import("../src/repo/object"),
+  import("../src/repo/clipboard"),
   import("../src/service/channel"),
   import("../src/service/clipboard"),
   import("../src/service/device"),
   import("../src/service/transfer"),
 ])
+const clipboardRepo = new ClipboardRepo()
 Database.init()
 Database.migrate({ migrationsFolder: databaseConfig.migrationsFolder })
 await objectStore.initialize()
@@ -64,6 +67,7 @@ async function measure(name: string, operation: () => void | Promise<void>): Pro
 }
 
 try {
+  await deviceService.synchronize()
   deviceService.create({ id: sourceId })
   await deviceService.issueKey(sourceId)
   deviceService.updateProfile(sourceId, { tag: "Benchmark source", iconKind: "server" })
@@ -153,6 +157,14 @@ try {
   if (!plan.some((entry) => entry.detail.includes("clipboard_items_page"))) {
     throw new Error(`Pagination did not use clipboard_items_page: ${JSON.stringify(plan)}`)
   }
+  await measure("cleanupCandidatePlan100kMs", () => {
+    const candidates = clipboardRepo.cleanupCandidates({
+      maxItemsPerDevice: loads.metadataItems - loads.cleanupCandidates - loads.materializations,
+    }, Date.now(), loads.cleanupCandidates)
+    if (candidates.length !== loads.cleanupCandidates) {
+      throw new Error(`Cleanup candidate baseline failed: ${candidates.length}`)
+    }
+  })
 
   const chunk = new Uint8Array(64 * 1024)
   const chunkCount = loads.objectBytes / chunk.byteLength

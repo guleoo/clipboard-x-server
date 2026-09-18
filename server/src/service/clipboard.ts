@@ -11,7 +11,6 @@ import {
   type UploadRow,
 } from "../repo/clipboard"
 import { channelService } from "./channel"
-import { cleanupService } from "./cleanup"
 import { transferService, type Transfer } from "./transfer"
 
 export interface RepresentationManifest {
@@ -231,9 +230,6 @@ export class ClipboardService {
       else this.completeMaterialization(upload, uploaded)
       this.repo.completeUpload(upload.id)
       this.transfers.update(upload.transfer_id, "completed", current.totalBytes)
-      if (upload.kind === "publish") {
-        cleanupService.afterPublish({ deviceId: upload.device_id, channelId: upload.channel_id })
-      }
     })
     return { transfer: this.transfers.get(upload.transfer_id, deviceId) }
   }

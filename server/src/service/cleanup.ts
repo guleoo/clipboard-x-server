@@ -5,21 +5,20 @@ import { ClipboardRepo, type ClipboardCleanupPolicy } from "../repo/clipboard"
 import { objectCollector } from "./object-gc"
 
 const logger = Log.create({ service: "cleanup" })
-
-interface CleanupScope {
-  readonly deviceId: string
-  readonly channelId: string
-}
-
-interface ConfigureOptions {
-  readonly runNow?: boolean
-}
+const ITEM_BATCH_SIZE = 50
+const CANDIDATE_PLAN_SIZE = 1_000
 
 type CleanupConfiguration = typeof config.cleanup
+
+function yieldToRuntime(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
 
 export class CleanupService {
   private readonly repo = new ClipboardRepo()
   private timer?: ReturnType<typeof setInterval>
+  private activeSweep?: Promise<{ readonly removedItems: number; readonly removedObjects: number }>
+  private generation = 0
   private registered = false
 
   start(): void {
@@ -28,92 +27,78 @@ export class CleanupService {
         name: "server-data-cleanup",
         on: "shutdown",
         phase: "stop",
-        event: () => this.stop(),
+        event: () => this.shutdown(),
       })
       this.registered = true
     }
-    this.configure({ runNow: config.cleanup.triggers.onStartup })
+    this.configure()
   }
 
-  configure(options: ConfigureOptions = {}): void {
-    this.stop()
+  configure(): void {
+    this.generation += 1
+    if (this.timer) clearInterval(this.timer)
+    this.timer = undefined
     const policy = config.cleanup
     if (!policy.enabled) return
-    if (policy.triggers.scheduled) {
-      this.timer = setInterval(() => {
-        try { this.sweep() }
-        catch (error) { logger.error("Cleanup sweep failed", { error }) }
-      }, policy.triggers.intervalMillis)
-      this.timer.unref()
-    }
-    if (options.runNow) {
-      try { this.sweep() }
-      catch (error) { logger.error("Cleanup sweep failed", { error }) }
-    }
+    this.timer = setInterval(() => {
+      void this.sweep().catch((error) => logger.error("Cleanup sweep failed", { error }))
+    }, policy.intervalMillis)
+    this.timer.unref()
   }
 
-  afterPublish(scope: CleanupScope): number {
+  sweep(): Promise<{ readonly removedItems: number; readonly removedObjects: number }> {
+    if (this.activeSweep) return this.activeSweep
     const policy = config.cleanup
-    if (!policy.enabled || !policy.triggers.afterPublish) return 0
-    return this.enforceClipboard(policy, scope)
+    if (!policy.enabled) return Promise.resolve({ removedItems: 0, removedObjects: 0 })
+    const generation = this.generation
+    const task = this.execute(policy, () => generation === this.generation)
+    this.activeSweep = task
+    void task.finally(() => {
+      if (this.activeSweep === task) this.activeSweep = undefined
+    }).catch(() => undefined)
+    return task
   }
 
-  tightens(previous: CleanupConfiguration, next: CleanupConfiguration): boolean {
-    if (!next.enabled) return false
-    const enablesDeletion = this.hasClipboardLimits(next.clipboard) || next.objects.enabled
-    if (!previous.enabled) return enablesDeletion
-    const fields = [
-      "maxItems",
-      "maxItemsPerChannel",
-      "maxItemsPerDevice",
-      "maxItemsPerDevicePerChannel",
-      "maxAgeMillis",
-    ] as const
-    const tightensClipboard = fields.some((field) =>
-      (next.clipboard[field] ?? Infinity) < (previous.clipboard[field] ?? Infinity))
-    const tightensObjects = next.objects.enabled
-      && (!previous.objects.enabled || next.objects.graceMillis < previous.objects.graceMillis)
-    return tightensClipboard || tightensObjects
+  async enforceClipboard(
+    options: CleanupConfiguration = config.cleanup,
+    shouldContinue: () => boolean = () => true,
+  ): Promise<number> {
+    if (!options.enabled || !this.hasClipboardLimits(options.clipboard)) return 0
+    let removed = 0
+    while (shouldContinue()) {
+      const candidates = this.repo.cleanupCandidates(options.clipboard, Date.now(), CANDIDATE_PLAN_SIZE)
+      if (candidates.length === 0) return removed
+      let removedFromPlan = 0
+      for (let offset = 0; offset < candidates.length && shouldContinue(); offset += ITEM_BATCH_SIZE) {
+        const batch = candidates.slice(offset, offset + ITEM_BATCH_SIZE)
+        const count = this.repo.transaction(() => {
+          const now = Date.now()
+          return batch.reduce(
+            (total, id) => total + (this.repo.pruneCleanupCandidate(id, now) ? 1 : 0),
+            0,
+          )
+        })
+        removed += count
+        removedFromPlan += count
+        if (offset + ITEM_BATCH_SIZE < candidates.length || candidates.length === CANDIDATE_PLAN_SIZE) {
+          await yieldToRuntime()
+        }
+      }
+      if (candidates.length < CANDIDATE_PLAN_SIZE || removedFromPlan === 0) return removed
+    }
+    return removed
   }
 
-  sweep(): { readonly removedItems: number; readonly removedObjects: number } {
-    const policy = config.cleanup
-    if (!policy.enabled) return { removedItems: 0, removedObjects: 0 }
-    const removedItems = this.enforceClipboard(policy)
-    const removedObjects = objectCollector.collect(Date.now(), policy)
+  private async execute(
+    policy: CleanupConfiguration,
+    shouldContinue: () => boolean,
+  ): Promise<{ readonly removedItems: number; readonly removedObjects: number }> {
+    const removedItems = await this.enforceClipboard(policy, shouldContinue)
+    const removedObjects = await objectCollector.collect(Date.now(), { shouldContinue })
     if (removedItems || removedObjects) {
       logger.info("Cleanup sweep completed", { removedItems, removedObjects })
     }
     return { removedItems, removedObjects }
-  }
-
-  enforceClipboard(
-    options = config.cleanup,
-    scope?: CleanupScope,
-  ): number {
-    if (!options.enabled || !this.hasClipboardLimits(options.clipboard)) return 0
-    const effectiveScope = options.clipboard.maxItems === undefined ? scope : undefined
-    let removed = 0
-    while (removed < options.execution.maxItemsPerRun) {
-      const limit = Math.min(
-        options.execution.itemBatchSize,
-        options.execution.maxItemsPerRun - removed,
-      )
-      const count = this.repo.transaction(() => {
-        const now = Date.now()
-        const candidates = this.repo.cleanupCandidates(
-          options.clipboard,
-          now,
-          limit,
-          effectiveScope,
-        )
-        for (const id of candidates) this.repo.pruneItem(id, now)
-        return candidates.length
-      })
-      removed += count
-      if (count < limit) return removed
-    }
-    return removed
   }
 
   private hasClipboardLimits(policy: ClipboardCleanupPolicy): boolean {
@@ -124,9 +109,11 @@ export class CleanupService {
       || policy.maxAgeMillis !== undefined
   }
 
-  private stop(): void {
+  private async shutdown(): Promise<void> {
+    this.generation += 1
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
+    await this.activeSweep
   }
 }
 

@@ -10,7 +10,7 @@ import { Database, db } from "../src/db"
 import { databaseConfig } from "../src/frame/db"
 import { ClipboardRepo, type ClipboardCleanupPolicy } from "../src/repo/clipboard"
 import { objectStore } from "../src/repo/object"
-import { objectCollector } from "../src/service/object-gc"
+import { OBJECT_COLLECTION_GRACE_MILLIS, objectCollector } from "../src/service/object-gc"
 import { cleanupService } from "../src/service/cleanup"
 import { clipboardService } from "../src/service/clipboard"
 import { administratorService } from "../src/service/administrator"
@@ -41,23 +41,10 @@ function addItem(channelId: string, deviceId: string, createdAt: number, objectI
   return id
 }
 
-function cleanupPolicy(
-  clipboard: ClipboardCleanupPolicy = {},
-  execution: Record<string, number> = {},
-) {
+function cleanupPolicy(clipboard: ClipboardCleanupPolicy = {}) {
   return CleanupOptions.parse({
     enabled: true,
     clipboard,
-    objects: { enabled: false },
-    execution,
-  })
-}
-
-function objectCleanup() {
-  return CleanupOptions.parse({
-    enabled: true,
-    clipboard: {},
-    objects: { enabled: true, graceMillis: config.cleanup.objects.graceMillis },
   })
 }
 
@@ -95,11 +82,11 @@ describe("server-only cleanup", () => {
         enabled: true, clipboard: { maxItemsPerDevice: 0 },
       }) })
       expect(invalid.status).toBe(400)
-      const input = { enabled: true, clipboard: { maxItemsPerDevice: 10 }, triggers: { intervalMillis: 60_000 } }
+      const input = { enabled: true, intervalMillis: 60_000, clipboard: { maxItemsPerDevice: 10 } }
       const saved = await app.request(path, { method: "PATCH", headers, body: JSON.stringify(input) })
       expect(saved.status).toBe(200)
       expect(await saved.json()).toEqual(CleanupOptions.parse(input))
-      expect(sweep).toHaveBeenCalledTimes(1)
+      expect(sweep).not.toHaveBeenCalled()
       expect(config.cleanup.clipboard.maxItemsPerDevice).toBe(10)
       expect(readFileSync(config.path, "utf8")).toContain("max-items-per-device: 10\n")
       expect(await (await app.request(path, { headers })).json()).toEqual(config.cleanup)
@@ -115,7 +102,7 @@ describe("server-only cleanup", () => {
         expect(unaffected.status).toBe(200)
         expect(await unaffected.json()).toEqual(CleanupOptions.parse(next))
         expect(config.cleanup.clipboard.maxItemsPerDevice).toBe(20)
-        expect(sweep).toHaveBeenCalledTimes(1)
+        expect(sweep).not.toHaveBeenCalled()
         expect(readFileSync(config.path, "utf8")).not.toBe(savedYaml)
       } finally {
         rmSync(overridePath, { force: true })
@@ -127,28 +114,6 @@ describe("server-only cleanup", () => {
     }
   })
 
-  it("runs immediately only when a saved policy becomes destructive or stricter", () => {
-    const disabled = CleanupOptions.parse(undefined)
-    const inert = CleanupOptions.parse({ enabled: true, objects: { enabled: false } })
-    const limited = CleanupOptions.parse({
-      enabled: true,
-      clipboard: { maxItemsPerChannel: 100 },
-      objects: { enabled: false },
-    })
-    const tighter = CleanupOptions.parse({
-      enabled: true,
-      clipboard: { maxItemsPerChannel: 50 },
-      objects: { enabled: false },
-    })
-    expect(cleanupService.tightens(disabled, inert)).toBe(false)
-    expect(cleanupService.tightens(disabled, limited)).toBe(true)
-    expect(cleanupService.tightens(limited, tighter)).toBe(true)
-    expect(cleanupService.tightens(tighter, limited)).toBe(false)
-    expect(cleanupService.tightens(limited, CleanupOptions.parse({
-      ...limited,
-      objects: { enabled: true, graceMillis: 60_000 },
-    }))).toBe(true)
-  })
   it("starts the GC grace period at migration for previously unreferenced objects", () => {
     const legacy = new SQLite(":memory:")
     try {
@@ -165,14 +130,14 @@ describe("server-only cleanup", () => {
     }
   })
 
-  it("applies channel and cross-channel device limits without sending removal events", () => {
+  it("applies channel and cross-channel device limits without sending removal events", async () => {
     const first = addItem(channelA, deviceA, 10)
     const second = addItem(channelA, deviceA, 20)
     const third = addItem(channelB, deviceA, 30)
     const other = addItem(channelA, deviceB, 40)
     const revision = repo.statusMetrics().revision
 
-    expect(cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerChannel: 2 }))).toBe(1)
+    expect(await cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerChannel: 2 }))).toBe(1)
     expect(repo.item(first)).toBeUndefined()
     expect(repo.item(second)).toBeDefined()
     expect(repo.item(other)).toBeDefined()
@@ -180,9 +145,8 @@ describe("server-only cleanup", () => {
       .toEqual([[second, "upsert"], [other, "upsert"]])
     expect(repo.statusMetrics().revision).toBe(revision)
 
-    expect(cleanupService.enforceClipboard(
+    expect(await cleanupService.enforceClipboard(
       cleanupPolicy({ maxItemsPerDevice: 1 }),
-      { deviceId: deviceA, channelId: channelA },
     )).toBe(1)
     expect(repo.item(second)).toBeUndefined()
     expect(repo.item(third)).toBeDefined()
@@ -190,16 +154,16 @@ describe("server-only cleanup", () => {
     expect(repo.changes(channelA, 0, 20).some(({ kind }) => kind === "remove")).toBe(false)
     expect(repo.statusMetrics().revision).toBe(revision)
     const another = addItem(channelB, deviceB, 50)
-    expect(cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerDevice: 1 }))).toBe(1)
+    expect(await cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerDevice: 1 }))).toBe(1)
     expect(repo.item(other)).toBeUndefined()
     expect(repo.item(another)).toBeDefined()
-    expect(cleanupService.enforceClipboard(cleanupPolicy({
+    expect(await cleanupService.enforceClipboard(cleanupPolicy({
       maxItemsPerDevice: 1,
       maxItemsPerChannel: 2,
     }))).toBe(0)
   })
 
-  it("supports global, device-in-channel, and bounded per-run cleanup", () => {
+  it("drains global and device-in-channel limits through internal batches", async () => {
     const device = crypto.randomUUID()
     const channel = crypto.randomUUID()
     const otherChannel = crypto.randomUUID()
@@ -212,33 +176,57 @@ describe("server-only cleanup", () => {
     addItem(channel, device, 1_002)
     const outside = addItem(otherChannel, device, 1_003)
 
-    expect(cleanupService.enforceClipboard(
+    expect(await cleanupService.enforceClipboard(
       cleanupPolicy({ maxItemsPerDevicePerChannel: 2 }),
-      { deviceId: device, channelId: channel },
     )).toBe(1)
     expect(repo.item(first)).toBeUndefined()
     expect(repo.item(outside)).toBeDefined()
 
     addItem(channel, device, 1_004)
     addItem(channel, device, 1_005)
-    const bounded = cleanupPolicy(
-      { maxItemsPerDevice: 1 },
-      { itemBatchSize: 1, maxItemsPerRun: 2 },
-    )
-    expect(cleanupService.enforceClipboard(bounded)).toBe(2)
+    expect(await cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerDevice: 1 }))).toBe(4)
     const remaining = sqliteValue(db.all<{ count: number }>(sql`
       SELECT count(*) AS count FROM clipboard_items
       WHERE origin_device_id = ${device} AND visible = 1 AND deleted_at IS NULL
     `))[0]?.count
-    expect(remaining).toBe(3)
+    expect(remaining).toBe(1)
 
     const visibleBefore = sqliteValue(db.all<{ count: number }>(sql`
       SELECT count(*) AS count FROM clipboard_items WHERE visible = 1 AND deleted_at IS NULL
     `))[0]!.count
-    expect(cleanupService.enforceClipboard(cleanupPolicy({ maxItems: visibleBefore - 1 }))).toBe(1)
+    expect(await cleanupService.enforceClipboard(cleanupPolicy({ maxItems: visibleBefore - 1 }))).toBe(1)
   })
 
-  it("keeps active materializations until finished and releases shared object references", () => {
+  it("yields to request work between fixed cleanup batches", async () => {
+    const device = crypto.randomUUID()
+    const channel = crypto.randomUUID()
+    db.run(sql`INSERT INTO devices (id, tag, icon_kind, created_at, updated_at)
+      VALUES (${device}, 'Batch device', 'laptop', 1, 1)`)
+    db.run(sql`INSERT INTO channels (id, name, created_at, updated_at)
+      VALUES (${channel}, 'Batch channel', 1, 1)`)
+    for (let index = 0; index < 52; index += 1) addItem(channel, device, index + 1)
+    let requestWorkRan = false
+    setTimeout(() => { requestWorkRan = true }, 0)
+
+    expect(await cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerDevice: 1 }))).toBe(51)
+    expect(requestWorkRan).toBe(true)
+  })
+
+  it("coalesces overlapping periodic sweeps", async () => {
+    const original = config.cleanup
+    try {
+      config.updateCleanup({ enabled: true, intervalMillis: 60_000, clipboard: {} })
+      cleanupService.configure()
+      const first = cleanupService.sweep()
+      expect(cleanupService.sweep()).toBe(first)
+      await first
+    } finally {
+      config.updateCleanup(original)
+      cleanupService.configure()
+    }
+  })
+
+  it("keeps active materializations until finished and releases shared object references", async () => {
     const objectId = crypto.randomUUID()
     db.run(sql`INSERT INTO objects (id, sha256, size, path, ref_count, created_at)
       VALUES (${objectId}, ${"a".repeat(64)}, 1, '/tmp/retention-object', 2, 1)`)
@@ -249,20 +237,18 @@ describe("server-only cleanup", () => {
       (id, active_key, channel_id, item_id, content_id, source_device_id, state, created_at, updated_at, expires_at)
       VALUES (${requestId}, ${earlier}, ${channelC}, ${earlier}, 'primary', ${deviceC}, 'waiting-for-peer', 1, 1, ${Date.now() + 60_000})`)
 
-    expect(cleanupService.enforceClipboard(
+    expect(await cleanupService.enforceClipboard(
       cleanupPolicy({ maxItemsPerDevice: 1 }),
-      { deviceId: deviceC, channelId: channelC },
     )).toBe(0)
     db.run(sql`UPDATE materialization_requests SET active_key = NULL WHERE id = ${requestId}`)
-    expect(cleanupService.enforceClipboard(
+    expect(await cleanupService.enforceClipboard(
       cleanupPolicy({ maxItemsPerDevice: 1 }),
-      { deviceId: deviceC, channelId: channelC },
     )).toBe(1)
     expect(repo.item(earlier)).toBeUndefined()
     expect(repo.item(later)).toBeDefined()
     expect(objectReferences(objectId)).toBe(1)
 
-    expect(cleanupService.enforceClipboard(cleanupPolicy({ maxAgeMillis: 1 }))).toBeGreaterThanOrEqual(1)
+    expect(await cleanupService.enforceClipboard(cleanupPolicy({ maxAgeMillis: 1 }))).toBeGreaterThanOrEqual(1)
     expect(objectReferences(objectId)).toBe(0)
     expect(sqliteValue(db.all<{ count: number }>(sql`SELECT count(*) AS count FROM representations WHERE item_id IN (${earlier}, ${later})`))[0]?.count).toBe(0)
     expect(repo.changes(channelC, 0, 20).some(({ kind }) => kind === "remove")).toBe(false)
@@ -271,7 +257,7 @@ describe("server-only cleanup", () => {
     })).toThrow("ItemId has been removed from the server")
   })
 
-  it("defers pruning items with active uploads", () => {
+  it("defers pruning items with active uploads", async () => {
     const old = addItem(channelC, deviceC, Date.now() - 10)
     const current = addItem(channelC, deviceC, Date.now())
     const transferId = crypto.randomUUID()
@@ -282,20 +268,18 @@ describe("server-only cleanup", () => {
     db.run(sql`INSERT INTO uploads
       (id, item_id, channel_id, device_id, transfer_id, kind, state, created_at, expires_at)
       VALUES (${uploadId}, ${old}, ${channelC}, ${deviceC}, ${transferId}, 'materialize', 'open', 1, ${Date.now() + 60_000})`)
-    expect(cleanupService.enforceClipboard(
+    expect(await cleanupService.enforceClipboard(
       cleanupPolicy({ maxItemsPerDevice: 1 }),
-      { deviceId: deviceC, channelId: channelC },
     )).toBe(0)
     db.run(sql`UPDATE uploads SET state = 'completed' WHERE id = ${uploadId}`)
-    expect(cleanupService.enforceClipboard(
+    expect(await cleanupService.enforceClipboard(
       cleanupPolicy({ maxItemsPerDevice: 1 }),
-      { deviceId: deviceC, channelId: channelC },
     )).toBe(1)
     expect(repo.item(old)).toBeUndefined()
     expect(repo.item(current)).toBeDefined()
   })
 
-  it("reclaims server objects only after the last reference has aged past the grace period", () => {
+  it("reclaims server objects only after the last reference has aged past the grace period", async () => {
     const objectId = crypto.randomUUID()
     const sha256 = "b".repeat(64)
     const path = objectStore.path(sha256)
@@ -305,29 +289,29 @@ describe("server-only cleanup", () => {
       VALUES (${objectId}, ${sha256}, 1, ${path}, 1, 1, NULL)`)
     const id = addItem(channelA, deviceB, Date.now(), objectId, sha256)
     expect(objectCollector.plan().objectCount).toBe(0)
-    expect(objectCollector.collect(Date.now(), objectCleanup())).toBe(0)
+    expect(await objectCollector.collect()).toBe(0)
     expect(existsSync(path)).toBe(true)
 
     repo.transaction(() => repo.pruneItem(id, Date.now()))
     expect(objectReferences(objectId)).toBe(0)
     expect(objectCollector.plan().objectCount).toBe(0)
     expect(existsSync(path)).toBe(true)
-    db.run(sql`UPDATE objects SET unreferenced_at = ${Date.now() - config.cleanup.objects.graceMillis - 1}
+    db.run(sql`UPDATE objects SET unreferenced_at = ${Date.now() - OBJECT_COLLECTION_GRACE_MILLIS - 1}
       WHERE id = ${objectId}`)
     expect(objectCollector.plan().objectCount).toBe(1)
-    expect(objectCollector.collect(Date.now(), objectCleanup())).toBe(1)
+    expect(await objectCollector.collect()).toBe(1)
     expect(existsSync(path)).toBe(false)
     expect(objectReferences(objectId)).toBeUndefined()
   })
 
-  it("does not collect an object still held by an upload", () => {
+  it("does not collect an object still held by an upload", async () => {
     const objectId = crypto.randomUUID()
     const sha256 = "d".repeat(64)
     const path = objectStore.path(sha256)
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, "x")
     db.run(sql`INSERT INTO objects (id, sha256, size, path, ref_count, created_at, unreferenced_at)
-      VALUES (${objectId}, ${sha256}, 1, ${path}, 0, 1, ${Date.now() - config.cleanup.objects.graceMillis - 1})`)
+      VALUES (${objectId}, ${sha256}, 1, ${path}, 0, 1, ${Date.now() - OBJECT_COLLECTION_GRACE_MILLIS - 1})`)
     const transferId = crypto.randomUUID()
     const uploadId = crypto.randomUUID()
     db.run(sql`INSERT INTO transfers
@@ -341,42 +325,34 @@ describe("server-only cleanup", () => {
       VALUES (${uploadId}, 'content', 'primary', 1, ${sha256}, 'text/plain', ${objectId})`)
 
     expect(objectCollector.plan().objectCount).toBe(0)
-    expect(objectCollector.collect(Date.now(), objectCleanup())).toBe(0)
+    expect(await objectCollector.collect()).toBe(0)
     expect(existsSync(path)).toBe(true)
     db.run(sql`DELETE FROM upload_objects WHERE upload_id = ${uploadId}`)
-    expect(objectCollector.collect(Date.now(), objectCleanup())).toBe(1)
+    expect(await objectCollector.collect()).toBe(1)
     expect(existsSync(path)).toBe(false)
   })
 
-  it("bounds object collection work per run", () => {
+  it("drains an object backlog through fixed internal batches", async () => {
     const now = Date.now()
     const paths: string[] = []
-    for (const fill of ["e", "f"]) {
+    for (let index = 0; index < 51; index += 1) {
       const id = crypto.randomUUID()
-      const sha256 = fill.repeat(64)
+      const sha256 = index.toString(16).padStart(64, "0")
       const path = objectStore.path(sha256)
       paths.push(path)
       mkdirSync(dirname(path), { recursive: true })
-      writeFileSync(path, fill)
+      writeFileSync(path, String(index))
       db.run(sql`INSERT INTO objects (id, sha256, size, path, ref_count, created_at, unreferenced_at)
-        VALUES (${id}, ${sha256}, 1, ${path}, 0, 1, ${now - config.cleanup.objects.graceMillis - 1})`)
+        VALUES (${id}, ${sha256}, ${String(index).length}, ${path}, 0, 1, ${now - OBJECT_COLLECTION_GRACE_MILLIS - 1})`)
     }
-    const bounded = CleanupOptions.parse({
-      enabled: true,
-      objects: { enabled: true, graceMillis: config.cleanup.objects.graceMillis },
-      execution: { objectBatchSize: 1, maxObjectsPerRun: 1 },
-    })
-    expect(objectCollector.collect(now, bounded)).toBe(1)
-    expect(paths.filter(existsSync)).toHaveLength(1)
-    expect(objectCollector.collect(now, bounded)).toBe(1)
+    expect(await objectCollector.collect(now)).toBe(51)
     expect(paths.filter(existsSync)).toHaveLength(0)
   })
 
-  it("enforces limits after a publication completes its upload", () => {
+  it("does not run cleanup after a publication completes its upload", () => {
     const recent = addItem(channelA, deviceA, Date.now())
     const older = crypto.randomUUID()
-    const afterPublish = spyOn(cleanupService, "afterPublish").mockImplementation((scope) =>
-      cleanupService.enforceClipboard(cleanupPolicy({ maxItemsPerDevice: 1 }), scope))
+    const sweep = spyOn(cleanupService, "sweep")
     try {
       const publication = clipboardService.createPublication(deviceA, channelA, {
         id: older,
@@ -387,12 +363,11 @@ describe("server-only cleanup", () => {
       })
       expect(publication.transfer.state).toBe("completed")
       expect(clipboardService.completeUpload(publication.uploadId, deviceA).transfer.state).toBe("completed")
-      expect(afterPublish).toHaveBeenCalledTimes(1)
-      expect(repo.item(older)).toBeUndefined()
+      expect(sweep).not.toHaveBeenCalled()
+      expect(repo.item(older)).toBeDefined()
       expect(repo.item(recent)).toBeDefined()
-      expect(repo.changes(channelA, 0, 100).some(({ item_id }) => item_id === older)).toBe(false)
     } finally {
-      afterPublish.mockRestore()
+      sweep.mockRestore()
     }
   })
 
@@ -422,8 +397,8 @@ describe("server-only cleanup", () => {
       .toThrow("Upload session is no longer available")
   })
 
-  it("preserves explicit deletion events and leaves cleanup disabled by default", () => {
-    expect(cleanupService.enforceClipboard(config.cleanup)).toBe(0)
+  it("preserves explicit deletion events and leaves cleanup disabled by default", async () => {
+    expect(await cleanupService.enforceClipboard(config.cleanup)).toBe(0)
     const id = addItem(channelA, deviceA, Date.now())
     repo.transaction(() => repo.deleteItem(repo.item(id)!, Date.now()))
     expect(repo.changes(channelA, 0, 100).at(-1)).toMatchObject({ item_id: id, kind: "remove", reason: "deleted" })

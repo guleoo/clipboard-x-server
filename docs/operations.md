@@ -21,38 +21,27 @@ Cleanup is opt-in and can be edited from the Web configuration page. The complet
 ```yaml
 cleanup:
   enabled: true
-  triggers:
-    on-startup: true
-    after-publish: true
-    scheduled: true
-    interval-millis: 3600000
+  interval-millis: 3600000
   clipboard:
     max-items: 10000
     max-items-per-channel: 5000
     max-items-per-device: 1000
     max-items-per-device-per-channel: 500
     max-age-millis: 2592000000
-  objects:
-    enabled: true
-    grace-millis: 86400000
-  execution:
-    item-batch-size: 100
-    object-batch-size: 100
-    max-items-per-run: 10000
-    max-objects-per-run: 10000
 ```
 
 The global limit counts every visible item. The device limit counts one device across all Channels,
 including publications from the virtual Server device; the Channel limit counts every device in that
 Channel; the device-in-Channel limit controls their intersection. Items are ordered by creation time,
 then ID, and the oldest eligible items are removed first. Omit a clipboard limit to leave only that
-dimension unlimited. `cleanup.enabled` is the master switch, while object collection has its own
-sub-switch and grace period. Per-run limits bound cleanup load; remaining candidates wait for the next
-trigger.
+dimension unlimited. `cleanup.enabled` is the master switch. Unreferenced binary objects are an
+internal maintenance concern rather than a user-facing policy and use a fixed 24-hour grace period.
 
-The trigger switches independently control cleanup after publication, at startup, and on the
-configured interval (default one hour). Saving a stricter policy from the Web page also runs one
-bounded cleanup immediately. Active uploads and content requests are deferred until a later run.
+Cleanup runs only on the configured interval (default one hour). It does not run at startup, after a
+publication, or immediately after saving a policy. The scheduler prevents overlapping runs. Internally,
+candidate planning is indexed and cleanup uses fixed small transactions with an event-loop yield
+between batches, so request handling can continue while a large backlog is drained. Active uploads and
+content requests are deferred until a later batch or cycle.
 Cleanup removes only the server copy and does not emit a `remove` sync event; client history follows
 each client's own policy. A removed item ID remains reserved
 and cannot be published again. Back up before enabling limits: server-side removal is irreversible
@@ -71,10 +60,10 @@ bun run server/scripts/objects.ts gc --delete --config /path/to/config.yaml
 ```
 
 Audit is read-only. The manual GC command is report-only by default. `--delete` removes only
-unreferenced objects older than `cleanup.objects.grace-millis`, measured from the time the last
-reference was released. When cleanup and object collection are enabled, the server runs the same
-collection according to the configured triggers and execution budget. An object still referenced by another item or upload
-is not removed. File deletion is irreversible without a backup.
+unreferenced objects older than the fixed 24-hour internal grace period, measured from the time the last
+reference was released. Enabled periodic cleanup performs the same maintenance in fixed small batches.
+An object still referenced by another item or upload is not removed. File deletion is irreversible
+without a backup.
 
 ## Failure drills
 
@@ -87,6 +76,6 @@ Console and file logs use human-readable text and omit request/response bodies, 
 
 Run `bun run test:network` where local listening is permitted to verify real Bun `Fetch` streaming in addition to the default port-free Hono route tests.
 
-Run `bun run benchmark` on release hardware to exercise the documented 2,000 publications, 200 materializations, 100,000 progress writes, 100,000-row keyset page, and real 80 MiB streamed object. Treat the printed durations as a host-specific baseline, not universal pass/fail thresholds.
+Run `bun run benchmark` on release hardware to exercise the documented 2,000 publications, 200 materializations, 100,000 progress writes, 100,000-row keyset page, 100,000-row cleanup candidate plan, and real 80 MiB streamed object. Treat the printed durations as a host-specific baseline, not universal pass/fail thresholds.
 
 Run `bun audit` against an npm-compatible audit endpoint for known dependency advisories and `bun run audit:licenses` to review every direct runtime/development dependency license. A registry HTTP error means the advisory scan was unavailable, not that no vulnerabilities exist.

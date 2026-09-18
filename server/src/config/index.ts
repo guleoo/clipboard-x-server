@@ -123,13 +123,6 @@ const LifetimesOptions = zz.object({
   materializationTtlMillis: positiveInteger.min(30_000).max(86_400_000).default(600_000),
 }).strict().default({ keyOverlapMillis: 300_000, materializationTtlMillis: 600_000 });
 
-const CleanupTriggersOptions = zz.object({
-  onStartup: zz.boolean().default(true),
-  afterPublish: zz.boolean().default(true),
-  scheduled: zz.boolean().default(true),
-  intervalMillis: positiveInteger.min(60_000).max(86_400_000).default(3_600_000),
-}).strict().default({ onStartup: true, afterPublish: true, scheduled: true, intervalMillis: 3_600_000 });
-
 const CleanupClipboardOptions = zz.object({
   maxItems: positiveInteger.optional(),
   maxItemsPerChannel: positiveInteger.optional(),
@@ -138,35 +131,14 @@ const CleanupClipboardOptions = zz.object({
   maxAgeMillis: positiveInteger.optional(),
 }).strict().default({});
 
-const CleanupObjectsOptions = zz.object({
-  enabled: zz.boolean().default(true),
-  graceMillis: positiveInteger.min(60_000).max(365 * 24 * 60 * 60 * 1_000).default(86_400_000),
-}).strict().default({ enabled: true, graceMillis: 86_400_000 });
-
-const CleanupExecutionOptions = zz.object({
-  itemBatchSize: positiveInteger.max(1_000).default(100),
-  objectBatchSize: positiveInteger.max(1_000).default(100),
-  maxItemsPerRun: positiveInteger.max(1_000_000).default(10_000),
-  maxObjectsPerRun: positiveInteger.max(1_000_000).default(10_000),
-}).strict().default({
-  itemBatchSize: 100,
-  objectBatchSize: 100,
-  maxItemsPerRun: 10_000,
-  maxObjectsPerRun: 10_000,
-});
-
 export const CleanupOptions = zz.object({
   enabled: zz.boolean().default(false),
-  triggers: CleanupTriggersOptions,
+  intervalMillis: positiveInteger.min(60_000).max(86_400_000).default(3_600_000),
   clipboard: CleanupClipboardOptions,
-  objects: CleanupObjectsOptions,
-  execution: CleanupExecutionOptions,
 }).strict().default({
   enabled: false,
-  triggers: { onStartup: true, afterPublish: true, scheduled: true, intervalMillis: 3_600_000 },
+  intervalMillis: 3_600_000,
   clipboard: {},
-  objects: { enabled: true, graceMillis: 86_400_000 },
-  execution: { itemBatchSize: 100, objectBatchSize: 100, maxItemsPerRun: 10_000, maxObjectsPerRun: 10_000 },
 });
 
 const ContentOptions = zz.object({

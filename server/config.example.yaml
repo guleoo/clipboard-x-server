@@ -45,21 +45,9 @@ lifetimes:
   materialization-ttl-millis: 600000
 cleanup:
   enabled: false
-  triggers:
-    on-startup: true
-    after-publish: true
-    scheduled: true
-    interval-millis: 3600000
+  interval-millis: 3600000
   # Optional item limits are configured from the Web console and omitted by default.
   clipboard: {}
-  objects:
-    enabled: true
-    grace-millis: 86400000
-  execution:
-    item-batch-size: 100
-    object-batch-size: 100
-    max-items-per-run: 10000
-    max-objects-per-run: 10000
 content:
   supported-mime-types:
     - text/plain;charset=utf-8

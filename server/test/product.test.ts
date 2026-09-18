@@ -37,7 +37,7 @@ describe("Clipboard X product contracts", () => {
     expect(config.cleanup).toEqual(CleanupOptions.parse(undefined));
     const parsed = CleanupOptions.parse({
       enabled: true,
-      triggers: { intervalMillis: 60_000 },
+      intervalMillis: 60_000,
       clipboard: {
         maxItems: 100,
         maxItemsPerDevice: 10,
@@ -45,15 +45,15 @@ describe("Clipboard X product contracts", () => {
         maxItemsPerDevicePerChannel: 5,
         maxAgeMillis: 60_000,
       },
-      objects: { enabled: true, graceMillis: 60_000 },
-      execution: { itemBatchSize: 10, objectBatchSize: 20, maxItemsPerRun: 100, maxObjectsPerRun: 200 },
     });
     expect(parsed.enabled).toBe(true);
+    expect(parsed.intervalMillis).toBe(60_000);
     expect(parsed.clipboard.maxItemsPerDevicePerChannel).toBe(5);
     expect(() => CleanupOptions.parse({ clipboard: { maxItemsPerDevice: 0 } })).toThrow();
-    expect(() => CleanupOptions.parse({ objects: { graceMillis: 100 } })).toThrow();
-    expect(() => CleanupOptions.parse({ triggers: { intervalMillis: 100 } })).toThrow();
-    expect(() => CleanupOptions.parse({ execution: { itemBatchSize: 1_001 } })).toThrow();
+    expect(() => CleanupOptions.parse({ intervalMillis: 100 })).toThrow();
+    expect(() => CleanupOptions.parse({ objects: {} })).toThrow();
+    expect(() => CleanupOptions.parse({ execution: {} })).toThrow();
+    expect(() => CleanupOptions.parse({ triggers: {} })).toThrow();
   });
 
   it("writes cleanup configuration to formatted YAML and updates the active policy", () => {

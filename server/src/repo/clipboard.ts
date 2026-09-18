@@ -226,10 +226,9 @@ export class ClipboardRepo {
     `)
   }
 
-  cleanupCandidates(policy: ClipboardCleanupPolicy, now: number, limit: number, scope?: {
-    readonly deviceId: string; readonly channelId: string
-  }): readonly string[] {
-    const eligible = sql`
+  private cleanupEligible(now: number): SQL {
+    return sql`
+      i.visible = 1 AND i.deleted_at IS NULL
       AND NOT EXISTS (
         SELECT 1 FROM uploads u WHERE u.item_id = i.id AND u.state <> 'completed' AND u.expires_at > ${now}
       )
@@ -237,60 +236,93 @@ export class ClipboardRepo {
         SELECT 1 FROM materialization_requests m WHERE m.item_id = i.id AND m.active_key IS NOT NULL AND m.expires_at > ${now}
       )
     `
-    if (scope) {
-      const excess: SQL[] = []
-      if (policy.maxItemsPerDevice !== undefined) excess.push(sql`
-        i.id IN (SELECT id FROM clipboard_items
-          WHERE origin_device_id = ${scope.deviceId} AND visible = 1 AND deleted_at IS NULL
-          ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ${policy.maxItemsPerDevice})
-      `)
-      if (policy.maxItemsPerChannel !== undefined) excess.push(sql`
-        i.id IN (SELECT id FROM clipboard_items
-          WHERE channel_id = ${scope.channelId} AND visible = 1 AND deleted_at IS NULL
-          ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ${policy.maxItemsPerChannel})
-      `)
-      if (policy.maxItemsPerDevicePerChannel !== undefined) excess.push(sql`
-        i.id IN (SELECT id FROM clipboard_items
-          WHERE origin_device_id = ${scope.deviceId} AND channel_id = ${scope.channelId}
-            AND visible = 1 AND deleted_at IS NULL
-          ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ${policy.maxItemsPerDevicePerChannel})
-      `)
-      if (policy.maxAgeMillis !== undefined) excess.push(sql`
-        i.created_at < ${now - policy.maxAgeMillis}
-          AND (i.origin_device_id = ${scope.deviceId} OR i.channel_id = ${scope.channelId})
-      `)
-      if (excess.length === 0) return []
-      return this.all<{ id: string }>(sql`
-        SELECT i.id FROM clipboard_items i
-        WHERE i.visible = 1 AND i.deleted_at IS NULL AND (${sql.join(excess, sql` OR `)})
-          ${eligible}
-        ORDER BY i.created_at, i.id LIMIT ${limit}
-      `).map((row) => row.id)
-    }
-    const excess: SQL[] = []
-    if (policy.maxItems !== undefined) excess.push(sql`global_position > ${policy.maxItems}`)
-    if (policy.maxItemsPerDevice !== undefined) excess.push(sql`device_position > ${policy.maxItemsPerDevice}`)
-    if (policy.maxItemsPerChannel !== undefined) excess.push(sql`channel_position > ${policy.maxItemsPerChannel}`)
-    if (policy.maxItemsPerDevicePerChannel !== undefined) {
-      excess.push(sql`device_channel_position > ${policy.maxItemsPerDevicePerChannel}`)
-    }
-    if (policy.maxAgeMillis !== undefined) excess.push(sql`created_at < ${now - policy.maxAgeMillis}`)
-    if (excess.length === 0) return []
-    return this.all<{ id: string }>(sql`
-      WITH ranked AS (
-        SELECT id, origin_device_id, channel_id, created_at,
-          row_number() OVER (ORDER BY created_at DESC, id DESC) AS global_position,
-          row_number() OVER (PARTITION BY origin_device_id ORDER BY created_at DESC, id DESC) AS device_position,
-          row_number() OVER (PARTITION BY channel_id ORDER BY created_at DESC, id DESC) AS channel_position,
-          row_number() OVER (
-            PARTITION BY origin_device_id, channel_id ORDER BY created_at DESC, id DESC
-          ) AS device_channel_position
-        FROM clipboard_items WHERE visible = 1 AND deleted_at IS NULL
+  }
+
+  cleanupCandidates(policy: ClipboardCleanupPolicy, now: number, limit: number): readonly string[] {
+    const candidateQueries: SQL[] = []
+    if (policy.maxItems !== undefined) candidateQueries.push(sql`
+      SELECT id, created_at FROM (
+        SELECT id, created_at FROM clipboard_items
+        WHERE visible = 1 AND deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ${policy.maxItems}
       )
-      SELECT i.id FROM ranked i WHERE (${sql.join(excess, sql` OR `)})
-        ${eligible}
-      ORDER BY i.created_at, i.id LIMIT ${limit}
+    `)
+    if (policy.maxItemsPerDevice !== undefined) candidateQueries.push(sql`
+      SELECT i.id, i.created_at FROM clipboard_items i
+      JOIN (
+        SELECT groups.origin_device_id, (
+          SELECT boundary.id FROM clipboard_items boundary
+          WHERE boundary.origin_device_id = groups.origin_device_id
+            AND boundary.visible = 1 AND boundary.deleted_at IS NULL
+          ORDER BY boundary.created_at DESC, boundary.id DESC
+          LIMIT 1 OFFSET ${policy.maxItemsPerDevice - 1}
+        ) AS boundary_id
+        FROM (
+          SELECT DISTINCT origin_device_id FROM clipboard_items
+          WHERE visible = 1 AND deleted_at IS NULL
+        ) groups
+      ) limits ON limits.origin_device_id = i.origin_device_id
+      JOIN clipboard_items boundary ON boundary.id = limits.boundary_id
+      WHERE i.visible = 1 AND i.deleted_at IS NULL
+        AND (i.created_at, i.id) < (boundary.created_at, boundary.id)
+    `)
+    if (policy.maxItemsPerChannel !== undefined) candidateQueries.push(sql`
+      SELECT i.id, i.created_at FROM clipboard_items i
+      JOIN (
+        SELECT groups.channel_id, (
+          SELECT boundary.id FROM clipboard_items boundary
+          WHERE boundary.channel_id = groups.channel_id
+            AND boundary.visible = 1 AND boundary.deleted_at IS NULL
+          ORDER BY boundary.created_at DESC, boundary.id DESC
+          LIMIT 1 OFFSET ${policy.maxItemsPerChannel - 1}
+        ) AS boundary_id
+        FROM (
+          SELECT DISTINCT channel_id FROM clipboard_items
+          WHERE visible = 1 AND deleted_at IS NULL
+        ) groups
+      ) limits ON limits.channel_id = i.channel_id
+      JOIN clipboard_items boundary ON boundary.id = limits.boundary_id
+      WHERE i.visible = 1 AND i.deleted_at IS NULL
+        AND (i.created_at, i.id) < (boundary.created_at, boundary.id)
+    `)
+    if (policy.maxItemsPerDevicePerChannel !== undefined) candidateQueries.push(sql`
+      SELECT i.id, i.created_at FROM clipboard_items i
+      JOIN (
+        SELECT groups.origin_device_id, groups.channel_id, (
+          SELECT boundary.id FROM clipboard_items boundary
+          WHERE boundary.origin_device_id = groups.origin_device_id
+            AND boundary.channel_id = groups.channel_id
+            AND boundary.visible = 1 AND boundary.deleted_at IS NULL
+          ORDER BY boundary.created_at DESC, boundary.id DESC
+          LIMIT 1 OFFSET ${policy.maxItemsPerDevicePerChannel - 1}
+        ) AS boundary_id
+        FROM (
+          SELECT DISTINCT origin_device_id, channel_id FROM clipboard_items
+          WHERE visible = 1 AND deleted_at IS NULL
+        ) groups
+      ) limits ON limits.origin_device_id = i.origin_device_id AND limits.channel_id = i.channel_id
+      JOIN clipboard_items boundary ON boundary.id = limits.boundary_id
+      WHERE i.visible = 1 AND i.deleted_at IS NULL
+        AND (i.created_at, i.id) < (boundary.created_at, boundary.id)
+    `)
+    if (policy.maxAgeMillis !== undefined) candidateQueries.push(sql`
+      SELECT id, created_at FROM clipboard_items
+      WHERE visible = 1 AND deleted_at IS NULL AND created_at < ${now - policy.maxAgeMillis}
+    `)
+    if (candidateQueries.length === 0) return []
+    return this.all<{ id: string }>(sql`
+      SELECT candidate.id FROM (${sql.join(candidateQueries, sql` UNION `)}) candidate
+      JOIN clipboard_items i ON i.id = candidate.id
+      WHERE ${this.cleanupEligible(now)}
+      ORDER BY candidate.created_at, candidate.id LIMIT ${limit}
     `).map((row) => row.id)
+  }
+
+  pruneCleanupCandidate(id: string, now: number): boolean {
+    const eligible = this.first<{ id: string }>(sql`
+      SELECT i.id FROM clipboard_items i WHERE i.id = ${id} AND ${this.cleanupEligible(now)}
+    `)
+    return eligible ? this.pruneItem(id, now) : false
   }
 
   previewObject(itemId: string, previewId: string, channelId: string):

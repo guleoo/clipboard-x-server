@@ -12,21 +12,12 @@ import { messageOf } from "@/utils/format"
 
 interface Draft {
   enabled: boolean
-  onStartup: boolean
-  afterPublish: boolean
-  scheduled: boolean
   intervalMinutes: string
   maxItems: string
   maxItemsPerChannel: string
   maxItemsPerDevice: string
   maxItemsPerDevicePerChannel: string
   maxAgeDays: string
-  objectsEnabled: boolean
-  objectGraceMinutes: string
-  itemBatchSize: string
-  objectBatchSize: string
-  maxItemsPerRun: string
-  maxObjectsPerRun: string
 }
 
 const minuteMillis = 60_000
@@ -35,21 +26,12 @@ const dayMillis = 86_400_000
 function draftOf(value: CleanupConfiguration): Draft {
   return {
     enabled: value.enabled,
-    onStartup: value.triggers.onStartup,
-    afterPublish: value.triggers.afterPublish,
-    scheduled: value.triggers.scheduled,
-    intervalMinutes: String(value.triggers.intervalMillis / minuteMillis),
+    intervalMinutes: String(value.intervalMillis / minuteMillis),
     maxItems: value.clipboard.maxItems?.toString() ?? "",
     maxItemsPerChannel: value.clipboard.maxItemsPerChannel?.toString() ?? "",
     maxItemsPerDevice: value.clipboard.maxItemsPerDevice?.toString() ?? "",
     maxItemsPerDevicePerChannel: value.clipboard.maxItemsPerDevicePerChannel?.toString() ?? "",
     maxAgeDays: value.clipboard.maxAgeMillis === undefined ? "" : String(value.clipboard.maxAgeMillis / dayMillis),
-    objectsEnabled: value.objects.enabled,
-    objectGraceMinutes: String(value.objects.graceMillis / minuteMillis),
-    itemBatchSize: String(value.execution.itemBatchSize),
-    objectBatchSize: String(value.execution.objectBatchSize),
-    maxItemsPerRun: String(value.execution.maxItemsPerRun),
-    maxObjectsPerRun: String(value.execution.maxObjectsPerRun),
   }
 }
 
@@ -84,36 +66,17 @@ function configurationOf(draft: Draft): CleanupConfiguration {
   })
   return {
     enabled: draft.enabled,
-    triggers: {
-      onStartup: draft.onStartup,
-      afterPublish: draft.afterPublish,
-      scheduled: draft.scheduled,
-      intervalMillis: positiveNumber(draft.intervalMinutes, "定时清理间隔", {
-        multiplier: minuteMillis,
-        min: minuteMillis,
-        max: dayMillis,
-      })!,
-    },
+    intervalMillis: positiveNumber(draft.intervalMinutes, "周期清理间隔", {
+      multiplier: minuteMillis,
+      min: minuteMillis,
+      max: dayMillis,
+    })!,
     clipboard: {
       ...(maxItems === undefined ? {} : { maxItems }),
       ...(maxItemsPerChannel === undefined ? {} : { maxItemsPerChannel }),
       ...(maxItemsPerDevice === undefined ? {} : { maxItemsPerDevice }),
       ...(maxItemsPerDevicePerChannel === undefined ? {} : { maxItemsPerDevicePerChannel }),
       ...(maxAgeMillis === undefined ? {} : { maxAgeMillis }),
-    },
-    objects: {
-      enabled: draft.objectsEnabled,
-      graceMillis: positiveNumber(draft.objectGraceMinutes, "对象回收宽限期", {
-        multiplier: minuteMillis,
-        min: minuteMillis,
-        max: 365 * dayMillis,
-      })!,
-    },
-    execution: {
-      itemBatchSize: positiveNumber(draft.itemBatchSize, "条目批大小", { max: 1_000 })!,
-      objectBatchSize: positiveNumber(draft.objectBatchSize, "对象批大小", { max: 1_000 })!,
-      maxItemsPerRun: positiveNumber(draft.maxItemsPerRun, "单轮最多清理条目", { max: 1_000_000 })!,
-      maxObjectsPerRun: positiveNumber(draft.maxObjectsPerRun, "单轮最多回收对象", { max: 1_000_000 })!,
     },
   }
 }
@@ -127,13 +90,9 @@ function tightens(previous: CleanupConfiguration, next: CleanupConfiguration): b
     "maxItemsPerDevicePerChannel",
     "maxAgeMillis",
   ] as const
-  const hasDeletion = clipboardFields.some((field) => next.clipboard[field] !== undefined)
-    || next.objects.enabled
-  if (!previous.enabled) return hasDeletion
+  if (!previous.enabled) return next.enabled
   return clipboardFields.some((field) =>
     (next.clipboard[field] ?? Infinity) < (previous.clipboard[field] ?? Infinity))
-    || (next.objects.enabled && (!previous.objects.enabled
-      || next.objects.graceMillis < previous.objects.graceMillis))
 }
 
 interface ToggleFieldProps {
@@ -209,7 +168,6 @@ export function ConfigurationPage() {
     mutationFn: api.configuration.updateCleanup,
     onSuccess: (saved) => {
       queryClient.setQueryData(queryKey, saved)
-      queryClient.invalidateQueries({ queryKey: ["items"] })
       setDraft(draftOf(saved))
       setConfirm(null)
       setError("")
@@ -249,7 +207,7 @@ export function ConfigurationPage() {
             <ToggleField
               id="cleanup-enabled"
               label="启用自动清理"
-              description="关闭时保留下面的策略，但启动、发布后和定时任务都不会执行清理。"
+              description="开启后，服务器只会按照设定周期在后台清理；关闭时保留下面的规则。"
               checked={draft.enabled}
               onCheckedChange={(checked) => set("enabled", checked)}
             />
@@ -257,20 +215,14 @@ export function ConfigurationPage() {
 
           <section className="surface-raised space-y-4 p-5 sm:p-6">
             <div>
-              <h2 className="font-semibold">触发方式</h2>
-              <p className="mt-1 text-sm text-muted-foreground">控制何时检查并执行已经启用的清理规则。</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <ToggleField id="cleanup-on-startup" label="启动时" description="服务启动完成后执行一轮。"
-                checked={draft.onStartup} onCheckedChange={(checked) => set("onStartup", checked)} />
-              <ToggleField id="cleanup-after-publish" label="发布后" description="新内容提交完成后检查相关范围。"
-                checked={draft.afterPublish} onCheckedChange={(checked) => set("afterPublish", checked)} />
-              <ToggleField id="cleanup-scheduled" label="定时执行" description="按下面的间隔周期执行全量检查。"
-                checked={draft.scheduled} onCheckedChange={(checked) => set("scheduled", checked)} />
+              <h2 className="font-semibold">清理周期</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                周期任务采用内部固定的小批次执行，并在批次之间让出处理时间。
+              </p>
             </div>
             <div className="max-w-sm">
-              <NumberField id="cleanup-interval" label="定时清理间隔（分钟）"
-                description="1 到 1440 分钟；关闭定时执行后仍会保存该值。" value={draft.intervalMinutes}
+              <NumberField id="cleanup-interval" label="周期清理间隔（分钟）"
+                description="1 到 1440 分钟；修改配置不会立即触发清理。" value={draft.intervalMinutes}
                 min={1} max={1440} step="any" onChange={(value) => set("intervalMinutes", value)} />
             </div>
           </section>
@@ -295,38 +247,6 @@ export function ConfigurationPage() {
             </div>
           </section>
 
-          <section className="surface-raised space-y-4 p-5 sm:p-6">
-            <div>
-              <h2 className="font-semibold">二进制对象</h2>
-              <p className="mt-1 text-sm text-muted-foreground">条目清理后，仅回收已经没有任何条目或上传引用的本地文件。</p>
-            </div>
-            <ToggleField id="cleanup-objects" label="回收未引用对象"
-              description="对象进入未引用状态后，等待宽限期结束才会删除。" checked={draft.objectsEnabled}
-              onCheckedChange={(checked) => set("objectsEnabled", checked)} />
-            <div className="max-w-sm">
-              <NumberField id="cleanup-object-grace" label="对象回收宽限期（分钟）"
-                description="最少 1 分钟，最多 365 天。" value={draft.objectGraceMinutes}
-                min={1} max={525600} step="any" onChange={(value) => set("objectGraceMinutes", value)} />
-            </div>
-          </section>
-
-          <section className="surface-raised space-y-4 p-5 sm:p-6">
-            <div>
-              <h2 className="font-semibold">单轮执行预算</h2>
-              <p className="mt-1 text-sm text-muted-foreground">限制一次任务的数据库批量和总处理量，剩余候选留到后续触发。</p>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <NumberField id="cleanup-item-batch" label="条目批大小" description="每个数据库事务最多处理 1000 条。"
-                max={1000} value={draft.itemBatchSize} onChange={(value) => set("itemBatchSize", value)} />
-              <NumberField id="cleanup-object-batch" label="对象批大小" description="每批最多检查并回收 1000 个对象。"
-                max={1000} value={draft.objectBatchSize} onChange={(value) => set("objectBatchSize", value)} />
-              <NumberField id="cleanup-max-items" label="单轮最多清理条目" description="达到上限后等待下一次触发。"
-                max={1_000_000} value={draft.maxItemsPerRun} onChange={(value) => set("maxItemsPerRun", value)} />
-              <NumberField id="cleanup-max-objects" label="单轮最多回收对象" description="达到上限后等待下一次触发。"
-                max={1_000_000} value={draft.maxObjectsPerRun} onChange={(value) => set("maxObjectsPerRun", value)} />
-            </div>
-          </section>
-
           {error || mutation.error ? (
             <p role="alert" className="text-sm text-destructive">{error || messageOf(mutation.error)}</p>
           ) : null}
@@ -343,7 +263,7 @@ export function ConfigurationPage() {
                   确认应用更严格的清理策略？
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  保存后服务器会立即执行一轮有预算上限的清理。已清理的服务器内容无法恢复，客户端本地历史不会被删除。
+                  保存后将从下一个清理周期开始应用。任务会在后台分批处理；已清理的服务器内容无法恢复，客户端本地历史不会被删除。
                 </p>
               </div>
               {mutation.error ? <p role="alert" className="text-sm text-destructive">{messageOf(mutation.error)}</p> : null}

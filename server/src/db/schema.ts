@@ -91,6 +91,13 @@ export const clipboardItems = sqliteTable("clipboard_items", {
 }, (table) => [
   index("clipboard_items_page").on(table.channelId, table.visible, table.deletedAt, table.createdAt, table.id),
   index("clipboard_items_origin").on(table.originDeviceId, table.createdAt),
+  index("clipboard_items_cleanup_global").on(table.visible, table.deletedAt, table.createdAt, table.id),
+  index("clipboard_items_cleanup_device").on(
+    table.originDeviceId, table.visible, table.deletedAt, table.createdAt, table.id,
+  ),
+  index("clipboard_items_cleanup_device_channel").on(
+    table.originDeviceId, table.channelId, table.visible, table.deletedAt, table.createdAt, table.id,
+  ),
 ])
 
 export const representations = sqliteTable("representations", {
@@ -146,7 +153,9 @@ export const uploads = sqliteTable("uploads", {
   workId: text("work_id"),
   createdAt: integer("created_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
-})
+}, (table) => [
+  index("uploads_cleanup_item").on(table.itemId, table.state, table.expiresAt),
+])
 
 export const uploadObjects = sqliteTable("upload_objects", {
   uploadId: text("upload_id").notNull().references(() => uploads.id, { onDelete: "cascade" }),
@@ -179,7 +188,9 @@ export const materializationRequests = sqliteTable("materialization_requests", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
-})
+}, (table) => [
+  index("materialization_requests_cleanup_item").on(table.itemId, table.activeKey, table.expiresAt),
+])
 
 export const materializationWaiters = sqliteTable("materialization_waiters", {
   requestId: text("request_id").notNull().references(() => materializationRequests.id, { onDelete: "cascade" }),

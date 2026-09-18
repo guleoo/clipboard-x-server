@@ -68,7 +68,6 @@ export function registerProtectedAdministratorRoutes(router: AppHono): void {
     }),
     validator("json", CleanupOptions),
     (context) => {
-      const previous = config.cleanup;
       let cleanup: typeof config.cleanup;
       try {
         cleanup = config.updateCleanup(context.req.valid("json"));
@@ -78,7 +77,7 @@ export function registerProtectedAdministratorRoutes(router: AppHono): void {
         }
         throw cause;
       }
-      cleanupService.configure({ runNow: cleanupService.tightens(previous, cleanup) });
+      cleanupService.configure();
       return context.json(cleanup);
     },
   );

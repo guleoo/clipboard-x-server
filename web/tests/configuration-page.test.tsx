@@ -14,10 +14,8 @@ afterEach(cleanup)
 
 const defaults: CleanupConfiguration = {
   enabled: false,
-  triggers: { onStartup: true, afterPublish: true, scheduled: true, intervalMillis: 3_600_000 },
+  intervalMillis: 3_600_000,
   clipboard: {},
-  objects: { enabled: true, graceMillis: 86_400_000 },
-  execution: { itemBatchSize: 100, objectBatchSize: 100, maxItemsPerRun: 10_000, maxObjectsPerRun: 10_000 },
 }
 
 function renderPage(initial: CleanupConfiguration) {
@@ -45,7 +43,7 @@ function input(id: string): HTMLInputElement {
   return element
 }
 
-test("enabling cleanup confirms and submits the complete hierarchical policy", async () => {
+test("enabling periodic cleanup confirms and submits the retention policy", async () => {
   const { updateCleanup } = renderPage(defaults)
   await screen.findByText("清理策略")
   await waitFor(() => expect(input("cleanup-interval").value).toBe("60"))
@@ -63,7 +61,7 @@ test("enabling cleanup confirms and submits the complete hierarchical policy", a
   await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith({
     ...defaults,
     enabled: true,
-    triggers: { ...defaults.triggers, intervalMillis: 1_800_000 },
+    intervalMillis: 1_800_000,
     clipboard: {
       maxItems: 500,
       maxItemsPerDevicePerChannel: 25,
@@ -71,6 +69,10 @@ test("enabling cleanup confirms and submits the complete hierarchical policy", a
     },
   }))
   await waitFor(() => expect(screen.queryByText("确认应用更严格的清理策略？")).toBeNull())
+  fireEvent.change(input("cleanup-total"), { target: { value: "600" } })
+  fireEvent.click(screen.getByRole("button", { name: "保存清理策略" }))
+  await waitFor(() => expect(updateCleanup).toHaveBeenCalledTimes(2))
+  expect(screen.queryByText("确认应用更严格的清理策略？")).toBeNull()
 })
 
 test("loosening one limit saves without a destructive confirmation", async () => {
@@ -87,13 +89,13 @@ test("loosening one limit saves without a destructive confirmation", async () =>
   expect(screen.queryByText("确认应用更严格的清理策略？")).toBeNull()
 })
 
-test("invalid execution budgets do not submit", async () => {
-  const { updateCleanup } = renderPage(defaults)
-  await waitFor(() => expect(input("cleanup-item-batch").value).toBe("100"))
-  fireEvent.change(input("cleanup-item-batch"), { target: { value: "1001" } })
-  fireEvent.submit(screen.getByRole("button", { name: "保存清理策略" }).closest("form")!)
-  expect(screen.getByRole("alert").textContent).toContain("条目批大小超出允许范围")
-  expect(updateCleanup).not.toHaveBeenCalled()
+test("exposes only periodic retention controls", async () => {
+  renderPage(defaults)
+  await screen.findByText("清理周期")
+  expect(screen.queryByText("启动时")).toBeNull()
+  expect(screen.queryByText("发布后")).toBeNull()
+  expect(screen.queryByText("二进制对象")).toBeNull()
+  expect(screen.queryByText("单轮执行预算")).toBeNull()
 })
 
 test("timing fields enforce the same minimum as the server schema", async () => {
@@ -101,6 +103,6 @@ test("timing fields enforce the same minimum as the server schema", async () => 
   await waitFor(() => expect(input("cleanup-interval").value).toBe("60"))
   fireEvent.change(input("cleanup-interval"), { target: { value: "0.5" } })
   fireEvent.submit(screen.getByRole("button", { name: "保存清理策略" }).closest("form")!)
-  expect(screen.getByRole("alert").textContent).toContain("定时清理间隔超出允许范围")
+  expect(screen.getByRole("alert").textContent).toContain("周期清理间隔超出允许范围")
   expect(updateCleanup).not.toHaveBeenCalled()
 })

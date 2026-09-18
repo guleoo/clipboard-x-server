@@ -1430,23 +1430,8 @@
                 "schema": {
                   "default": {
                     "enabled": false,
-                    "triggers": {
-                      "onStartup": true,
-                      "afterPublish": true,
-                      "scheduled": true,
-                      "intervalMillis": 3600000
-                    },
-                    "clipboard": {},
-                    "objects": {
-                      "enabled": true,
-                      "graceMillis": 86400000
-                    },
-                    "execution": {
-                      "itemBatchSize": 100,
-                      "objectBatchSize": 100,
-                      "maxItemsPerRun": 10000,
-                      "maxObjectsPerRun": 10000
-                    }
+                    "intervalMillis": 3600000,
+                    "clipboard": {}
                   },
                   "type": "object",
                   "properties": {
@@ -1454,35 +1439,11 @@
                       "default": false,
                       "type": "boolean"
                     },
-                    "triggers": {
-                      "default": {
-                        "onStartup": true,
-                        "afterPublish": true,
-                        "scheduled": true,
-                        "intervalMillis": 3600000
-                      },
-                      "type": "object",
-                      "properties": {
-                        "onStartup": {
-                          "default": true,
-                          "type": "boolean"
-                        },
-                        "afterPublish": {
-                          "default": true,
-                          "type": "boolean"
-                        },
-                        "scheduled": {
-                          "default": true,
-                          "type": "boolean"
-                        },
-                        "intervalMillis": {
-                          "default": 3600000,
-                          "type": "integer",
-                          "minimum": 60000,
-                          "maximum": 86400000
-                        }
-                      },
-                      "additionalProperties": false
+                    "intervalMillis": {
+                      "default": 3600000,
+                      "type": "integer",
+                      "minimum": 60000,
+                      "maximum": 86400000
                     },
                     "clipboard": {
                       "default": {},
@@ -1512,62 +1473,6 @@
                           "type": "integer",
                           "exclusiveMinimum": 0,
                           "maximum": 9007199254740991
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "objects": {
-                      "default": {
-                        "enabled": true,
-                        "graceMillis": 86400000
-                      },
-                      "type": "object",
-                      "properties": {
-                        "enabled": {
-                          "default": true,
-                          "type": "boolean"
-                        },
-                        "graceMillis": {
-                          "default": 86400000,
-                          "type": "integer",
-                          "minimum": 60000,
-                          "maximum": 31536000000
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "execution": {
-                      "default": {
-                        "itemBatchSize": 100,
-                        "objectBatchSize": 100,
-                        "maxItemsPerRun": 10000,
-                        "maxObjectsPerRun": 10000
-                      },
-                      "type": "object",
-                      "properties": {
-                        "itemBatchSize": {
-                          "default": 100,
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1000
-                        },
-                        "objectBatchSize": {
-                          "default": 100,
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1000
-                        },
-                        "maxItemsPerRun": {
-                          "default": 10000,
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1000000
-                        },
-                        "maxObjectsPerRun": {
-                          "default": 10000,
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1000000
                         }
                       },
                       "additionalProperties": false
@@ -1691,23 +1596,8 @@
                 "schema": {
                   "default": {
                     "enabled": false,
-                    "triggers": {
-                      "onStartup": true,
-                      "afterPublish": true,
-                      "scheduled": true,
-                      "intervalMillis": 3600000
-                    },
-                    "clipboard": {},
-                    "objects": {
-                      "enabled": true,
-                      "graceMillis": 86400000
-                    },
-                    "execution": {
-                      "itemBatchSize": 100,
-                      "objectBatchSize": 100,
-                      "maxItemsPerRun": 10000,
-                      "maxObjectsPerRun": 10000
-                    }
+                    "intervalMillis": 3600000,
+                    "clipboard": {}
                   },
                   "type": "object",
                   "properties": {
@@ -1715,35 +1605,11 @@
                       "default": false,
                       "type": "boolean"
                     },
-                    "triggers": {
-                      "default": {
-                        "onStartup": true,
-                        "afterPublish": true,
-                        "scheduled": true,
-                        "intervalMillis": 3600000
-                      },
-                      "type": "object",
-                      "properties": {
-                        "onStartup": {
-                          "default": true,
-                          "type": "boolean"
-                        },
-                        "afterPublish": {
-                          "default": true,
-                          "type": "boolean"
-                        },
-                        "scheduled": {
-                          "default": true,
-                          "type": "boolean"
-                        },
-                        "intervalMillis": {
-                          "default": 3600000,
-                          "type": "integer",
-                          "minimum": 60000,
-                          "maximum": 86400000
-                        }
-                      },
-                      "additionalProperties": false
+                    "intervalMillis": {
+                      "default": 3600000,
+                      "type": "integer",
+                      "minimum": 60000,
+                      "maximum": 86400000
                     },
                     "clipboard": {
                       "default": {},
@@ -1773,62 +1639,6 @@
                           "type": "integer",
                           "exclusiveMinimum": 0,
                           "maximum": 9007199254740991
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "objects": {
-                      "default": {
-                        "enabled": true,
-                        "graceMillis": 86400000
-                      },
-                      "type": "object",
-                      "properties": {
-                        "enabled": {
-                          "default": true,
-                          "type": "boolean"
-                        },
-                        "graceMillis": {
-                          "default": 86400000,
-                          "type": "integer",
-                          "minimum": 60000,
-                          "maximum": 31536000000
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "execution": {
-                      "default": {
-                        "itemBatchSize": 100,
-                        "objectBatchSize": 100,
-                        "maxItemsPerRun": 10000,
-                        "maxObjectsPerRun": 10000
-                      },
-                      "type": "object",
-                      "properties": {
-                        "itemBatchSize": {
-                          "default": 100,
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1000
-                        },
-                        "objectBatchSize": {
-                          "default": 100,
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1000
-                        },
-                        "maxItemsPerRun": {
-                          "default": 10000,
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1000000
-                        },
-                        "maxObjectsPerRun": {
-                          "default": 10000,
-                          "type": "integer",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1000000
                         }
                       },
                       "additionalProperties": false
@@ -1937,23 +1747,8 @@
               "schema": {
                 "default": {
                   "enabled": false,
-                  "triggers": {
-                    "onStartup": true,
-                    "afterPublish": true,
-                    "scheduled": true,
-                    "intervalMillis": 3600000
-                  },
-                  "clipboard": {},
-                  "objects": {
-                    "enabled": true,
-                    "graceMillis": 86400000
-                  },
-                  "execution": {
-                    "itemBatchSize": 100,
-                    "objectBatchSize": 100,
-                    "maxItemsPerRun": 10000,
-                    "maxObjectsPerRun": 10000
-                  }
+                  "intervalMillis": 3600000,
+                  "clipboard": {}
                 },
                 "type": "object",
                 "properties": {
@@ -1961,35 +1756,11 @@
                     "default": false,
                     "type": "boolean"
                   },
-                  "triggers": {
-                    "default": {
-                      "onStartup": true,
-                      "afterPublish": true,
-                      "scheduled": true,
-                      "intervalMillis": 3600000
-                    },
-                    "type": "object",
-                    "properties": {
-                      "onStartup": {
-                        "default": true,
-                        "type": "boolean"
-                      },
-                      "afterPublish": {
-                        "default": true,
-                        "type": "boolean"
-                      },
-                      "scheduled": {
-                        "default": true,
-                        "type": "boolean"
-                      },
-                      "intervalMillis": {
-                        "default": 3600000,
-                        "type": "integer",
-                        "minimum": 60000,
-                        "maximum": 86400000
-                      }
-                    },
-                    "additionalProperties": false
+                  "intervalMillis": {
+                    "default": 3600000,
+                    "type": "integer",
+                    "minimum": 60000,
+                    "maximum": 86400000
                   },
                   "clipboard": {
                     "default": {},
@@ -2019,62 +1790,6 @@
                         "type": "integer",
                         "exclusiveMinimum": 0,
                         "maximum": 9007199254740991
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "objects": {
-                    "default": {
-                      "enabled": true,
-                      "graceMillis": 86400000
-                    },
-                    "type": "object",
-                    "properties": {
-                      "enabled": {
-                        "default": true,
-                        "type": "boolean"
-                      },
-                      "graceMillis": {
-                        "default": 86400000,
-                        "type": "integer",
-                        "minimum": 60000,
-                        "maximum": 31536000000
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "execution": {
-                    "default": {
-                      "itemBatchSize": 100,
-                      "objectBatchSize": 100,
-                      "maxItemsPerRun": 10000,
-                      "maxObjectsPerRun": 10000
-                    },
-                    "type": "object",
-                    "properties": {
-                      "itemBatchSize": {
-                        "default": 100,
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 1000
-                      },
-                      "objectBatchSize": {
-                        "default": 100,
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 1000
-                      },
-                      "maxItemsPerRun": {
-                        "default": 10000,
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 1000000
-                      },
-                      "maxObjectsPerRun": {
-                        "default": 10000,
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 1000000
                       }
                     },
                     "additionalProperties": false

@@ -9,28 +9,13 @@ const DeviceIcon = z.string().min(1).max(128).refine((value) => !/[\r\n\0]/u.tes
 export const AdministratorSchema = z.object({ id: z.literal(1), username: z.string(), createdAt: Timestamp })
 export const CleanupConfigurationSchema = z.object({
   enabled: z.boolean(),
-  triggers: z.object({
-    onStartup: z.boolean(),
-    afterPublish: z.boolean(),
-    scheduled: z.boolean(),
-    intervalMillis: z.number().int().min(60_000).max(86_400_000),
-  }),
+  intervalMillis: z.number().int().min(60_000).max(86_400_000),
   clipboard: z.object({
     maxItems: z.number().int().positive().optional(),
     maxItemsPerChannel: z.number().int().positive().optional(),
     maxItemsPerDevice: z.number().int().positive().optional(),
     maxItemsPerDevicePerChannel: z.number().int().positive().optional(),
     maxAgeMillis: z.number().int().positive().optional(),
-  }),
-  objects: z.object({
-    enabled: z.boolean(),
-    graceMillis: z.number().int().min(60_000).max(31_536_000_000),
-  }),
-  execution: z.object({
-    itemBatchSize: z.number().int().positive().max(1_000),
-    objectBatchSize: z.number().int().positive().max(1_000),
-    maxItemsPerRun: z.number().int().positive().max(1_000_000),
-    maxObjectsPerRun: z.number().int().positive().max(1_000_000),
   }),
 })
 export const DeviceKeySchema = z.object({

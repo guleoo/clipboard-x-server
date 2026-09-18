@@ -7,7 +7,7 @@ import { databaseConfig } from "../src/frame/db"
 import { Lifecycle } from "../src/frame/core"
 import { objectStore } from "../src/repo/object"
 import { sqliteValue } from "../src/common/sqlite"
-import { objectCollector } from "../src/service/object-gc"
+import { OBJECT_COLLECTION_GRACE_MILLIS, objectCollector } from "../src/service/object-gc"
 
 interface ObjectRow {
   readonly id: string
@@ -76,7 +76,7 @@ async function audit(): Promise<readonly AuditIssue[]> {
 }
 
 async function garbageCollect(removeFiles: boolean): Promise<void> {
-  const cutoff = Date.now() - config.cleanup.objects.graceMillis
+  const cutoff = Date.now() - OBJECT_COLLECTION_GRACE_MILLIS
   const plan = objectCollector.plan()
   const temporaryDirectory = join(config.objectDirectory, ".tmp")
   const staleParts: string[] = []
@@ -92,11 +92,7 @@ async function garbageCollect(removeFiles: boolean): Promise<void> {
     temporaryFileCount: staleParts.length,
   }))
   if (!removeFiles) return
-  const deletedObjects = objectCollector.collect(Date.now(), {
-    ...config.cleanup,
-    enabled: true,
-    objects: { ...config.cleanup.objects, enabled: true },
-  })
+  const deletedObjects = await objectCollector.collect()
   for (const path of staleParts) await rm(path, { force: true })
   console.log(JSON.stringify({ event: "objects.gc.complete", deletedObjects, deletedTemporaryFiles: staleParts.length }))
 }
