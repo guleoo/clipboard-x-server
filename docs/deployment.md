@@ -38,13 +38,13 @@ Use the supplied Nginx example or an equivalent TLS reverse proxy. Preserve stre
 
 ## Container
 
-Place `compose.yaml` and `.env` together. Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env`; set `CBX_PUBLIC_ORIGIN` to the public HTTPS URL when using a reverse proxy. Then start:
+In `docker/`, create `.env` from `.env.example` and set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters. Set `CBX_PUBLIC_ORIGIN` to the public HTTPS URL when using a reverse proxy. Then start:
 
 ```sh
 docker compose up -d
 ```
 
-The first start generates `/app/config/config.yaml` in a named volume from the image's YAML template, using `.env` only for the initial administrator password and public origin. Later starts do not overwrite that file: the YAML remains authoritative, including changes saved in the Web console. A second volume stores SQLite and binary objects. Keep both volumes when updating the image. Changing `.env` after the first start will not change the administrator password or origin; edit the YAML through the console or in the configuration volume instead. Compose pulls the published image, or builds from source when it is available locally.
+The image contains `config.yaml` with `${env:...}` placeholders. A named volume holds that file so the Web console can update it; another volume stores SQLite and binary objects. Keep both volumes when updating the image. Environment changes apply to placeholders that remain in YAML. If the console has written a concrete value, that YAML value takes precedence. For HTTPS, set `web.cookie-secure: true` in the configuration volume. Compose pulls the published image, or builds from source when it is available locally.
 
 The built-in health paths are unauthenticated: `/health/live` checks the process, while
 `/health/ready` also checks SQLite. The container health check reads the same YAML file.

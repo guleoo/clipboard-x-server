@@ -23,13 +23,14 @@ Clipboard X Server 与不同平台上的设备客户端连接，提供 Channel �
 
 ### 快速开始
 
-准备 `compose.yaml` 和 `.env`（可从仓库的 `.env.example` 复制），在 `.env` 中填写长度大于 6 位的 `CBX_ADMIN_PASSWORD`：
+进入 `docker/`，按 `.env.example` 建立 `.env`，填写长度大于 6 位的 `CBX_ADMIN_PASSWORD`。启动只需要该 `.env` 与 `compose.yaml`：
 
 ```sh
+cd docker
 docker compose up -d
 ```
 
-打开 **http://127.0.0.1:28787**。首次启动会在持久化卷中生成 YAML 配置并迁移数据库；后续配置以该 YAML 为准，控制台更改会写回。通过公网访问时，在首次启动前将 `.env` 的 `CBX_PUBLIC_ORIGIN` 设为 HTTPS 地址，反向代理见[部署指南](docs/deployment.md)。
+打开 **http://127.0.0.1:28787**。镜像自带含环境变量占位符的 YAML 配置，Compose 将 `.env` 传给 Server；配置与数据分别存入持久化卷。通过公网访问时还需配置 HTTPS，见[部署指南](docs/deployment.md)。
 
 ### 自行部署
 
@@ -81,7 +82,7 @@ bun run dev:web
 | SQLite | 剪切板元数据、传输状态和客户端同步的设备资料。 |
 | 本地对象目录 | 图片等二进制内容，以内容寻址方式保存。 |
 
-Server 启动时读取 YAML；管理界面修改受管配置后会同步写回该文件。源码入口使用 `server/config.yaml`，Docker 首次启动在配置卷中生成 `/app/config/config.yaml`，自行部署时由 `--config <path>` 指定。mode 和 `import` 自动合并已关闭。请将含凭据的实际配置文件保持为 `0600`，不要提交到版本库。
+Server 启动时读取 YAML；管理界面修改受管配置后会同步写回该文件。源码入口使用 `server/config.yaml`，Docker 镜像自带 `docker/config.yaml` 并在配置卷中使用它，自行部署时由 `--config <path>` 指定。mode 和 `import` 自动合并已关闭。请将含凭据的实际配置文件保持为 `0600`，不要提交到版本库。
 
 > [!IMPORTANT]
 > 这是可信的自托管服务，Server 能读取已上传的内容，**不提供端到端加密**。自动清理默认关闭；启用后仅移除服务端数据，不控制客户端的本地历史。开启保留上限前请先备份。

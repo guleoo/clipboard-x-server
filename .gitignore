@@ -17,6 +17,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # local configuration and dotenv files
 config.yaml
+!docker/config.yaml
 .env
 .env.*
 !.env.example

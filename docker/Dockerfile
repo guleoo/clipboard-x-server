@@ -15,7 +15,7 @@ WORKDIR /app
 COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/clipboard-x-server ./clipboard-x-server
 COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/web ./web
 COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/server/drizzle ./server/drizzle
-COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/server/config.example.yaml ./server/config.example.yaml
+COPY --chown=clipboard-x:clipboard-x docker/config.yaml ./config/config.yaml
 USER 10001:10001
 VOLUME ["/app/config", "/app/data"]
 EXPOSE 28787

@@ -1,5 +1,3 @@
-import "./bootstrap";
-
 export { createServerApp, startServer } from "./entry";
 export { routes } from "./route";
 

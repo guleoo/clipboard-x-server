@@ -43,21 +43,26 @@ describe("project README", () => {
     expect(readme).toContain("git clone https://github.com/Guleo/clipboard-x-server.git");
   });
 
-  it("bootstraps a persistent Docker config without sending secrets into the build", () => {
-    const compose = parse(readFileSync(resolve(root, "compose.yaml"), "utf8")) as {
+  it("packages a persistent Docker config with environment placeholders", () => {
+    const compose = parse(readFileSync(resolve(root, "docker/compose.yaml"), "utf8")) as {
       services: Record<string, { volumes: string[]; environment: Record<string, string> }>;
     };
-    const dockerfile = readFileSync(resolve(root, "Dockerfile"), "utf8");
-    const dockerignore = readFileSync(resolve(root, ".dockerignore"), "utf8").split("\n");
+    const dockerfile = readFileSync(resolve(root, "docker/Dockerfile"), "utf8");
+    const dockerignore = readFileSync(resolve(root, "docker/Dockerfile.dockerignore"), "utf8").split("\n");
     const gitignore = readFileSync(resolve(root, ".gitignore"), "utf8").split("\n");
+    const containerConfig = readFileSync(resolve(root, "docker/config.yaml"), "utf8");
 
     expect(compose.services["clipboard-x-server"]?.volumes).toContain("clipboard-x-config:/app/config");
-    expect(compose.services["clipboard-x-server"]?.environment.CBX_BOOTSTRAP_ADMIN_PASSWORD).toContain("CBX_ADMIN_PASSWORD");
+    expect(compose.services["clipboard-x-server"]?.environment.CBX_ADMIN_PASSWORD).toContain("CBX_ADMIN_PASSWORD");
     expect(dockerfile.match(/\/app\/config\/config\.yaml/g)).toHaveLength(2);
-    expect(dockerfile).toContain("/src/dist/server/config.example.yaml");
+    expect(dockerfile).toContain("COPY --chown=clipboard-x:clipboard-x docker/config.yaml ./config/config.yaml");
+    expect(containerConfig).toContain("${env:CBX_ADMIN_PASSWORD}");
+    expect(containerConfig).toContain("${env:CBX_PUBLIC_ORIGIN}");
     expect(dockerignore).toContain("server/config.yaml");
+    expect(dockerignore).toContain("docker/.env");
     expect(gitignore).toContain("!.env.example");
-    expect(existsSync(resolve(root, ".env.example"))).toBe(true);
+    expect(gitignore).toContain("!docker/config.yaml");
+    expect(existsSync(resolve(root, "docker/.env.example"))).toBe(true);
     expect(readme).not.toContain("chown");
   });
 });
