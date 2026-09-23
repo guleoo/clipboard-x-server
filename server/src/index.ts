@@ -15,8 +15,10 @@ async function healthcheck(): Promise<void> {
   const hostname = config.host === "0.0.0.0" || config.host === "::"
     ? "127.0.0.1"
     : config.host;
+  const protocol = config.tlsEnabled ? "https" : "http";
   const response = await fetch(
-    `http://${hostname}:${config.port}/health/ready`,
+    `${protocol}://${hostname}:${config.port}/health/ready`,
+    config.tlsEnabled ? { tls: { rejectUnauthorized: false } } : undefined,
   ).catch(() => undefined);
   process.exitCode = response?.ok ? 0 : 1;
   await Lifecycle.shutdown({ reason: "manual" });

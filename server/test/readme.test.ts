@@ -57,12 +57,16 @@ describe("project README", () => {
     expect(dockerfile.match(/\/app\/config\/config\.yaml/g)).toHaveLength(2);
     expect(dockerfile).toContain("COPY --chown=clipboard-x:clipboard-x docker/config.yaml ./config/config.yaml");
     expect(containerConfig).toContain("${env:CBX_ADMIN_PASSWORD}");
+    expect(containerConfig).toContain("${env:CBX_ADMIN_USERNAME}");
     expect(containerConfig).toContain("${env:CBX_PUBLIC_ORIGIN}");
+    expect(containerConfig).toContain("${env:CBX_TLS_CERT_FILE}");
+    expect(containerConfig).toContain("${env:CBX_TLS_KEY_FILE}");
     expect(dockerignore).toContain("server/config.yaml");
     expect(dockerignore).toContain("docker/.env");
     expect(gitignore).toContain("!.env.example");
     expect(gitignore).toContain("!docker/config.yaml");
     expect(existsSync(resolve(root, "docker/.env.example"))).toBe(true);
+    expect(existsSync(resolve(root, "deploy/nginx.conf"))).toBe(false);
     expect(readme).not.toContain("chown");
   });
 });

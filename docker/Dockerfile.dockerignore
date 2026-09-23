@@ -11,4 +11,5 @@ coverage
 .env*
 docker/.env
 docker/.env.*
+docker/certs
 !web/.env

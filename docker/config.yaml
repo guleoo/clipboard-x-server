@@ -1,8 +1,11 @@
 # Container configuration. Environment placeholders are resolved at startup.
 app:
   name: clipboard-x-server
-  hostname: 0.0.0.0
-  port: 28787
+  hostname: ${env:CBX_HOST}
+  port: ${env:CBX_PORT}
+  tls:
+    cert-file: ${env:CBX_TLS_CERT_FILE}
+    key-file: ${env:CBX_TLS_KEY_FILE}
   timezone: Asia/Shanghai
   api-prefix: /
   shutdown-timeout-millis: 30000
@@ -34,7 +37,7 @@ storage:
 web:
   root: ../web/dist
   public-origin: ${env:CBX_PUBLIC_ORIGIN}
-  cookie-secure: false
+  cookie-secure: ${env:CBX_COOKIE_SECURE}
 limits:
   max-object-bytes: 83886080
   max-item-bytes: 268435456
@@ -71,7 +74,7 @@ session:
   touch-interval-millis: 300000
   token-bytes: 32
 administrator:
-  username: admin
+  username: ${env:CBX_ADMIN_USERNAME}
   password: ${env:CBX_ADMIN_PASSWORD}
 devices: []
 channels: []

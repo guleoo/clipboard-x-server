@@ -30,7 +30,7 @@ cd docker
 docker compose up -d
 ```
 
-打开 **http://127.0.0.1:28787**。镜像自带含环境变量占位符的 YAML 配置，Compose 将 `.env` 传给 Server；配置与数据分别存入持久化卷。通过公网访问时还需配置 HTTPS，见[部署指南](docs/deployment.md)。
+打开 **http://127.0.0.1:28787**。镜像自带含环境变量占位符的 YAML 配置，Compose 将 `.env` 传给 Server；配置与数据分别存入持久化卷。`.env` 可设置监听与发布地址、端口、管理员账号密码和 TLS 证书路径。直接启用 HTTPS 的步骤见[部署指南](docs/deployment.md)。
 
 ### 自行部署
 
@@ -97,7 +97,7 @@ bun run build
 bun run compile
 ```
 
-`bun run build` 生成 Server bundle，`bun run compile` 生成可执行文件；两者都会把 Web 构建、迁移文件和示例配置组装到 `dist/`。HTTPS、容器和 systemd 的完整步骤见[部署指南](docs/deployment.md)。
+`bun run build` 生成 Server bundle，`bun run compile` 生成可执行文件；两者都会把 Web 构建、迁移文件和示例配置组装到 `dist/`。TLS、容器和 systemd 的完整步骤见[部署指南](docs/deployment.md)。
 
 ## 📚 文档与协议
 

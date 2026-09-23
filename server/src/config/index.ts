@@ -109,7 +109,10 @@ const StorageOptions = zz.object({
 const WebOptions = zz.object({
   root: zz.string().min(1).default("./web/dist"),
   publicOrigin: zz.url().optional(),
-  cookieSecure: zz.boolean().default(true),
+  cookieSecure: zz.union([
+    zz.boolean(),
+    zz.enum(["true", "false"]).transform((value) => value === "true"),
+  ]).default(true),
 }).strict().default({ root: "./web/dist", cookieSecure: true });
 
 const LimitsOptions = zz.object({
@@ -281,6 +284,7 @@ export const config = Object.freeze({
   environment: configMode,
   host: FrameConfig.App.hostname,
   port: FrameConfig.App.port,
+  tlsEnabled: Boolean(FrameConfig.App.tls?.certFile),
   shutdownTimeoutMillis: FrameConfig.App.shutdownTimeoutMillis,
   webRoot: Config.resolvePath(web.root),
   publicOrigin: web.publicOrigin,
@@ -348,6 +352,7 @@ export function publicConfig(): Readonly<Record<string, unknown>> {
     environment: config.environment,
     host: config.host,
     port: config.port,
+    tlsEnabled: config.tlsEnabled,
     publicOrigin: config.publicOrigin ?? "request origin",
     cookieSecure: config.cookieSecure,
     maxObjectBytes: config.maxObjectBytes,

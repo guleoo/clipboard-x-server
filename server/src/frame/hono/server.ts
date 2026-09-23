@@ -1,4 +1,4 @@
-import { FrameConfig } from "../config";
+import { Config, FrameConfig } from "../config";
 import { Lifecycle, SystemError } from "../core";
 
 export namespace Server {
@@ -42,14 +42,20 @@ export namespace Server {
 
   export async function listen(application: Application): Promise<Listener> {
     if (current) throw new SystemError("Server is already listening");
-    const { hostname, port: configuredPort, shutdownTimeoutMillis } = FrameConfig.App;
+    const { hostname, port: configuredPort, shutdownTimeoutMillis, tls } = FrameConfig.App;
     const server = Bun.serve({
       hostname,
       port: configuredPort,
+      ...(tls?.certFile && tls.keyFile ? {
+        tls: {
+          cert: Bun.file(Config.resolvePath(tls.certFile)),
+          key: Bun.file(Config.resolvePath(tls.keyFile)),
+        },
+      } : {}),
       fetch: application.fetch,
     });
     const port = server.port ?? configuredPort;
-    const address = new URL("http://localhost");
+    const address = new URL(tls?.certFile ? "https://localhost" : "http://localhost");
     address.hostname = hostname;
     address.port = String(port);
     const target: ManagedServer = { server, unregister() {} };
