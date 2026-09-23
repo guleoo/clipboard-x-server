@@ -17,9 +17,10 @@ describe("project README", () => {
 
   it("documents available commands and links to repository-owned guides", () => {
     const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
+      license: string;
       scripts: Record<string, string>;
     };
-    for (const command of ["dev:server", "dev:web", "typecheck", "test", "openapi:check", "build", "compile"]) {
+    for (const command of ["dev:server", "dev:web", "typecheck", "test", "openapi:check", "build", "compile", "package"]) {
       expect(packageJson.scripts[command]).toBeDefined();
       expect(readme).toContain(`bun run ${command}`);
     }
@@ -28,6 +29,10 @@ describe("project README", () => {
     }
     expect(readme).toContain("CBX_PROXY_URL");
     expect(readme).toContain("server/config.yaml");
+    expect(readme).toContain("[GPL-3.0](LICENSE.md)");
+    expect(packageJson.license).toBe("GPL-3.0-only");
+    expect(packageJson.scripts.package).toContain("--compile --archive");
+    expect(existsSync(resolve(root, "LICENSE.md"))).toBe(true);
   });
 
   it("presents Docker, compiled release, and source startup paths", () => {
@@ -41,6 +46,8 @@ describe("project README", () => {
     expect(readme).toContain("docker compose up -d");
     expect(readme).toContain("./clipboard-x-server --config ./server/config.yaml --migrate --serve");
     expect(readme).toContain("git clone https://github.com/Guleo/clipboard-x-server.git");
+    expect(existsSync(resolve(root, "deploy/clipboard-x-server.service"))).toBe(false);
+    expect(readFileSync(resolve(root, "docs/deployment.md"), "utf8")).not.toContain("systemd");
   });
 
   it("packages a persistent Docker config with environment placeholders", () => {

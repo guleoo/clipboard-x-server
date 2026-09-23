@@ -4,6 +4,7 @@
 node_modules
 **/node_modules
 dist
+release
 **/dist
 data
 server/config.yaml

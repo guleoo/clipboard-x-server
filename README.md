@@ -95,18 +95,23 @@ bun run test
 bun run openapi:check
 bun run build
 bun run compile
+bun run package
 ```
 
-`bun run build` 生成 Server bundle，`bun run compile` 生成可执行文件；两者都会把 Web 构建、迁移文件和示例配置组装到 `dist/`。TLS、容器和 systemd 的完整步骤见[部署指南](docs/deployment.md)。
+`bun run build` 生成 Server bundle，`bun run compile` 生成可执行文件，`bun run package` 在 `release/` 生成包含可执行文件、Web 资源、迁移文件、配置模板、许可证和文档的压缩包。TLS 与容器部署步骤见[部署指南](docs/deployment.md)。
 
 ## 📚 文档与协议
 
 | 文档 | 内容 |
 | --- | --- |
 | [架构说明](docs/architecture.md) | Server、Web、配置、SQLite 和对象存储的职责边界。 |
-| [部署指南](docs/deployment.md) | 可执行文件、容器、反向代理与 systemd。 |
+| [部署指南](docs/deployment.md) | 可执行文件、TLS 与容器部署。 |
 | [运维指南](docs/operations.md) | 备份与恢复、周期清理、对象审计及 GC。 |
 | [OpenAPI 3.1](server/openapi/openapi.json) | 路由、认证与数据结构的机器可读规范。 |
 | [Protocol guide](docs/protocol.md) · [中文协议指南](docs/zh-CN/protocol.md) | 跨请求流程、错误语义和客户端兼容性约定。 |
 
 协议由 Clipboard X Server 维护；协议变更会同步更新 Schema、OpenAPI、指南和契约测试。
+
+## 许可证
+
+本项目采用 [GPL-3.0](LICENSE.md)。

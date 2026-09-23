@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises"
 
 const outputDirectory = new URL("./dist", import.meta.url).pathname
 const compile = process.argv.includes("--compile")
+const executableName = process.platform === "win32" ? "clipboard-x-server.exe" : "clipboard-x-server"
 
 await rm(outputDirectory, { recursive: true, force: true })
 
@@ -11,7 +12,7 @@ const result = await Bun.build({
   minify: true,
   sourcemap: compile ? "none" : "linked",
   ...(compile
-    ? { compile: { outfile: `${outputDirectory}/clipboard-x-server` } }
+    ? { compile: { outfile: `${outputDirectory}/${executableName}` } }
     : { outdir: outputDirectory, naming: "server.js" }),
 })
 
