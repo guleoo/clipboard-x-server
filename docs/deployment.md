@@ -1,53 +1,35 @@
 # Deployment
 
-## Build and run
+## Native release
 
-Use Bun 1.3.14 on the target architecture:
-
-```sh
-bun install --frozen-lockfile
-bun run typecheck
-bun test
-bun run compile
-cd dist
-cp server/config.example.yaml server/config.yaml
-chmod 600 server/config.yaml
-./clipboard-x-server --config ./server/config.yaml
-```
-
-For a compiled release, run the explicit migration operation before the first start and every upgrade:
+Download and unpack the archive for your platform. In the unpacked directory, copy `server/config.example.yaml` to `server/config.yaml` and set a unique `administrator.password`. Start with migration enabled:
 
 ```sh
-./clipboard-x-server --config ./server/config.yaml --migrate
-./clipboard-x-server --config ./server/config.yaml
+./clipboard-x-server --config ./server/config.yaml --migrate --serve
 ```
 
-Before starting, set a unique `administrator.password`. For production, also set
-`app.hostname: 0.0.0.0`, the HTTPS `web.public-origin`, `web.cookie-secure: true`, and the required
-database/storage paths. `app.timezone` defaults to `UTC`. Relative paths are resolved
-from the YAML file's directory.
+For public access, also set `app.hostname: 0.0.0.0`, the HTTPS `web.public-origin`, and `web.cookie-secure: true`. Relative paths in YAML resolve from its directory. Keep the entire release directory, including `web/dist` and `server/drizzle`.
 
 The YAML file is the sole authoritative source for runtime options, the administrator, devices,
 complete device API keys, channels, and memberships. The process reads it at startup. Changes made
 through the console are written with a temporary file, synced, atomically renamed, and forced to mode
 `0600`. Manual changes take effect on the next process start.
 
-Server-side `cleanup` is optional and disabled by default. Enabling it removes
-older server copies at startup and during normal operation without deleting local client
-history; see [operations](operations.md) before applying a limit to existing data.
-
-The executable contains the Bun runtime but is still platform/architecture-specific. Build and
-smoke-test separate Linux x64 and arm64 artifacts on their target libc baseline. Keep `web/dist`,
-`server/drizzle` and `server/config.yaml` in the release layout unless absolute paths are configured.
+Server-side `cleanup` is optional and disabled by default. When enabled, it removes
+older server copies on the configured interval without deleting local client history;
+see [operations](operations.md) before applying a limit to existing data.
 
 ## systemd
 
 The supplied unit reads `/var/lib/clipboard-x-server/config.yaml`, allowing the unprivileged service
-account to update it from the console. Install the release under `/opt/clipboard-x-server`, then:
+account to update it from the console. Install the release under `/opt/clipboard-x-server`. In the
+copied YAML file, set `database.migrations-folder: /opt/clipboard-x-server/server/drizzle` and use
+absolute database, storage and Web paths before running migrations and enabling the service:
 
 ```sh
 install -d -o clipboard-x -g clipboard-x -m 0700 /var/lib/clipboard-x-server
 install -o clipboard-x -g clipboard-x -m 0600 server/config.yaml /var/lib/clipboard-x-server/config.yaml
+sudo -u clipboard-x /opt/clipboard-x-server/clipboard-x-server --config /var/lib/clipboard-x-server/config.yaml --migrate
 systemctl enable --now clipboard-x-server
 ```
 
@@ -56,18 +38,13 @@ Use the supplied Nginx example or an equivalent TLS reverse proxy. Preserve stre
 
 ## Container
 
-Copy `server/config.example.yaml` to `server/config.yaml`. Set `app.hostname: 0.0.0.0`,
-keep `web.root: ../web/dist`, `database.url: ../data/clipboard-x.db`, and
-`storage.data-directory: ../data`, then ensure UID/GID 10001 can update the file:
+Place `compose.yaml` and `.env` together. Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env`; set `CBX_PUBLIC_ORIGIN` to the public HTTPS URL when using a reverse proxy. Then start:
 
 ```sh
-chown 10001:10001 server/config.yaml
-chmod 600 server/config.yaml
-docker compose up --build -d
+docker compose up -d
 ```
 
-Compose bind-mounts `server/config.yaml` read-write at `/app/server/config.yaml` and persists `/app/data` in a named
-volume. Do not bake the real configuration into an image or commit it to source control.
+The first start generates `/app/config/config.yaml` in a named volume from the image's YAML template, using `.env` only for the initial administrator password and public origin. Later starts do not overwrite that file: the YAML remains authoritative, including changes saved in the Web console. A second volume stores SQLite and binary objects. Keep both volumes when updating the image. Changing `.env` after the first start will not change the administrator password or origin; edit the YAML through the console or in the configuration volume instead. Compose pulls the published image, or builds from source when it is available locally.
 
 The built-in health paths are unauthenticated: `/health/live` checks the process, while
 `/health/ready` also checks SQLite. The container health check reads the same YAML file.

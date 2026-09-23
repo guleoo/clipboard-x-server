@@ -1,5 +1,6 @@
 services:
   clipboard-x-server:
+    image: ghcr.io/guleo/clipboard-x-server:latest
     build: .
     restart: unless-stopped
     read_only: true
@@ -7,8 +8,11 @@ services:
       - /tmp:size=16m,mode=1777
     ports:
       - "127.0.0.1:28787:28787"
+    environment:
+      CBX_BOOTSTRAP_ADMIN_PASSWORD: ${CBX_ADMIN_PASSWORD:?Set CBX_ADMIN_PASSWORD in .env}
+      CBX_BOOTSTRAP_PUBLIC_ORIGIN: ${CBX_PUBLIC_ORIGIN:-http://127.0.0.1:28787}
     volumes:
-      - ./server/config.yaml:/app/server/config.yaml
+      - clipboard-x-config:/app/config
       - clipboard-x-data:/app/data
     security_opt:
       - no-new-privileges:true
@@ -16,4 +20,5 @@ services:
       - ALL
 
 volumes:
+  clipboard-x-config:
   clipboard-x-data:

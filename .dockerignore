@@ -6,6 +6,7 @@ node_modules
 dist
 **/dist
 data
+server/config.yaml
 coverage
 .env*
 !web/.env

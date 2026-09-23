@@ -19,6 +19,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 config.yaml
 .env
 .env.*
+!.env.example
 .env.development.local
 .env.test.local
 .env.production.local
