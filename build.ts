@@ -1,11 +1,13 @@
 import { cp, mkdir, mkdtemp, rename, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { executableName, releaseName, releaseTag, releaseTarget } from "./scripts/release"
 
 const compile = process.argv.includes("--compile")
 const archive = process.argv.includes("--archive")
 const root = import.meta.dir
-const executableName = process.platform === "win32" ? "clipboard-x-server.exe" : "clipboard-x-server"
+const target = compile ? releaseTarget(process.platform, process.arch, process.env.CBX_RELEASE_TARGET) : undefined
+const binaryName = target ? executableName(target) : "server.js"
 
 if (archive && !compile) throw new Error("Release archives require --compile")
 
@@ -24,8 +26,8 @@ await rm(release, { recursive: true, force: true })
 await mkdir(release, { recursive: true })
 await cp(`${root}/web/dist`, `${release}/web/dist`, { recursive: true })
 await cp(
-  compile ? `${root}/server/dist/${executableName}` : `${root}/server/dist/server.js`,
-  compile ? `${release}/${executableName}` : `${release}/server.js`,
+  compile ? `${root}/server/dist/${binaryName}` : `${root}/server/dist/server.js`,
+  compile ? `${release}/${binaryName}` : `${release}/server.js`,
 )
 await cp(`${root}/server/drizzle`, `${release}/server/drizzle`, { recursive: true })
 await cp(`${root}/server/config.example.yaml`, `${release}/server/config.example.yaml`)
@@ -38,7 +40,7 @@ console.log(`Release assembled in ${release}`)
 
 if (archive) {
   const { version } = (await Bun.file(`${root}/package.json`).json()) as { version: string }
-  const name = `clipboard-x-server-v${version}-${process.platform}-${process.arch}`
+  const name = releaseName(releaseTag(version, process.env.CBX_RELEASE_TAG), target!)
   const output = `${root}/release/${name}.tar.gz`
   const temporaryOutput = `${output}.tmp`
   const staging = await mkdtemp(join(tmpdir(), "clipboard-x-release-"))

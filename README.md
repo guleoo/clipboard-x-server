@@ -93,6 +93,7 @@ bun run package
 | --- | --- |
 | [架构说明](docs/architecture.md) | Server、Web、配置、SQLite 和对象存储的职责边界。 |
 | [部署指南](docs/deployment.md) | 可执行文件、TLS 与容器部署。 |
+| [版本发布](docs/release.md) | 六平台 GitHub Release 的验证、beta 与正式版流程。 |
 | [运维指南](docs/operations.md) | 备份与恢复、周期清理、对象审计及 GC。 |
 | [OpenAPI 3.1](server/openapi/openapi.json) | 路由、认证与数据结构的机器可读规范。 |
 | [Protocol guide](docs/protocol.md) · [中文协议指南](docs/zh-CN/protocol.md) | 跨请求流程、错误语义和客户端兼容性约定。 |

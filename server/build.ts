@@ -1,18 +1,20 @@
 import { rm } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
+import { compileTargets, executableName, releaseTarget } from "../scripts/release"
 
-const outputDirectory = new URL("./dist", import.meta.url).pathname
+const outputDirectory = fileURLToPath(new URL("./dist", import.meta.url))
 const compile = process.argv.includes("--compile")
-const executableName = process.platform === "win32" ? "clipboard-x-server.exe" : "clipboard-x-server"
+const target = compile ? releaseTarget(process.platform, process.arch, process.env.CBX_RELEASE_TARGET) : undefined
 
 await rm(outputDirectory, { recursive: true, force: true })
 
 const result = await Bun.build({
-  entrypoints: [new URL("./src/index.ts", import.meta.url).pathname],
+  entrypoints: [fileURLToPath(new URL("./src/index.ts", import.meta.url))],
   target: "bun",
   minify: true,
   sourcemap: compile ? "none" : "linked",
   ...(compile
-    ? { compile: { outfile: `${outputDirectory}/${executableName}` } }
+    ? { compile: { target: compileTargets[target!], outfile: `${outputDirectory}/${executableName(target!)}` } }
     : { outdir: outputDirectory, naming: "server.js" }),
 })
 

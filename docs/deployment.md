@@ -8,6 +8,13 @@ Download and unpack the archive for your platform. In the unpacked directory, co
 ./clipboard-x-server --config ./server/config.yaml --migrate --serve
 ```
 
+On Windows, extract the `.tar.gz` archive, then use PowerShell in its unpacked directory:
+
+```powershell
+Copy-Item server/config.example.yaml server/config.yaml
+.\clipboard-x-server.exe --config .\server\config.yaml --migrate --serve
+```
+
 For direct HTTPS, set `app.tls.cert-file` and `app.tls.key-file` to readable PEM files, set the HTTPS `web.public-origin`, and enable `web.cookie-secure`. Relative paths in YAML resolve from its directory. Keep the entire release directory, including `web/dist` and `server/drizzle`.
 
 The YAML file is the sole authoritative source for runtime options, the administrator, devices,
