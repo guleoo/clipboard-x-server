@@ -71,7 +71,10 @@ compute SHA-256 incrementally, and rename only after validation.
 Device operations are mounted at `/api/v1`; administrator operations are mounted at
 `/admin/api/v1`; health remains at `/health/live` and `/health/ready`. Frame surface configuration
 produces these paths from one static route collection, and OpenAPI is generated from those mounted
-routes.
+routes. Clipboard X Server owns this cross-platform contract: the generated OpenAPI document is the
+machine-readable authority, while `docs/protocol.md` defines semantics that schemas cannot express.
+GNOME and future clients on other operating systems consume published API versions and do not define
+Server behavior.
 
 Administrator mutations use an HttpOnly, SameSite=Strict cookie and reject cross-site browser requests.
 Fetch Metadata (`Sec-Fetch-Site`) is used when present, which keeps Vite's same-origin proxy workflow

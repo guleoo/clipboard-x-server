@@ -74,19 +74,6 @@ bun run dev:web
 
 无论采用哪种方式，登录后都可以创建 Channel，登记客户端生成的 DeviceId 并签发绑定的 Key。客户端持有 Key 后，会把自己的设备名称和图标同步到服务端。
 
-## ⚙️ 数据与配置
-
-| 存放位置 | 保存内容 |
-| --- | --- |
-| YAML 配置文件 | 唯一管理员、设备与 Key 的绑定、Channel 及成员关系、运行参数；**权威配置源**。 |
-| `data-dir` | SQLite 数据库和 `objects/` 二进制内容目录。源码部署默认位于 `server/data/`。 |
-| `logger.file.dir` | 文件日志目录，与数据目录独立；源码部署默认位于 `server/logs/`。 |
-
-Server 启动时读取 YAML；管理界面修改受管配置后会同步写回该文件。`data-dir` 和日志路径都相对于 YAML 所在目录解析。源码入口使用 `server/config.yaml`，Docker 镜像自带配置并将数据保存到 `/app/data`，自行部署时由 `--config <path>` 指定。mode 和 `import` 自动合并已关闭。请将含凭据的实际配置文件保持为 `0600`，不要提交到版本库。
-
-> [!IMPORTANT]
-> 这是可信的自托管服务，Server 能读取已上传的内容，**不提供端到端加密**。自动清理默认关闭；启用后仅移除服务端数据，不控制客户端的本地历史。开启保留上限前请先备份。
-
 ## 📦 验证与部署
 
 ```sh
@@ -98,7 +85,7 @@ bun run compile
 bun run package
 ```
 
-`bun run build` 生成 Server bundle，`bun run compile` 生成可执行文件，`bun run package` 在 `release/` 生成包含可执行文件、Web 资源、迁移文件、配置模板、许可证和文档的压缩包。TLS 与容器部署步骤见[部署指南](docs/deployment.md)。
+`bun run build` 生成 Server bundle，`bun run compile` 生成可执行文件，`bun run package` 在 `release/` 生成包含可执行文件、Web 资源、迁移文件、配置模板、许可证和文档的压缩包。源码部署的数据默认位于 `server/data/`，日志默认位于 `server/logs/`。TLS 与容器部署步骤见[部署指南](docs/deployment.md)。
 
 ## 📚 文档与协议
 
