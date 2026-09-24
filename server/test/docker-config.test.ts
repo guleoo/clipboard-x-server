@@ -27,7 +27,10 @@ describe("Docker configuration", () => {
     expect((config.administrator as Record<string, unknown>).password).toBe("strong-password");
     expect((config.administrator as Record<string, unknown>).username).toBe("admin");
     expect(AppOptions.parse(config.app)).toMatchObject({ hostname: "0.0.0.0", port: 28787 });
-    expect((config.database as Record<string, unknown>).migrationsFolder).toBe("../server/drizzle");
+    expect(config.dataDir).toBe("../data");
+    expect(config.database).toBeUndefined();
+    expect(config.storage).toBeUndefined();
+    expect((config.logger as { file: { dir: string } }).file.dir).toBe("./logs");
     expect((config.web as Record<string, unknown>).publicOrigin).toBe("http://127.0.0.1:28787");
   });
 

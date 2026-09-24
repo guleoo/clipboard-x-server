@@ -9,7 +9,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { parse, parseDocument, stringify } from "yaml";
 import { DeviceIconSchema, MimeTypeSchema, SafeTextSchema, UuidSchema } from "../common/validation";
 import { isVirtualDevice } from "../common/virtual-device";
@@ -100,11 +100,6 @@ export const ManagedConfigurationSchema = zz.object({
     }
   }
 });
-
-const StorageOptions = zz.object({
-  dataDirectory: zz.string().min(1).default("./data"),
-  objectDirectory: zz.string().min(1).optional(),
-}).strict().default({ dataDirectory: "./data" });
 
 const WebOptions = zz.object({
   root: zz.string().min(1).default("./web/dist"),
@@ -271,7 +266,6 @@ function renderCleanup(value: zz.output<typeof CleanupOptions>): string {
 
 let managed = managedFromConfig();
 
-const storage = Config.section("storage", StorageOptions);
 const web = Config.section("web", WebOptions);
 const limits = Config.section("limits", LimitsOptions);
 const lifetimes = Config.section("lifetimes", LifetimesOptions);
@@ -289,8 +283,8 @@ export const config = Object.freeze({
   webRoot: Config.resolvePath(web.root),
   publicOrigin: web.publicOrigin,
   cookieSecure: web.cookieSecure,
-  dataDirectory: Config.resolvePath(storage.dataDirectory),
-  objectDirectory: Config.resolvePath(storage.objectDirectory ?? `${storage.dataDirectory}/objects`),
+  dataDirectory: FrameConfig.DataDir,
+  objectDirectory: join(FrameConfig.DataDir, "objects"),
   maxObjectBytes: limits.maxObjectBytes,
   maxItemBytes: limits.maxItemBytes,
   maxPreviewBytes: limits.maxPreviewBytes,

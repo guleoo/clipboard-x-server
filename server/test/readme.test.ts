@@ -29,6 +29,8 @@ describe("project README", () => {
     }
     expect(readme).toContain("CBX_PROXY_URL");
     expect(readme).toContain("server/config.yaml");
+    expect(readme).toContain("server/data/");
+    expect(readme).toContain("server/logs/");
     expect(readme).toContain("[GPL-3.0](LICENSE.md)");
     expect(packageJson.license).toBe("GPL-3.0-only");
     expect(packageJson.scripts.package).toContain("--compile --archive");
@@ -69,6 +71,8 @@ describe("project README", () => {
     expect(containerConfig).toContain("${env:CBX_TLS_CERT_FILE}");
     expect(containerConfig).toContain("${env:CBX_TLS_KEY_FILE}");
     expect(dockerignore).toContain("server/config.yaml");
+    expect(dockerignore).toContain("server/data");
+    expect(dockerignore).toContain("server/logs");
     expect(dockerignore).toContain("docker/.env");
     expect(gitignore).toContain("!.env.example");
     expect(gitignore).toContain("!docker/config.yaml");

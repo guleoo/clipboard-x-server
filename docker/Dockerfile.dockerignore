@@ -7,6 +7,9 @@ dist
 release
 **/dist
 data
+server/data
+server/logs
+logs
 server/config.yaml
 coverage
 .env*

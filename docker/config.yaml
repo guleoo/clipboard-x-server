@@ -1,4 +1,5 @@
 # Container configuration. Environment placeholders are resolved at startup.
+data-dir: ../data
 app:
   name: clipboard-x-server
   hostname: ${env:CBX_HOST}
@@ -12,13 +13,6 @@ app:
   route-surfaces:
     admin: /admin/api
     app: /api
-database:
-  name: clipboard-x
-  url: ../data/clipboard-x.db
-  busy-timeout-millis: 5000
-  wal: true
-  schema-path: ./src/db/schema.ts
-  migrations-folder: ../server/drizzle
 logger:
   console:
     enabled: true
@@ -26,14 +20,11 @@ logger:
   file:
     enabled: true
     level: info
-    dir: ../data/logs
+    dir: ./logs
     filename: app-%DATE%.log
     max-files: 30d
     max-size: 100m
     zipped-archive: true
-storage:
-  data-directory: ../data
-  object-directory: ../data/objects
 web:
   root: ../web/dist
   public-origin: ${env:CBX_PUBLIC_ORIGIN}

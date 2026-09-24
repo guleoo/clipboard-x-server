@@ -28,7 +28,7 @@ function stateError(name: string, operation: string, state: DatabaseState) {
 export function createDatabase<Schema extends Fields>(
   options: CreateDatabaseOptions<Schema>,
 ): DatabaseInstance<Schema> {
-  const config = databaseConfig;
+  const config = options.url ? { ...databaseConfig, url: options.url } : databaseConfig;
   const owner = Object.freeze({ name: config.name });
   let state: DatabaseState = "created";
   let client: SqliteClient<Schema> | undefined;

@@ -2,15 +2,9 @@
 
 ## Backup and restore
 
-SQLite runs in WAL mode. `config.yaml` is part of the authoritative state and must be backed up together with SQLite and the object tree. For the simplest consistent recovery point, stop the service first:
+SQLite runs in WAL mode. `config.yaml` is part of the authoritative state and must be backed up together with the complete `data-dir`, including SQLite WAL/SHM files and the object tree. For the simplest consistent recovery point, stop the Server process first. In the native layout, back up `server/config.yaml` and `server/data/` together; `server/logs/` is independent and optional for recovery. In Docker, back up both the configuration and data volumes.
 
-```sh
-systemctl stop clipboard-x-server
-cp -a /var/lib/clipboard-x-server /backup/clipboard-x-server-$(date +%F)
-systemctl start clipboard-x-server
-```
-
-To restore, stop the service, move the current data directory aside, restore `config.yaml`, the complete database, and the object tree from the same recovery point with ownership/mode preserved, run the strict audit, then start and check readiness. Keep `config.yaml` at mode `0600`.
+To restore, stop the Server process, move the current data directory aside, restore `config.yaml`, the complete database, and the object tree from the same recovery point with ownership/mode preserved, run the strict audit, then start and check readiness. Keep `config.yaml` at mode `0600`.
 
 Before upgrades, back up data and run the new executable against a copy. Migrations are transactional and only move forward; a database newer than the binary fails explicitly.
 
@@ -67,12 +61,12 @@ without a backup.
 
 ## Failure drills
 
-1. Restore a backup into a temporary directory and point a copied YAML file's `storage.data-directory` to it.
+1. Restore a backup into a temporary directory and point a copied YAML file's `data-dir` to it.
 2. Run `audit --strict`, start on a temporary port, then verify `/health/ready`, admin login, and one object download.
 3. Stop the temporary server and record duration plus audit result.
 4. For a missing-object drill, remove one object only in the disposable restore and confirm strict audit reports `missing_file`; never mutate production data for the drill.
 
-Console and file logs use human-readable text and omit request/response bodies, credentials, cookies, and full object paths. Monitor 5xx responses, `failed`/`expired` transfers, readiness, disk usage, and audit failures. Rotate service logs through the process supervisor.
+Console and file logs use human-readable text and omit request/response bodies, credentials, cookies, and full object paths. Monitor 5xx responses, `failed`/`expired` transfers, readiness, disk usage, and audit failures. File logs rotate according to `logger.file` configuration.
 
 Run `bun run test:network` where local listening is permitted to verify real Bun `Fetch` streaming in addition to the default port-free Hono route tests.
 

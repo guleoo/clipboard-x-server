@@ -15,19 +15,12 @@ if (!process.env.APP_CONFIG_FILE) {
   route-surfaces:
     admin: /admin/api
     app: /api
-database:
-  name: clipboard-x-test
-  url: ":memory:"
-  wal: false
-  schema-path: ${resolve(import.meta.dir, "../src/db/schema.ts")}
-  migrations-folder: ${resolve(import.meta.dir, "../drizzle")}
+data-dir: ${resolve(directory, "data")}
 logger:
   console:
     enabled: false
   file:
     enabled: false
-storage:
-  data-directory: ${directory}
 web:
   root: ${resolve(import.meta.dir, "../../web/dist")}
   cookie-secure: false

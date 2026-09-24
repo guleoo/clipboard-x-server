@@ -40,6 +40,7 @@ export type DbFacade<Schema extends Fields = Fields> = DbExecutor<Schema>;
 
 export interface CreateDatabaseOptions<Schema extends Fields = Fields> {
   readonly schema: Schema;
+  readonly url?: string;
 }
 
 export type DatabaseMigrationOptions = MigrationConfig;

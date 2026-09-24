@@ -6,7 +6,7 @@ import { createDatabase, DbError, mergeSchema } from "../src/frame/db";
 
 describe("database runtime", () => {
   it("opens lazily and governs state transitions", () => {
-    const database = createDatabase({ schema: {} });
+    const database = createDatabase({ schema: {}, url: ":memory:" });
 
     expect(database.control.inspect()).toMatchObject({
       engine: "sqlite",
@@ -23,7 +23,7 @@ describe("database runtime", () => {
   });
 
   it("uses required nested transactions and rolls back synchronous failures", () => {
-    const database = createDatabase({ schema: {} });
+    const database = createDatabase({ schema: {}, url: ":memory:" });
     database.control.init();
     database.db.run(
       sql.raw("create table transaction_contract (id integer primary key)"),
@@ -56,8 +56,8 @@ describe("database runtime", () => {
   });
 
   it("isolates active executors across database instances", () => {
-    const first = createDatabase({ schema: {} });
-    const second = createDatabase({ schema: {} });
+    const first = createDatabase({ schema: {}, url: ":memory:" });
+    const second = createDatabase({ schema: {}, url: ":memory:" });
     first.control.init();
     second.control.init();
     first.db.run(sql.raw("create table probe (value text not null)"));

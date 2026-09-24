@@ -1,3 +1,4 @@
+data-dir: ./data/test
 app:
   name: clipboard-x-server-test
   hostname: 127.0.0.1
@@ -8,13 +9,6 @@ app:
   route-surfaces:
     admin: /admin
     app: /app
-database:
-  name: clipboard-x-test
-  url: ":memory:"
-  busy-timeout-millis: 5000
-  wal: false
-  schema-path: ./src/db/schema.ts
-  migrations-folder: ./drizzle
 logger:
   console:
     enabled: false
@@ -22,14 +16,11 @@ logger:
   file:
     enabled: false
     level: error
-    dir: ../data/test/logs
+    dir: ./logs
     filename: test-%DATE%.log
     max-files: 1d
     max-size: 10m
     zipped-archive: false
-storage:
-  data-directory: ../data/test
-  object-directory: ../data/test/objects
 web:
   root: ../web/dist
   public-origin: http://127.0.0.1

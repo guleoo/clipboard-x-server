@@ -1,25 +1,30 @@
-import { z } from "zod";
-import { Config } from "../config/instance";
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { configPath } from "../config/instance";
+import { FrameConfig } from "../config";
 
-export const DatabaseOptions = z
-  .object({
-    name: z.string().trim().min(1).default("app-db"),
-    url: z.string().trim().min(1).default("data/app.db"),
-    busyTimeoutMillis: z.number().int().positive().default(5_000),
-    wal: z.boolean().default(true),
-    schemaPath: z.string().default("./src/db/schema.ts"),
-    migrationsFolder: z.string().default("./drizzle"),
-  })
-  .strict();
+export interface DatabaseConfig {
+  readonly name: string;
+  readonly url: string;
+  readonly busyTimeoutMillis: number;
+  readonly wal: boolean;
+  readonly schemaPath: string;
+  readonly migrationsFolder: string;
+}
 
-export type DatabaseConfig = Readonly<z.infer<typeof DatabaseOptions>>;
+const sourceMigrations = resolve(import.meta.dir, "../../../drizzle");
+const migrationsFolder = [
+  resolve(dirname(process.execPath), "server/drizzle"),
+  resolve(dirname(configPath), "drizzle"),
+  sourceMigrations,
+].find(existsSync) ?? sourceMigrations;
 
-/** Runtime and database tools share this single immutable configuration source. */
-const value = Config.section("database", DatabaseOptions);
-
+/** Runtime and database tools derive their paths from the shared data directory. */
 export const databaseConfig: DatabaseConfig = Object.freeze({
-  ...value,
-  url: value.url === ":memory:" ? value.url : Config.resolvePath(value.url),
-  schemaPath: Config.resolvePath(value.schemaPath),
-  migrationsFolder: Config.resolvePath(value.migrationsFolder),
+  name: "clipboard-x",
+  url: join(FrameConfig.DataDir, "clipboard-x.db"),
+  busyTimeoutMillis: 5_000,
+  wal: true,
+  schemaPath: resolve(import.meta.dir, "../../db/schema.ts"),
+  migrationsFolder,
 });

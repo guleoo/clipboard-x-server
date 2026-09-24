@@ -1,4 +1,5 @@
 import { initZone } from "../core";
+import { z } from "zod";
 import { Config, configMode } from "./instance";
 import { AppOptions, LoggerConfigOptions } from "./schema";
 
@@ -15,6 +16,7 @@ export type * from "./types";
 export namespace FrameConfig {
   export const Environment = configMode;
   export const App = Config.section("app", AppOptions);
+  export const DataDir = Config.resolvePath(Config.section("dataDir", z.string().trim().min(1).default("./data")));
   const logger = Config.section("logger", LoggerConfigOptions);
   export const Logger = Object.freeze({
     ...logger,

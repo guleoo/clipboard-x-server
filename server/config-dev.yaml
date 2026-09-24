@@ -1,3 +1,4 @@
+data-dir: ./data/dev
 app:
   name: clipboard-x-server
   hostname: 127.0.0.1
@@ -8,13 +9,6 @@ app:
   route-surfaces:
     admin: /admin/api
     app: /api
-database:
-  name: clipboard-x-dev
-  url: ../data/clipboard-x-dev.db
-  busy-timeout-millis: 5000
-  wal: true
-  schema-path: ./src/db/schema.ts
-  migrations-folder: ./drizzle
 logger:
   console:
     enabled: true
@@ -22,14 +16,11 @@ logger:
   file:
     enabled: true
     level: debug
-    dir: ../data/logs
+    dir: ./logs
     filename: dev-%DATE%.log
     max-files: 7d
     max-size: 100m
     zipped-archive: true
-storage:
-  data-directory: ../data
-  object-directory: ../data/objects-dev
 web:
   root: ../web/dist
   public-origin: http://127.0.0.1:28787

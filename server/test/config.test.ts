@@ -18,7 +18,7 @@ describe("configuration", () => {
       "channels",
       "cleanup",
       "content",
-      "database",
+      "dataDir",
       "devices",
       "http",
       "lifetimes",
@@ -26,14 +26,13 @@ describe("configuration", () => {
       "logger",
       "security",
       "session",
-      "storage",
       "web",
     ];
 
-    for (const [filename, mode] of [
-      ["config.example.yaml", "prod"],
-      ["config-dev.yaml", "dev"],
-      ["config-test.yaml", "test"],
+    for (const [filename, mode, dataDir] of [
+      ["config.example.yaml", "prod", "./data"],
+      ["config-dev.yaml", "dev", "./data/dev"],
+      ["config-test.yaml", "test", "./data/test"],
     ] as const) {
       const value = loadYamlConfigSync({
         filePath: join(import.meta.dir, "..", filename),
@@ -42,6 +41,7 @@ describe("configuration", () => {
         mergeImportFiles: false,
       });
       expect(Object.keys(value).sort()).toEqual(requiredSections);
+      expect(value.dataDir).toBe(dataDir);
       expect(value.import).toBeUndefined();
     }
   });
