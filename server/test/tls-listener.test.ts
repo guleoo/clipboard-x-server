@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { parseDocument } from "yaml";
 
 const root = resolve(import.meta.dir, "../..");
 
@@ -22,15 +23,16 @@ describe("TLS listener", () => {
 
       const configFile = join(directory, "config", "config.yaml");
       mkdirSync(join(directory, "config"));
-      cpSync(resolve(root, "docker/config.yaml"), configFile);
       cpSync(resolve(root, "server/drizzle"), join(directory, "server", "drizzle"), { recursive: true });
       const reservation = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("reserved") });
       const port = reservation.port;
       await reservation.stop(true);
+      const document = parseDocument(readFileSync(resolve(root, "docker/config.yaml"), "utf8"));
+      document.setIn(["app", "hostname"], "127.0.0.1");
+      document.setIn(["app", "port"], port);
+      writeFileSync(configFile, document.toString());
       const environment = {
         ...process.env,
-        CBX_HOST: "127.0.0.1",
-        CBX_PORT: String(port),
         CBX_ADMIN_USERNAME: "admin",
         CBX_ADMIN_PASSWORD: "test-password",
         CBX_PUBLIC_ORIGIN: `https://127.0.0.1:${port}`,

@@ -6,10 +6,8 @@ services:
     tmpfs:
       - /tmp:size=16m,mode=1777
     ports:
-      - "${CBX_PUBLISH_HOST:-127.0.0.1}:${CBX_PUBLISH_PORT:-28787}:${CBX_PORT:-28787}"
+      - "${CBX_HOST:-127.0.0.1}:${CBX_PORT:-28787}:28787"
     environment:
-      CBX_HOST: ${CBX_HOST:-0.0.0.0}
-      CBX_PORT: ${CBX_PORT:-28787}
       CBX_ADMIN_USERNAME: ${CBX_ADMIN_USERNAME:-admin}
       CBX_ADMIN_PASSWORD: ${CBX_ADMIN_PASSWORD:?Set CBX_ADMIN_PASSWORD in .env}
       CBX_PUBLIC_ORIGIN: ${CBX_PUBLIC_ORIGIN:-}

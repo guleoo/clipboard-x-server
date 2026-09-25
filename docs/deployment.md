@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/do
 curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example -o .env
 ```
 
-Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env` (for example, generate one with `openssl rand -hex 24`). The defaults expose HTTP on the host's localhost port 28787; `CBX_PUBLIC_ORIGIN` may stay empty for direct HTTP access. For direct access from a trusted LAN, change `CBX_PUBLISH_HOST` to `0.0.0.0`; the Server derives the origin from each request. Use HTTPS for public access. Start with `docker compose up -d`.
+Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env` (for example, generate one with `openssl rand -hex 24`). `CBX_HOST` and `CBX_PORT` set the host-side published address and port; the container always listens on `0.0.0.0:28787`. The defaults expose HTTP on the host's localhost port 28787; `CBX_PUBLIC_ORIGIN` may stay empty for direct HTTP access. For direct access from a trusted LAN, change `CBX_HOST` to `0.0.0.0`; the Server derives the origin from each request. Use HTTPS for public access. Start with `docker compose up -d`.
 
 For HTTPS behind a reverse proxy, set `CBX_PUBLIC_ORIGIN=https://clipboard.example.com` and `CBX_COOKIE_SECURE=true`. If serving HTTPS directly from the container instead, also download the optional TLS override:
 
@@ -54,8 +54,8 @@ CBX_TLS_CERT_HOST_FILE=/absolute/path/to/fullchain.pem
 CBX_TLS_KEY_HOST_FILE=/absolute/path/to/privkey.pem
 CBX_TLS_CERT_FILE=/app/tls/fullchain.pem
 CBX_TLS_KEY_FILE=/app/tls/privkey.pem
-CBX_PUBLISH_HOST=0.0.0.0
-CBX_PUBLISH_PORT=443
+CBX_HOST=0.0.0.0
+CBX_PORT=443
 CBX_PUBLIC_ORIGIN=https://clipboard.example.com
 CBX_COOKIE_SECURE=true
 ```
@@ -64,9 +64,9 @@ CBX_COOKIE_SECURE=true
 docker compose -f compose.yaml -f compose.tls.yaml up -d
 ```
 
-Compose mounts the two files read-only, without mounting a certificate directory; they must be readable by container UID 10001. `CBX_HOST` and `CBX_PORT` control the listener inside the container, while `CBX_PUBLISH_HOST` and `CBX_PUBLISH_PORT` control the host binding. Restart the container after certificate renewal.
+Compose mounts the two files read-only, without mounting a certificate directory; they must be readable by container UID 10001. Restart the container after certificate renewal.
 
-The image contains `config.yaml` with `${env:...}` placeholders. A named volume holds that file so the Web console can update it; another volume stores SQLite and binary objects. Keep both volumes when updating the image. Environment changes apply to placeholders that remain in YAML. If the console has written a concrete value, that YAML value takes precedence. An existing configuration volume is not replaced by a newer image; add the new placeholders to its YAML manually when upgrading from an earlier Docker setup.
+The image contains `config.yaml` with `${env:...}` placeholders. A named volume holds that file so the Web console can update it; another volume stores SQLite and binary objects. Keep both volumes when updating the image. Environment changes apply to placeholders that remain in YAML. If the console has written a concrete value, that YAML value takes precedence. An existing configuration volume is not replaced by a newer image. If upgrading from a Compose file that passed `CBX_HOST` and `CBX_PORT` into the container, replace the old `app.hostname` and `app.port` placeholders in the persisted YAML with `0.0.0.0` and `28787` before starting the new Compose file.
 
 The built-in health paths are unauthenticated: `/health/live` checks the process, while
 `/health/ready` also checks SQLite. The container health check reads the same YAML file.

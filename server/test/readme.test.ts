@@ -49,8 +49,7 @@ describe("project README", () => {
     expect(readme).toContain("ghcr.io/guleoo/clipboard-x-server:latest");
     expect(readme).toContain("https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/compose.yaml");
     expect(readme).toContain("https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example");
-    expect(readme).toContain("不需要克隆仓库或在本地构建镜像");
-    expect(readme).toContain("HTTP 直连无需设置 `CBX_PUBLIC_ORIGIN`");
+    expect(readme).toContain("`CBX_HOST`/`CBX_PORT` 控制宿主机对外发布的地址和端口");
     expect(readme).toContain("./clipboard-x-server --config ./server/config.yaml --migrate --serve");
     expect(readme).toContain("git clone https://github.com/guleoo/clipboard-x-server.git");
     expect(existsSync(resolve(root, "deploy/clipboard-x-server.service"))).toBe(false);
@@ -59,7 +58,7 @@ describe("project README", () => {
 
   it("packages a persistent Docker config with environment placeholders", () => {
     const compose = parse(readFileSync(resolve(root, "docker/compose.yaml"), "utf8")) as {
-      services: Record<string, { image: string; build?: unknown; volumes: string[]; environment: Record<string, string> }>;
+      services: Record<string, { image: string; build?: unknown; ports: string[]; volumes: string[]; environment: Record<string, string> }>;
     };
     const tlsCompose = parse(readFileSync(resolve(root, "docker/compose.tls.yaml"), "utf8")) as {
       services: Record<string, { volumes: Array<{ source: string; target: string; read_only: boolean }> }>;
@@ -76,6 +75,9 @@ describe("project README", () => {
     expect(compose.services["clipboard-x-server"]?.volumes).toEqual(["clipboard-x-config:/app/config", "clipboard-x-data:/app/data"]);
     expect(compose.services["clipboard-x-server"]?.environment.CBX_ADMIN_PASSWORD).toContain("CBX_ADMIN_PASSWORD");
     expect(compose.services["clipboard-x-server"]?.environment.CBX_PUBLIC_ORIGIN).toBe("${CBX_PUBLIC_ORIGIN:-}");
+    expect(compose.services["clipboard-x-server"]?.environment.CBX_HOST).toBeUndefined();
+    expect(compose.services["clipboard-x-server"]?.environment.CBX_PORT).toBeUndefined();
+    expect(compose.services["clipboard-x-server"]?.ports).toEqual(["${CBX_HOST:-127.0.0.1}:${CBX_PORT:-28787}:28787"]);
     expect(tlsCompose.services["clipboard-x-server"]?.volumes.map((volume) => volume.target)).toEqual([
       "/app/tls/fullchain.pem",
       "/app/tls/privkey.pem",
@@ -85,6 +87,10 @@ describe("project README", () => {
     expect(envExample).toContain("CBX_TLS_KEY_HOST_FILE=");
     expect(envExample).not.toContain("CBX_TLS_HOST_DIR");
     expect(envExample).toContain("CBX_PUBLIC_ORIGIN=\n");
+    expect(envExample).toContain("CBX_HOST=127.0.0.1\n");
+    expect(envExample).toContain("CBX_PORT=28787\n");
+    expect(envExample).not.toContain("CBX_PUBLISH_HOST");
+    expect(envExample).not.toContain("CBX_PUBLISH_PORT");
     expect(dockerfile.match(/\/app\/config\/config\.yaml/g)).toHaveLength(2);
     expect(dockerfile).toContain("COPY scripts ./scripts");
     expect(dockerfile).toContain("COPY docs ./docs");
@@ -93,6 +99,10 @@ describe("project README", () => {
     expect(containerConfig).toContain("${env:CBX_ADMIN_PASSWORD}");
     expect(containerConfig).toContain("${env:CBX_ADMIN_USERNAME}");
     expect(containerConfig).toContain("${env:CBX_PUBLIC_ORIGIN}");
+    expect(containerConfig).toContain("hostname: 0.0.0.0");
+    expect(containerConfig).toContain("port: 28787");
+    expect(containerConfig).not.toContain("${env:CBX_HOST}");
+    expect(containerConfig).not.toContain("${env:CBX_PORT}");
     expect(containerConfig).toContain("${env:CBX_TLS_CERT_FILE}");
     expect(containerConfig).toContain("${env:CBX_TLS_KEY_FILE}");
     expect(dockerignore).toContain("server/config.yaml");

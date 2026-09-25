@@ -7,8 +7,6 @@ import { AppOptions } from "../src/frame/config/schema";
 const filePath = resolve(import.meta.dir, "../../docker/config.yaml");
 const root = resolve(import.meta.dir, "../..");
 const env = {
-  CBX_HOST: "0.0.0.0",
-  CBX_PORT: "28787",
   CBX_ADMIN_USERNAME: "admin",
   CBX_ADMIN_PASSWORD: "strong-password",
   CBX_PUBLIC_ORIGIN: "",
@@ -31,7 +29,7 @@ function effectivePublicOrigin(environment: typeof env): string {
 }
 
 describe("Docker configuration", () => {
-  it("resolves environment placeholders through the existing configuration loader", () => {
+  it("keeps the container listener fixed while resolving other environment placeholders", () => {
     const config = loadYamlConfigSync({
       filePath,
       env,
@@ -50,13 +48,11 @@ describe("Docker configuration", () => {
     expect(effectivePublicOrigin(env)).toBe("request origin");
   });
 
-  it("accepts HTTPS certificate paths and a custom network binding", () => {
+  it("accepts HTTPS certificate paths without changing the container listener", () => {
     const config = loadYamlConfigSync({
       filePath,
       env: {
         ...env,
-        CBX_HOST: "::",
-        CBX_PORT: "8443",
         CBX_ADMIN_USERNAME: "owner",
         CBX_PUBLIC_ORIGIN: "https://clipboard.example.com",
         CBX_COOKIE_SECURE: "true",
@@ -68,8 +64,8 @@ describe("Docker configuration", () => {
     });
 
     expect(AppOptions.parse(config.app)).toMatchObject({
-      hostname: "::",
-      port: 8443,
+      hostname: "0.0.0.0",
+      port: 28787,
       tls: { certFile: "../tls/fullchain.pem", keyFile: "../tls/privkey.pem" },
     });
     expect((config.administrator as Record<string, unknown>).username).toBe("owner");

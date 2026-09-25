@@ -52,7 +52,10 @@ docker compose up -d
 docker compose ps
 ```
 
-默认仅发布到宿主机的 `127.0.0.1:28787`。镜像已包含带环境变量占位符的 YAML 配置；Compose 将 `.env` 中的值传给 Server，配置和数据分别保存在持久化卷中。`CBX_HOST`/`CBX_PORT` 控制容器内监听地址和端口，`CBX_PUBLISH_HOST`/`CBX_PUBLISH_PORT` 控制宿主机端口映射。直连 TLS 的证书文件挂载方式见[部署指南](docs/deployment.md)。
+默认仅发布到宿主机的 `127.0.0.1:28787`。镜像已包含带环境变量占位符的 YAML 配置；
+Compose 将 `.env` 中的值传给 Server，配置和数据分别保存在持久化卷中。
+`CBX_HOST`/`CBX_PORT` 控制宿主机对外发布的地址和端口；容器内固定监听 `0.0.0.0:28787`。
+直连 TLS 的证书文件挂载方式见[部署指南](docs/deployment.md)。
 
 ### 自行部署
 
