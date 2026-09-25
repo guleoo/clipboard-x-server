@@ -35,19 +35,24 @@ curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/do
 用 `openssl rand -hex 24` 生成管理员密码，然后编辑 `.env`，至少填入：
 
 ```dotenv
-CBX_ADMIN_USERNAME=admin
 CBX_ADMIN_PASSWORD=粘贴生成的密码
-CBX_PUBLIC_ORIGIN=http://127.0.0.1:28787
 ```
 
-`CBX_PUBLIC_ORIGIN` 应填写浏览器实际访问的地址；仅在可信内网直连时，才将 `CBX_PUBLISH_HOST` 改为 `0.0.0.0`，并把 Origin 改为对应的域名或服务器 IP。公网访问应启用 HTTPS。启动并查看状态：
+HTTP 直连无需设置 `CBX_PUBLIC_ORIGIN`。如果使用 HTTPS 反向代理，再额外配置：
+
+```dotenv
+CBX_PUBLIC_ORIGIN=https://你的域名
+CBX_COOKIE_SECURE=true
+```
+
+启动并查看状态：
 
 ```sh
 docker compose up -d
 docker compose ps
 ```
 
-默认仅监听宿主机的 `127.0.0.1:28787`。镜像已包含带环境变量占位符的 YAML 配置；Compose 将 `.env` 中的值传给 Server，配置和数据分别保存在持久化卷中。若经 HTTPS 反向代理访问，设置 `CBX_PUBLIC_ORIGIN=https://你的域名` 和 `CBX_COOKIE_SECURE=true`；直连 TLS 的证书文件挂载方式见[部署指南](docs/deployment.md)。
+默认仅发布到宿主机的 `127.0.0.1:28787`。镜像已包含带环境变量占位符的 YAML 配置；Compose 将 `.env` 中的值传给 Server，配置和数据分别保存在持久化卷中。`CBX_HOST`/`CBX_PORT` 控制容器内监听地址和端口，`CBX_PUBLISH_HOST`/`CBX_PUBLISH_PORT` 控制宿主机端口映射。直连 TLS 的证书文件挂载方式见[部署指南](docs/deployment.md)。
 
 ### 自行部署
 

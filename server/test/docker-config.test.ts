@@ -1,19 +1,34 @@
 import { describe, expect, it } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { loadYamlConfigSync } from "../src/frame/config/loader";
 import { AppOptions } from "../src/frame/config/schema";
 
 const filePath = resolve(import.meta.dir, "../../docker/config.yaml");
+const root = resolve(import.meta.dir, "../..");
 const env = {
   CBX_HOST: "0.0.0.0",
   CBX_PORT: "28787",
   CBX_ADMIN_USERNAME: "admin",
   CBX_ADMIN_PASSWORD: "strong-password",
-  CBX_PUBLIC_ORIGIN: "http://127.0.0.1:28787",
+  CBX_PUBLIC_ORIGIN: "",
   CBX_COOKIE_SECURE: "false",
   CBX_TLS_CERT_FILE: "",
   CBX_TLS_KEY_FILE: "",
 };
+
+function effectivePublicOrigin(environment: typeof env): string {
+  const result = spawnSync(process.execPath, [
+    "-e",
+    "import { config } from './server/src/config/index.ts'; console.log(config.publicOrigin ?? 'request origin')",
+  ], {
+    cwd: root,
+    env: { ...process.env, ...environment, APP_CONFIG_FILE: filePath },
+    encoding: "utf8",
+  });
+  if (result.status !== 0) throw new Error(result.stderr);
+  return result.stdout.trim();
+}
 
 describe("Docker configuration", () => {
   it("resolves environment placeholders through the existing configuration loader", () => {
@@ -31,7 +46,8 @@ describe("Docker configuration", () => {
     expect(config.database).toBeUndefined();
     expect(config.storage).toBeUndefined();
     expect((config.logger as { file: { dir: string } }).file.dir).toBe("./logs");
-    expect((config.web as Record<string, unknown>).publicOrigin).toBe("http://127.0.0.1:28787");
+    expect((config.web as Record<string, unknown>).publicOrigin).toBe("");
+    expect(effectivePublicOrigin(env)).toBe("request origin");
   });
 
   it("accepts HTTPS certificate paths and a custom network binding", () => {
@@ -58,6 +74,8 @@ describe("Docker configuration", () => {
     });
     expect((config.administrator as Record<string, unknown>).username).toBe("owner");
     expect((config.web as Record<string, unknown>).cookieSecure).toBe("true");
+    expect(effectivePublicOrigin({ ...env, CBX_PUBLIC_ORIGIN: "https://clipboard.example.com" }))
+      .toBe("https://clipboard.example.com");
   });
 
   it("fails when a required environment variable is absent", () => {

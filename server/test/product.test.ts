@@ -172,6 +172,25 @@ describe("Clipboard X product contracts", () => {
     });
   });
 
+  it("checks the request origin when no public origin or fetch metadata is configured", async () => {
+    expect(config.publicOrigin).toBeUndefined();
+    const app = createApp();
+    app.onError(productErrorHandler);
+    app.post("/mutation", sameOrigin, (context) => context.json({ ok: true }));
+
+    const accepted = await app.request("http://lan.example:28787/mutation", {
+      method: "POST",
+      headers: { Origin: "http://lan.example:28787" },
+    });
+    expect(accepted.status).toBe(200);
+
+    const rejected = await app.request("http://lan.example:28787/mutation", {
+      method: "POST",
+      headers: { Origin: "http://another.example:28787" },
+    });
+    expect(rejected.status).toBe(403);
+  });
+
   it("adapts request validation to the product error envelope", async () => {
     const app = createApp();
     app.onError(productErrorHandler);

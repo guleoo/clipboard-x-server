@@ -23,7 +23,6 @@ logger:
     zipped-archive: false
 web:
   root: ../web/dist
-  public-origin: http://127.0.0.1
   cookie-secure: false
 limits:
   max-object-bytes: 83886080

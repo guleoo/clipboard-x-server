@@ -103,7 +103,10 @@ export const ManagedConfigurationSchema = zz.object({
 
 const WebOptions = zz.object({
   root: zz.string().min(1).default("./web/dist"),
-  publicOrigin: zz.url().optional(),
+  publicOrigin: zz.preprocess(
+    (value) => value === "" ? undefined : value,
+    zz.url().optional(),
+  ),
   cookieSecure: zz.union([
     zz.boolean(),
     zz.enum(["true", "false"]).transform((value) => value === "true"),

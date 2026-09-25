@@ -15,7 +15,7 @@ Copy-Item server/config.example.yaml server/config.yaml
 .\clipboard-x-server.exe --config .\server\config.yaml --migrate --serve
 ```
 
-For direct HTTPS, set `app.tls.cert-file` and `app.tls.key-file` to readable PEM files, set the HTTPS `web.public-origin`, and enable `web.cookie-secure`. Relative paths in YAML resolve from its directory. Keep the entire release directory, including `web/dist` and `server/drizzle`.
+For direct HTTPS, set `app.tls.cert-file` and `app.tls.key-file` to readable PEM files and enable `web.cookie-secure`. `web.public-origin` is optional for direct access; configure it when the browser-facing origin differs from what the Server sees (for example, behind an HTTPS reverse proxy). Relative paths in YAML resolve from its directory. Keep the entire release directory, including `web/dist` and `server/drizzle`.
 
 The YAML file is the sole authoritative source for runtime options, the administrator, devices,
 complete device API keys, channels, and memberships. The process reads it at startup. Changes made
@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/do
 curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example -o .env
 ```
 
-Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env` (for example, generate one with `openssl rand -hex 24`). Set `CBX_PUBLIC_ORIGIN` to the exact browser-facing origin. The defaults expose HTTP on the host's localhost port 28787. For direct access from a trusted LAN, change `CBX_PUBLISH_HOST` to `0.0.0.0` and set `CBX_PUBLIC_ORIGIN` to that browser-facing URL. Use HTTPS for public access. Start with `docker compose up -d`.
+Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env` (for example, generate one with `openssl rand -hex 24`). The defaults expose HTTP on the host's localhost port 28787; `CBX_PUBLIC_ORIGIN` may stay empty for direct HTTP access. For direct access from a trusted LAN, change `CBX_PUBLISH_HOST` to `0.0.0.0`; the Server derives the origin from each request. Use HTTPS for public access. Start with `docker compose up -d`.
 
 For HTTPS behind a reverse proxy, set `CBX_PUBLIC_ORIGIN=https://clipboard.example.com` and `CBX_COOKIE_SECURE=true`. If serving HTTPS directly from the container instead, also download the optional TLS override:
 

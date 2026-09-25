@@ -50,6 +50,7 @@ describe("project README", () => {
     expect(readme).toContain("https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/compose.yaml");
     expect(readme).toContain("https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example");
     expect(readme).toContain("不需要克隆仓库或在本地构建镜像");
+    expect(readme).toContain("HTTP 直连无需设置 `CBX_PUBLIC_ORIGIN`");
     expect(readme).toContain("./clipboard-x-server --config ./server/config.yaml --migrate --serve");
     expect(readme).toContain("git clone https://github.com/guleoo/clipboard-x-server.git");
     expect(existsSync(resolve(root, "deploy/clipboard-x-server.service"))).toBe(false);
@@ -74,6 +75,7 @@ describe("project README", () => {
     expect(compose.services["clipboard-x-server"]?.build).toBeUndefined();
     expect(compose.services["clipboard-x-server"]?.volumes).toEqual(["clipboard-x-config:/app/config", "clipboard-x-data:/app/data"]);
     expect(compose.services["clipboard-x-server"]?.environment.CBX_ADMIN_PASSWORD).toContain("CBX_ADMIN_PASSWORD");
+    expect(compose.services["clipboard-x-server"]?.environment.CBX_PUBLIC_ORIGIN).toBe("${CBX_PUBLIC_ORIGIN:-}");
     expect(tlsCompose.services["clipboard-x-server"]?.volumes.map((volume) => volume.target)).toEqual([
       "/app/tls/fullchain.pem",
       "/app/tls/privkey.pem",
@@ -82,6 +84,7 @@ describe("project README", () => {
     expect(envExample).toContain("CBX_TLS_CERT_HOST_FILE=");
     expect(envExample).toContain("CBX_TLS_KEY_HOST_FILE=");
     expect(envExample).not.toContain("CBX_TLS_HOST_DIR");
+    expect(envExample).toContain("CBX_PUBLIC_ORIGIN=\n");
     expect(dockerfile.match(/\/app\/config\/config\.yaml/g)).toHaveLength(2);
     expect(dockerfile).toContain("COPY scripts ./scripts");
     expect(dockerfile).toContain("COPY docs ./docs");

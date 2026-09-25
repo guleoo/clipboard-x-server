@@ -51,7 +51,7 @@ Web 添加文本或图片时调用 Admin API 创建清单、上传预览和 eage
 - Web 不读取、解析或修改 `config.yaml`；该文件完全属于 Server。
 - Web 不提供 API origin、Server host/port 或独立部署配置，Router basename 固定为 `/`。
 - 根 `build.ts` 先执行 Vite 构建，再将 `web/dist` 复制进发布目录，与 Server 可执行文件共同交付。
-- Vite 的本地开发服务器固定使用 `3000`，代理目标只来自 `web/.env*` 中不带 `VITE_` 前缀的 `CBX_PROXY_URL`，缺失时启动失败，因此不会被代码默认值掩盖，也不会暴露到浏览器代码；开发配置的 `server.publicOrigin` 应填写浏览器实际访问的 Vite Origin。Web 代码及生产 bundle 都不读取 Server YAML。
+- Vite 的本地开发服务器固定使用 `3000`，代理目标只来自 `web/.env*` 中不带 `VITE_` 前缀的 `CBX_PROXY_URL`，缺失时启动失败，因此不会被代码默认值掩盖，也不会暴露到浏览器代码。管理员请求优先通过浏览器的 `Sec-Fetch-Site` 校验；若需要兼容不发送此头的客户端，可在 Server 配置中显式设置浏览器访问 Vite 的 `web.public-origin`。Web 代码及生产 bundle 都不读取 Server YAML。
 
 监听地址、数据库、对象目录、管理员、设备授权、Key、Channel 等配置只由 Server 使用 `yaml` 包解析，并由 Server 控制台负责原子回写。客户端维护的设备名称与图标属于 SQLite 运行数据，不进入 YAML。
 
