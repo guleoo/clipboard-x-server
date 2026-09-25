@@ -1,0 +1,15 @@
+services:
+  clipboard-x-server:
+    volumes:
+      - type: bind
+        source: ${CBX_TLS_CERT_HOST_FILE:?Set CBX_TLS_CERT_HOST_FILE in .env}
+        target: /app/tls/fullchain.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CBX_TLS_KEY_HOST_FILE:?Set CBX_TLS_KEY_HOST_FILE in .env}
+        target: /app/tls/privkey.pem
+        read_only: true
+        bind:
+          create_host_path: false

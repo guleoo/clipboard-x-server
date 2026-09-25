@@ -46,24 +46,46 @@ describe("project README", () => {
     expect(native).toBeGreaterThan(docker);
     expect(source).toBeGreaterThan(native);
     expect(readme).toContain("docker compose up -d");
+    expect(readme).toContain("ghcr.io/guleoo/clipboard-x-server:latest");
+    expect(readme).toContain("https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/compose.yaml");
+    expect(readme).toContain("https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example");
+    expect(readme).toContain("不需要克隆仓库或在本地构建镜像");
     expect(readme).toContain("./clipboard-x-server --config ./server/config.yaml --migrate --serve");
-    expect(readme).toContain("git clone https://github.com/Guleo/clipboard-x-server.git");
+    expect(readme).toContain("git clone https://github.com/guleoo/clipboard-x-server.git");
     expect(existsSync(resolve(root, "deploy/clipboard-x-server.service"))).toBe(false);
     expect(readFileSync(resolve(root, "docs/deployment.md"), "utf8")).not.toContain("systemd");
   });
 
   it("packages a persistent Docker config with environment placeholders", () => {
     const compose = parse(readFileSync(resolve(root, "docker/compose.yaml"), "utf8")) as {
-      services: Record<string, { volumes: string[]; environment: Record<string, string> }>;
+      services: Record<string, { image: string; build?: unknown; volumes: string[]; environment: Record<string, string> }>;
     };
+    const tlsCompose = parse(readFileSync(resolve(root, "docker/compose.tls.yaml"), "utf8")) as {
+      services: Record<string, { volumes: Array<{ source: string; target: string; read_only: boolean }> }>;
+    };
+    const envExample = readFileSync(resolve(root, "docker/.env.example"), "utf8");
     const dockerfile = readFileSync(resolve(root, "docker/Dockerfile"), "utf8");
     const dockerignore = readFileSync(resolve(root, "docker/Dockerfile.dockerignore"), "utf8").split("\n");
     const gitignore = readFileSync(resolve(root, ".gitignore"), "utf8").split("\n");
     const containerConfig = readFileSync(resolve(root, "docker/config.yaml"), "utf8");
 
     expect(compose.services["clipboard-x-server"]?.volumes).toContain("clipboard-x-config:/app/config");
+    expect(compose.services["clipboard-x-server"]?.image).toBe("ghcr.io/guleoo/clipboard-x-server:latest");
+    expect(compose.services["clipboard-x-server"]?.build).toBeUndefined();
+    expect(compose.services["clipboard-x-server"]?.volumes).toEqual(["clipboard-x-config:/app/config", "clipboard-x-data:/app/data"]);
     expect(compose.services["clipboard-x-server"]?.environment.CBX_ADMIN_PASSWORD).toContain("CBX_ADMIN_PASSWORD");
+    expect(tlsCompose.services["clipboard-x-server"]?.volumes.map((volume) => volume.target)).toEqual([
+      "/app/tls/fullchain.pem",
+      "/app/tls/privkey.pem",
+    ]);
+    expect(tlsCompose.services["clipboard-x-server"]?.volumes.every((volume) => volume.read_only)).toBe(true);
+    expect(envExample).toContain("CBX_TLS_CERT_HOST_FILE=");
+    expect(envExample).toContain("CBX_TLS_KEY_HOST_FILE=");
+    expect(envExample).not.toContain("CBX_TLS_HOST_DIR");
     expect(dockerfile.match(/\/app\/config\/config\.yaml/g)).toHaveLength(2);
+    expect(dockerfile).toContain("COPY scripts ./scripts");
+    expect(dockerfile).toContain("COPY docs ./docs");
+    expect(dockerfile).toContain("build.ts README.md LICENSE.md ./");
     expect(dockerfile).toContain("COPY --chown=clipboard-x:clipboard-x docker/config.yaml ./config/config.yaml");
     expect(containerConfig).toContain("${env:CBX_ADMIN_PASSWORD}");
     expect(containerConfig).toContain("${env:CBX_ADMIN_USERNAME}");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const repository = resolve(import.meta.dir, "../..");
@@ -11,7 +11,7 @@ function document(path: string): string {
 describe("protocol ownership", () => {
   it("keeps the machine and human contracts in the Server repository", () => {
     const english = document("docs/protocol.md");
-    const chinese = document("docs/zh-CN/protocol.md");
+    const chinese = document("docs/protocol_CN.md");
 
     expect(english).toContain("Clipboard X Server owns the protocol");
     expect(english).toContain("server/openapi/openapi.json");
@@ -22,7 +22,7 @@ describe("protocol ownership", () => {
 
   it("explains the workflow, fields, errors, and progress without requiring OpenAPI", () => {
     const english = document("docs/protocol.md");
-    const chinese = document("docs/zh-CN/protocol.md");
+    const chinese = document("docs/protocol_CN.md");
     for (const [guide, sections] of [
       [english, ["## Read this first", "| Manifest field | Meaning |", "| HTTP status / code |", "| State | Meaning |", "## Endpoint index"]],
       [chinese, ["## 先看这里", "| 清单字段 | 含义 |", "| HTTP 状态 / 错误码 |", "| 状态 | 含义 |", "## 端点索引"]],
@@ -55,7 +55,7 @@ describe("protocol ownership", () => {
 
   it("lists every device operation from the generated OpenAPI contract", () => {
     const protocol = document("docs/protocol.md").split("## Endpoint index\n")[1];
-    const chinese = document("docs/zh-CN/protocol.md").split("## 端点索引\n")[1];
+    const chinese = document("docs/protocol_CN.md").split("## 端点索引\n")[1];
     expect(protocol).toBeDefined();
     expect(chinese).toBeDefined();
     const openapi = JSON.parse(document("server/openapi/openapi.json")) as {
@@ -71,6 +71,16 @@ describe("protocol ownership", () => {
         expect(protocol).toContain(signature);
         expect(chinese).toContain(signature);
       }
+    }
+  });
+
+  it("keeps relative links in both protocol guides valid", () => {
+    for (const path of ["docs/protocol.md", "docs/protocol_CN.md"]) {
+      const guide = document(path);
+      const links = [...guide.matchAll(/\]\((?!#|https?:\/\/)([^)#]+)(?:#[^)]*)?\)/gu)];
+      expect(links.length).toBeGreaterThan(0);
+      for (const [, target] of links)
+        expect(existsSync(resolve(repository, "docs", target!))).toBe(true);
     }
   });
 });

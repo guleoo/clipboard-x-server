@@ -20,6 +20,12 @@ const workflow = parse(readFileSync(resolve(root, ".github/workflows/release.yml
       permissions: { contents: string };
       steps: Array<{ run?: string; uses?: string; with?: Record<string, unknown> }>;
     };
+    "publish-image": {
+      if: string;
+      needs: string;
+      permissions: { contents: string; packages: string };
+      steps: Array<{ id?: string; run?: string; uses?: string; with?: Record<string, unknown> }>;
+    };
   };
 };
 
@@ -56,5 +62,22 @@ describe("GitHub Release workflow", () => {
     expect(publish.steps.find((step) => step.uses === "actions/download-artifact@v4")?.with?.["merge-multiple"]).toBe(true);
     expect(publish.steps.some((step) => step.run?.includes("tar -tzf") && step.run.includes("SHA256SUMS"))).toBe(true);
     expect(publish.steps.some((step) => step.run?.includes("gh release create") && step.run.includes("--prerelease"))).toBe(true);
+  });
+
+  it("publishes versioned multi-platform GHCR images and reserves latest for stable tags", () => {
+    const image = workflow.jobs["publish-image"];
+    expect(image.if).toContain("github.event_name == 'push'");
+    expect(image.needs).toBe("package");
+    expect(image.permissions).toEqual({ contents: "read", packages: "write" });
+    expect(image.steps.some((step) => step.uses === "docker/setup-qemu-action@v4")).toBe(true);
+    expect(image.steps.some((step) => step.uses === "docker/setup-buildx-action@v4")).toBe(true);
+    expect(image.steps.find((step) => step.uses === "docker/login-action@v4")?.with?.registry).toBe("ghcr.io");
+    const tags = image.steps.find((step) => step.id === "image-tags")?.run;
+    expect(tags).toContain("ghcr.io/guleoo/clipboard-x-server:${GITHUB_REF_NAME}");
+    expect(tags).toContain('if [[ "$GITHUB_REF_NAME" != *-* ]]');
+    expect(tags).toContain("ghcr.io/guleoo/clipboard-x-server:latest");
+    const build = image.steps.find((step) => step.uses === "docker/build-push-action@v7");
+    expect(build?.with?.platforms).toBe("linux/amd64,linux/arm64");
+    expect(build?.with?.push).toBe(true);
   });
 });

@@ -1,6 +1,8 @@
 FROM oven/bun:1.3.14 AS build
 WORKDIR /src
-COPY package.json bun.lock bunfig.toml tsconfig.json tsconfig.base.json build.ts ./
+COPY package.json bun.lock bunfig.toml tsconfig.json tsconfig.base.json build.ts README.md LICENSE.md ./
+COPY scripts ./scripts
+COPY docs ./docs
 COPY web ./web
 COPY server ./server
 RUN bun install --frozen-lockfile
@@ -9,7 +11,7 @@ RUN bun run compile
 FROM debian:bookworm-slim AS runtime
 RUN groupadd --system --gid 10001 clipboard-x \
   && useradd --system --uid 10001 --gid clipboard-x --home-dir /app clipboard-x \
-  && mkdir -p /app/config /app/data /app/web /app/server/drizzle \
+  && mkdir -p /app/config /app/data /app/tls /app/web /app/server/drizzle \
   && chown -R clipboard-x:clipboard-x /app
 WORKDIR /app
 COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/clipboard-x-server ./clipboard-x-server

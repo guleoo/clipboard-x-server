@@ -21,16 +21,33 @@ Clipboard X Server 与不同平台上的设备客户端连接，提供 Channel �
 
 ## 🚀 启动方式
 
-### 快速开始
+### 快速开始：从 GHCR 部署
 
-进入 `docker/`，按 `.env.example` 建立 `.env`，填写长度大于 6 位的 `CBX_ADMIN_PASSWORD`。启动只需要该 `.env` 与 `compose.yaml`：
+公开镜像：`ghcr.io/guleoo/clipboard-x-server:latest`。以下步骤只下载 Compose 文件和环境变量样例，**不需要克隆仓库或在本地构建镜像**。
 
 ```sh
-cd docker
-docker compose up -d
+mkdir -p clipboard-x-server
+cd clipboard-x-server
+curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/compose.yaml -o compose.yaml
+curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example -o .env
 ```
 
-打开 **http://127.0.0.1:28787**。镜像自带含环境变量占位符的 YAML 配置，Compose 将 `.env` 传给 Server；配置与数据分别存入持久化卷。`.env` 可设置监听与发布地址、端口、管理员账号密码和 TLS 证书路径。直接启用 HTTPS 的步骤见[部署指南](docs/deployment.md)。
+用 `openssl rand -hex 24` 生成管理员密码，然后编辑 `.env`，至少填入：
+
+```dotenv
+CBX_ADMIN_USERNAME=admin
+CBX_ADMIN_PASSWORD=粘贴生成的密码
+CBX_PUBLIC_ORIGIN=http://127.0.0.1:28787
+```
+
+`CBX_PUBLIC_ORIGIN` 应填写浏览器实际访问的地址；仅在可信内网直连时，才将 `CBX_PUBLISH_HOST` 改为 `0.0.0.0`，并把 Origin 改为对应的域名或服务器 IP。公网访问应启用 HTTPS。启动并查看状态：
+
+```sh
+docker compose up -d
+docker compose ps
+```
+
+默认仅监听宿主机的 `127.0.0.1:28787`。镜像已包含带环境变量占位符的 YAML 配置；Compose 将 `.env` 中的值传给 Server，配置和数据分别保存在持久化卷中。若经 HTTPS 反向代理访问，设置 `CBX_PUBLIC_ORIGIN=https://你的域名` 和 `CBX_COOKIE_SECURE=true`；直连 TLS 的证书文件挂载方式见[部署指南](docs/deployment.md)。
 
 ### 自行部署
 
@@ -45,14 +62,14 @@ cp server/config.example.yaml server/config.yaml
 
 ### 从源码启动
 
-GitHub 仓库上线后，可克隆源码：
+克隆源码：
 
 ```sh
-git clone https://github.com/Guleo/clipboard-x-server.git
+git clone https://github.com/guleoo/clipboard-x-server.git
 cd clipboard-x-server
 ```
 
-目前也可以直接使用本地源码目录。需要 Bun 1.3.14。在源码根目录执行：
+需要 Bun 1.3.14。在源码根目录执行：
 
 ```sh
 bun install --frozen-lockfile
@@ -96,7 +113,7 @@ bun run package
 | [版本发布](docs/release.md) | 六平台 GitHub Release 的验证、beta 与正式版流程。 |
 | [运维指南](docs/operations.md) | 备份与恢复、周期清理、对象审计及 GC。 |
 | [OpenAPI 3.1](server/openapi/openapi.json) | 路由、认证与数据结构的机器可读规范。 |
-| [Protocol guide](docs/protocol.md) · [中文协议指南](docs/zh-CN/protocol.md) | 跨请求流程、错误语义和客户端兼容性约定。 |
+| [Protocol guide](docs/protocol.md) · [中文协议指南](docs/protocol_CN.md) | 跨请求流程、错误语义和客户端兼容性约定。 |
 
 协议由 Clipboard X Server 维护；协议变更会同步更新 Schema、OpenAPI、指南和契约测试。
 

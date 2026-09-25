@@ -1,6 +1,6 @@
 # Clipboard X 同步协议（HTTP API v1）
 
-> 规范版本：v1 · 文档语言：简体中文 · [English](../protocol.md)
+> 规范版本：v1 · 文档语言：简体中文 · [English](protocol.md)
 
 本文是 Clipboard X Server 与所有设备客户端之间的权威人类可读协议。协议不依赖桌面环境、
 操作系统、UI 工具包或某一个客户端实现。
@@ -31,7 +31,7 @@ Server 保存设备身份、Channel 成员关系、剪切板元数据、预览�
 
 协议由 Clipboard X Server 负责制定。**开发客户端时直接阅读本文**：它按照设备的实际使用
 顺序解释请求、响应、状态变化和恢复规则。Server 生成的
-[`OpenAPI 规范`](../../server/openapi/openapi.json) 是供代码生成器和精确 Schema 查询使用的
+[`OpenAPI 规范`](../server/openapi/openapi.json) 是供代码生成器和精确 Schema 查询使用的
 辅助机器可读资料，不是阅读本文的前置条件。本文、OpenAPI 与 Server 实际行为不一致时，
 视为发布缺陷。
 

@@ -1,6 +1,6 @@
 # Clipboard X synchronization protocol (HTTP API v1)
 
-> English · [简体中文](zh-CN/protocol.md)
+> English · [简体中文](protocol_CN.md)
 
 This document is the authoritative human-readable protocol between Clipboard X Server and every
 device client. The protocol is intentionally independent of any desktop environment, operating

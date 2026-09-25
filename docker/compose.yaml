@@ -1,9 +1,6 @@
 services:
   clipboard-x-server:
-    image: ghcr.io/guleo/clipboard-x-server:latest
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
+    image: ghcr.io/guleoo/clipboard-x-server:latest
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -22,7 +19,6 @@ services:
     volumes:
       - clipboard-x-config:/app/config
       - clipboard-x-data:/app/data
-      - ${CBX_TLS_HOST_DIR:-./certs}:/app/tls:ro
     security_opt:
       - no-new-privileges:true
     cap_drop:
