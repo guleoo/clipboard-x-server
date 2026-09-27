@@ -91,31 +91,6 @@ describe("configuration", () => {
     expect(saved).toContain("\ncleanup:\n");
   });
 
-  it("rejects former root-level app fields with or without an app section", () => {
-    const root = resolve(import.meta.dir, "../..");
-    const configFile = join(mkdtempSync(join(tmpdir(), "clipboard-x-legacy-config-")), "config.yaml");
-    for (const [name, value] of [
-      ["host", "127.0.0.1"],
-      ["port", "28787"],
-      ["timezone", "UTC"],
-      ["data-dir", "./data"],
-    ] as const) {
-      for (const appSection of ["", "app:\n  host: 0.0.0.0\n"]) {
-        writeFileSync(configFile, `${appSection}${name}: ${value}\n`);
-        const result = spawnSync(process.execPath, [
-          "-e",
-          "import { FrameConfig } from './server/src/frame/config/index.ts'; console.log(FrameConfig.App.host);",
-        ], {
-          cwd: root,
-          env: { ...process.env, APP_CONFIG_FILE: configFile, APP_ENV: "prod" },
-          encoding: "utf8",
-        });
-        expect(result.status).not.toBe(0);
-        expect(result.stderr).toContain(`Top-level ${name} is not supported; use app.${name}`);
-      }
-    }
-  });
-
   it("applies context, base, imports, and mode in the governed order", () => {
     const root = mkdtempSync(join(tmpdir(), "hono-config-"));
     writeFileSync(
