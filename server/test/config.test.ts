@@ -1,8 +1,9 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "bun:test";
+import { parse } from "yaml";
 import { z } from "zod";
 import {
   ConfigManager,
@@ -69,6 +70,30 @@ describe("configuration", () => {
       sessionTtl: 604_800_000,
       mimeTypes: ["text/plain;charset=utf-8", "text/html", "image/png", "image/jpeg", "image/webp", "image/gif"],
     });
+  });
+
+  it("keeps the minimal YAML shape after a managed configuration update", () => {
+    const root = resolve(import.meta.dir, "../..");
+    const configFile = join(mkdtempSync(join(tmpdir(), "clipboard-x-config-shape-")), "config.yaml");
+    copyFileSync(join(import.meta.dir, "..", "config.example.yaml"), configFile);
+    const result = spawnSync(process.execPath, [
+      "-e",
+      "import { config } from './server/src/config/index.ts'; config.change((draft) => { draft.administrator.password = 'longer-password'; }, () => {});",
+    ], {
+      cwd: root,
+      env: { ...process.env, APP_CONFIG_FILE: configFile, APP_ENV: "prod" },
+      encoding: "utf8",
+    });
+    if (result.status !== 0) throw new Error(result.stderr);
+    const saved = readFileSync(configFile, "utf8");
+    const value = parse(saved) as Record<string, unknown>;
+    expect(Object.keys(value)).toEqual([
+      "host", "port", "timezone", "data-dir", "web", "limits", "lifetimes",
+      "cleanup", "administrator", "devices", "channels",
+    ]);
+    expect((value.administrator as Record<string, unknown>).password).toBe("longer-password");
+    expect(saved).toContain("\nweb:\n");
+    expect(saved).toContain("\ncleanup:\n");
   });
 
   it("applies context, base, imports, and mode in the governed order", () => {
