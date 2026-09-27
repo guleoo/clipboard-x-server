@@ -1,6 +1,7 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "bun:test";
 import { z } from "zod";
 import {
@@ -14,18 +15,15 @@ describe("configuration", () => {
   it("keeps every committed Server configuration standalone", () => {
     const requiredSections = [
       "administrator",
-      "app",
       "channels",
       "cleanup",
-      "content",
       "dataDir",
       "devices",
-      "http",
+      "host",
       "lifetimes",
       "limits",
-      "logger",
-      "security",
-      "session",
+      "port",
+      "timezone",
       "web",
     ];
 
@@ -42,8 +40,35 @@ describe("configuration", () => {
       });
       expect(Object.keys(value).sort()).toEqual(requiredSections);
       expect(value.dataDir).toBe(dataDir);
+      expect(value.host).toBe("127.0.0.1");
+      expect(value.timezone).toBe("UTC");
       expect(value.import).toBeUndefined();
     }
+  });
+
+  it("starts from the minimal native YAML with code defaults for omitted sections", () => {
+    const root = resolve(import.meta.dir, "../..");
+    const configFile = join(import.meta.dir, "..", "config.example.yaml");
+    const result = spawnSync(process.execPath, [
+      "-e",
+      "import { config } from './server/src/config/index.ts'; import { FrameConfig } from './server/src/frame/config/index.ts'; console.log(JSON.stringify({ host: config.host, port: config.port, timezone: FrameConfig.App.timezone, apiPrefix: FrameConfig.App.apiPrefix, routes: FrameConfig.App.routeSurfaces, logLevel: FrameConfig.Logger.console.level, rateLimit: config.rateLimit, sessionTtl: config.sessionTtlMillis, mimeTypes: config.supportedMimeTypes }));",
+    ], {
+      cwd: root,
+      env: { ...process.env, APP_CONFIG_FILE: configFile, APP_ENV: "prod" },
+      encoding: "utf8",
+    });
+    if (result.status !== 0) throw new Error(result.stderr);
+    expect(JSON.parse(result.stdout)).toEqual({
+      host: "127.0.0.1",
+      port: 28787,
+      timezone: "UTC",
+      apiPrefix: "/",
+      routes: { admin: "/admin/api", app: "/api" },
+      logLevel: "info",
+      rateLimit: { limit: 600, windowMillis: 60_000 },
+      sessionTtl: 604_800_000,
+      mimeTypes: ["text/plain;charset=utf-8", "text/html", "image/png", "image/jpeg", "image/webp", "image/gif"],
+    });
   });
 
   it("applies context, base, imports, and mode in the governed order", () => {

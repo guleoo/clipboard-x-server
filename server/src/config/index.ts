@@ -151,7 +151,7 @@ const ContentOptions = zz.object({
     "image/webp",
     "image/gif",
   ]),
-}).strict();
+}).strict().prefault({});
 
 const HttpOptions = zz.object({
   jsonBodyLimitBytes: positiveInteger.max(16 * 1024 * 1024).default(256 * 1024),

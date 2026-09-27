@@ -66,7 +66,7 @@ without a backup.
 3. Stop the temporary server and record duration plus audit result.
 4. For a missing-object drill, remove one object only in the disposable restore and confirm strict audit reports `missing_file`; never mutate production data for the drill.
 
-Console and file logs use human-readable text and omit request/response bodies, credentials, cookies, and full object paths. Monitor 5xx responses, `failed`/`expired` transfers, readiness, disk usage, and audit failures. File logs rotate according to `logger.file` configuration.
+Console and file logs use human-readable text and omit request/response bodies, credentials, cookies, and full object paths. Monitor 5xx responses, `failed`/`expired` transfers, readiness, disk usage, and audit failures. File logs rotate using the Server's built-in retention and size defaults.
 
 Run `bun run test:network` where local listening is permitted to verify real Bun `Fetch` streaming in addition to the default port-free Hono route tests.
 

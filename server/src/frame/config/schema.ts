@@ -16,19 +16,19 @@ const TlsOptions = z.object({
 
 export const AppOptions = z
   .object({
-    name: z.string().trim().min(1),
+    name: z.string().trim().min(1).default("clipboard-x-server"),
     hostname: z.string().trim().min(1).default("127.0.0.1"),
     port: z.coerce.number().int().nonnegative().default(28_787),
     tls: TlsOptions.optional(),
     shutdownTimeoutMillis: z.number().int().positive().default(30_000),
-    apiPrefix: z.string().default("/api"),
+    apiPrefix: z.string().default("/"),
     routeSurfaces: z
       .object({
-        admin: z.string().default("/admin"),
-        app: z.string().default("/app"),
+        admin: z.string().default("/admin/api"),
+        app: z.string().default("/api"),
       })
       .catchall(z.string())
-      .default({ admin: "/admin", app: "/app" }),
+      .default({ admin: "/admin/api", app: "/api" }),
     timezone: z.string().refine(validZone, "Invalid time zone").default("UTC"),
   })
   .strict();

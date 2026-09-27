@@ -1,28 +1,9 @@
 # Copy to config.yaml before starting the server. This file contains plaintext
 # administrator and device credentials; keep its permissions at 0600.
+host: 127.0.0.1
+port: 28787
+timezone: UTC
 data-dir: ./data
-app:
-  name: clipboard-x-server
-  hostname: 127.0.0.1
-  port: 28787
-  timezone: Asia/Shanghai
-  api-prefix: /
-  shutdown-timeout-millis: 30000
-  route-surfaces:
-    admin: /admin/api
-    app: /api
-logger:
-  console:
-    enabled: true
-    level: info
-  file:
-    enabled: true
-    level: info
-    dir: ./logs
-    filename: app-%DATE%.log
-    max-files: 30d
-    max-size: 100m
-    zipped-archive: true
 web:
   root: ../web/dist
   cookie-secure: false
@@ -36,32 +17,7 @@ lifetimes:
 cleanup:
   enabled: false
   interval-millis: 3600000
-  # Optional item limits are configured from the Web console and omitted by default.
   clipboard: {}
-content:
-  supported-mime-types:
-    - text/plain;charset=utf-8
-    - text/html
-    - image/png
-    - image/jpeg
-    - image/webp
-    - image/gif
-http:
-  json-body-limit-bytes: 262144
-  rate-limit:
-    limit: 600
-    window-millis: 60000
-security:
-  jwt-algorithm: HS256
-  token-prefix: Bearer
-  access-token-ttl-millis: 900000
-  password:
-    memory-cost: 65536
-    time-cost: 3
-session:
-  ttl-millis: 604800000
-  touch-interval-millis: 300000
-  token-bytes: 32
 administrator:
   username: admin
   password: change-this-password

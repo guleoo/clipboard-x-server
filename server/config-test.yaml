@@ -1,26 +1,7 @@
+host: 127.0.0.1
+port: 0
+timezone: UTC
 data-dir: ./data/test
-app:
-  name: clipboard-x-server-test
-  hostname: 127.0.0.1
-  port: 0
-  timezone: UTC
-  api-prefix: /api
-  shutdown-timeout-millis: 30000
-  route-surfaces:
-    admin: /admin
-    app: /app
-logger:
-  console:
-    enabled: false
-    level: error
-  file:
-    enabled: false
-    level: error
-    dir: ./logs
-    filename: test-%DATE%.log
-    max-files: 1d
-    max-size: 10m
-    zipped-archive: false
 web:
   root: ../web/dist
   cookie-secure: false
@@ -35,31 +16,6 @@ cleanup:
   enabled: false
   interval-millis: 3600000
   clipboard: {}
-content:
-  supported-mime-types:
-    - text/plain;charset=utf-8
-    - text/html
-    - image/png
-    - image/jpeg
-    - image/webp
-    - image/gif
-http:
-  json-body-limit-bytes: 262144
-  rate-limit:
-    limit: 600
-    window-millis: 60000
-security:
-  jwt-algorithm: HS256
-  token-prefix: Bearer
-  access-token-ttl-millis: 900000
-  jwt-secret: "test-only-secret-not-for-production-0001"
-  password:
-    memory-cost: 19456
-    time-cost: 2
-session:
-  ttl-millis: 604800000
-  touch-interval-millis: 300000
-  token-bytes: 32
 administrator:
   username: admin
   password: test-password

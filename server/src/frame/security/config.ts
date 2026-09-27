@@ -15,6 +15,7 @@ export const SecurityOptions = z
       .strict()
       .default({ memoryCost: 65_536, timeCost: 3 }),
   })
-  .strict();
+  .strict()
+  .prefault({});
 
 export const SecurityConfig = Config.section("security", SecurityOptions);

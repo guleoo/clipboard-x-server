@@ -1,26 +1,7 @@
+host: 127.0.0.1
+port: 28787
+timezone: UTC
 data-dir: ./data/dev
-app:
-  name: clipboard-x-server
-  hostname: 127.0.0.1
-  port: 28787
-  timezone: Asia/Shanghai
-  api-prefix: /
-  shutdown-timeout-millis: 30000
-  route-surfaces:
-    admin: /admin/api
-    app: /api
-logger:
-  console:
-    enabled: true
-    level: debug
-  file:
-    enabled: true
-    level: debug
-    dir: ./logs
-    filename: dev-%DATE%.log
-    max-files: 7d
-    max-size: 100m
-    zipped-archive: true
 web:
   root: ../web/dist
   cookie-secure: false
@@ -35,30 +16,6 @@ cleanup:
   enabled: false
   interval-millis: 3600000
   clipboard: {}
-content:
-  supported-mime-types:
-    - text/plain;charset=utf-8
-    - text/html
-    - image/png
-    - image/jpeg
-    - image/webp
-    - image/gif
-http:
-  json-body-limit-bytes: 262144
-  rate-limit:
-    limit: 600
-    window-millis: 60000
-security:
-  jwt-algorithm: HS256
-  token-prefix: Bearer
-  access-token-ttl-millis: 900000
-  password:
-    memory-cost: 19456
-    time-cost: 2
-session:
-  ttl-millis: 604800000
-  touch-interval-millis: 300000
-  token-bytes: 32
 administrator:
   username: admin
   password: change-this-password
