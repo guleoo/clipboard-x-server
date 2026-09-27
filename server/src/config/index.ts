@@ -279,7 +279,7 @@ const http = Config.section("http", HttpOptions);
 export const config = Object.freeze({
   path: configPath,
   environment: configMode,
-  host: FrameConfig.App.hostname,
+  host: FrameConfig.App.host,
   port: FrameConfig.App.port,
   tlsEnabled: Boolean(FrameConfig.App.tls?.certFile),
   shutdownTimeoutMillis: FrameConfig.App.shutdownTimeoutMillis,

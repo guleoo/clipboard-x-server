@@ -6,10 +6,11 @@ process.env.APP_ENV ??= "test";
 if (!process.env.APP_CONFIG_FILE) {
   const directory = mkdtempSync(resolve(tmpdir(), "clipboard-x-server-test-"));
   const config = resolve(directory, "config.yaml");
-  writeFileSync(config, `host: 127.0.0.1
-port: 0
-timezone: UTC
-data-dir: ${resolve(directory, "data")}
+  writeFileSync(config, `app:
+  host: 127.0.0.1
+  port: 0
+  timezone: UTC
+  data-dir: ${resolve(directory, "data")}
 logger:
   console:
     enabled: false

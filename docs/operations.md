@@ -2,7 +2,7 @@
 
 ## Backup and restore
 
-SQLite runs in WAL mode. `config.yaml` is part of the authoritative state and must be backed up together with the complete `data-dir`, including SQLite WAL/SHM files and the object tree. For the simplest consistent recovery point, stop the Server process first. In the native layout, back up `server/config.yaml` and `server/data/` together; `server/logs/` is independent and optional for recovery. In Docker, back up both the configuration and data volumes.
+SQLite runs in WAL mode. `config.yaml` is part of the authoritative state and must be backed up together with the complete directory set by `app.data-dir`, including SQLite WAL/SHM files and the object tree. For the simplest consistent recovery point, stop the Server process first. In the native layout, back up `server/config.yaml` and `server/data/` together; `server/logs/` is independent and optional for recovery. In Docker, back up both the configuration and data volumes.
 
 To restore, stop the Server process, move the current data directory aside, restore `config.yaml`, the complete database, and the object tree from the same recovery point with ownership/mode preserved, run the strict audit, then start and check readiness. Keep `config.yaml` at mode `0600`.
 
@@ -61,8 +61,8 @@ without a backup.
 
 ## Failure drills
 
-1. Restore a backup into a temporary directory and point a copied YAML file's `data-dir` to it.
-2. Run `audit --strict`, start on a temporary port, then verify `/health/ready`, admin login, and one object download.
+1. Restore a backup into a temporary directory and point a copied YAML file's `app.data-dir` to it.
+2. Run `audit --strict`, set `app.port` to a temporary port, start the Server, then verify `/health/ready`, admin login, and one object download.
 3. Stop the temporary server and record duration plus audit result.
 4. For a missing-object drill, remove one object only in the disposable restore and confirm strict audit reports `missing_file`; never mutate production data for the drill.
 

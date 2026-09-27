@@ -4,6 +4,12 @@ import { AppOptions } from "../src/frame/config/schema";
 const base = { name: "clipboard-x-server" };
 
 describe("TLS configuration", () => {
+  it("accepts the app listener fields and rejects the legacy hostname", () => {
+    expect(AppOptions.parse({ host: "0.0.0.0", port: 28787, timezone: "UTC", dataDir: "../data" }))
+      .toMatchObject({ host: "0.0.0.0", port: 28787, timezone: "UTC", dataDir: "../data" });
+    expect(AppOptions.safeParse({ hostname: "0.0.0.0" }).success).toBe(false);
+  });
+
   it("keeps HTTP available when TLS paths are absent", () => {
     expect(AppOptions.parse(base).tls).toBeUndefined();
     expect(AppOptions.parse({ ...base, tls: { certFile: "", keyFile: "" } }).tls)

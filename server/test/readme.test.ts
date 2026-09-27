@@ -29,7 +29,7 @@ describe("project README", () => {
     }
     expect(readme).toContain("CBX_PROXY_URL");
     expect(readme).toContain("server/config.yaml");
-    expect(readme).toContain("配置文件在根级设置 `host`、`port`、`timezone` 和 `data-dir`");
+    expect(readme).toContain("配置文件在 `app` 下设置 `host`、`port`、`timezone` 和 `data-dir`");
     expect(readme).toContain("server/data/");
     expect(readme).toContain("server/logs/");
     expect(readme).toContain("[GPL-3.0](LICENSE.md)");
@@ -60,14 +60,10 @@ describe("project README", () => {
   it("keeps the native example limited to the documented configuration fields", () => {
     const example = parse(readFileSync(resolve(root, "server/config.example.yaml"), "utf8")) as Record<string, unknown>;
     expect(Object.keys(example)).toEqual([
-      "host", "port", "timezone", "data-dir", "web", "limits", "lifetimes", "cleanup",
-      "administrator", "devices", "channels",
+      "app", "web", "limits", "lifetimes", "cleanup", "administrator", "devices", "channels",
     ]);
     expect(example).toMatchObject({
-      host: "127.0.0.1",
-      port: 28787,
-      timezone: "UTC",
-      "data-dir": "./data",
+      app: { host: "127.0.0.1", port: 28787, timezone: "UTC", "data-dir": "./data" },
       web: { root: "../web/dist", "cookie-secure": false },
       limits: {
         "max-object-bytes": 83886080,
@@ -80,6 +76,7 @@ describe("project README", () => {
       devices: [],
       channels: [],
     });
+    expect(Object.keys(example.app as Record<string, unknown>)).toEqual(["host", "port", "timezone", "data-dir"]);
     expect(Object.keys(example.web as Record<string, unknown>)).toEqual(["root", "cookie-secure"]);
   });
 
@@ -126,8 +123,14 @@ describe("project README", () => {
     expect(containerConfig).toContain("${env:CBX_ADMIN_PASSWORD}");
     expect(containerConfig).toContain("${env:CBX_ADMIN_USERNAME}");
     expect(containerConfig).toContain("${env:CBX_PUBLIC_ORIGIN}");
-    expect(containerConfig).toContain("hostname: 0.0.0.0");
+    expect(containerConfig).toContain("host: 0.0.0.0");
     expect(containerConfig).toContain("port: 28787");
+    expect(containerConfig).toContain("timezone: UTC");
+    const parsedContainerConfig = parse(containerConfig) as Record<string, unknown>;
+    expect(parsedContainerConfig).not.toHaveProperty("host");
+    expect(parsedContainerConfig).not.toHaveProperty("data-dir");
+    expect(parsedContainerConfig.app).toMatchObject({ host: "0.0.0.0", port: 28787, timezone: "UTC", "data-dir": "../data" });
+    expect(containerConfig).not.toContain("hostname:");
     expect(containerConfig).not.toContain("${env:CBX_HOST}");
     expect(containerConfig).not.toContain("${env:CBX_PORT}");
     expect(containerConfig).toContain("${env:CBX_TLS_CERT_FILE}");

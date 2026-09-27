@@ -52,8 +52,9 @@ handler installed only by the production composition root.
 
 YAML is the authoritative source for user-configurable options, the single administrator, issued device API
 keys and their DeviceId bindings, disabled state, channels, and managed memberships. Internal runtime
-settings omitted from YAML use defaults defined in the Server code. The native template exposes root-level
-`host`, `port`, `timezone`, and `data-dir`, plus `web`, `limits`, `lifetimes`, `cleanup`, and managed records.
+settings omitted from YAML use defaults defined in the Server code. The native template exposes
+`app.host`, `app.port`, `app.timezone`, and `app.data-dir`, plus `web`, `limits`, `lifetimes`,
+`cleanup`, and managed records.
 Client-owned device profiles (`tag`, `iconKind`, and `iconColor`) are runtime data in SQLite and are
 updated only by the client holding the bound key. The built-in virtual Server device is another
 SQLite-only record derived at startup: it is

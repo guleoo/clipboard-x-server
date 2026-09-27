@@ -17,8 +17,9 @@ const TlsOptions = z.object({
 export const AppOptions = z
   .object({
     name: z.string().trim().min(1).default("clipboard-x-server"),
-    hostname: z.string().trim().min(1).default("127.0.0.1"),
+    host: z.string().trim().min(1).default("127.0.0.1"),
     port: z.coerce.number().int().nonnegative().default(28_787),
+    dataDir: z.string().trim().min(1).default("./data"),
     tls: TlsOptions.optional(),
     shutdownTimeoutMillis: z.number().int().positive().default(30_000),
     apiPrefix: z.string().default("/"),

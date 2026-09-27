@@ -28,7 +28,7 @@ describe("TLS listener", () => {
       const port = reservation.port;
       await reservation.stop(true);
       const document = parseDocument(readFileSync(resolve(root, "docker/config.yaml"), "utf8"));
-      document.setIn(["app", "hostname"], "127.0.0.1");
+      document.setIn(["app", "host"], "127.0.0.1");
       document.setIn(["app", "port"], port);
       writeFileSync(configFile, document.toString());
       const environment = {

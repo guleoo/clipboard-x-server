@@ -16,15 +16,12 @@ describe("configuration", () => {
   it("keeps every committed Server configuration standalone", () => {
     const requiredSections = [
       "administrator",
+      "app",
       "channels",
       "cleanup",
-      "dataDir",
       "devices",
-      "host",
       "lifetimes",
       "limits",
-      "port",
-      "timezone",
       "web",
     ];
 
@@ -40,9 +37,7 @@ describe("configuration", () => {
         mergeImportFiles: false,
       });
       expect(Object.keys(value).sort()).toEqual(requiredSections);
-      expect(value.dataDir).toBe(dataDir);
-      expect(value.host).toBe("127.0.0.1");
-      expect(value.timezone).toBe("UTC");
+      expect(value.app).toEqual({ host: "127.0.0.1", port: filename === "config-test.yaml" ? 0 : 28787, timezone: "UTC", dataDir });
       expect(value.import).toBeUndefined();
     }
   });
@@ -88,12 +83,37 @@ describe("configuration", () => {
     const saved = readFileSync(configFile, "utf8");
     const value = parse(saved) as Record<string, unknown>;
     expect(Object.keys(value)).toEqual([
-      "host", "port", "timezone", "data-dir", "web", "limits", "lifetimes",
-      "cleanup", "administrator", "devices", "channels",
+      "app", "web", "limits", "lifetimes", "cleanup", "administrator", "devices", "channels",
     ]);
+    expect(value.app).toEqual({ host: "127.0.0.1", port: 28787, timezone: "UTC", "data-dir": "./data" });
     expect((value.administrator as Record<string, unknown>).password).toBe("longer-password");
     expect(saved).toContain("\nweb:\n");
     expect(saved).toContain("\ncleanup:\n");
+  });
+
+  it("rejects former root-level app fields with or without an app section", () => {
+    const root = resolve(import.meta.dir, "../..");
+    const configFile = join(mkdtempSync(join(tmpdir(), "clipboard-x-legacy-config-")), "config.yaml");
+    for (const [name, value] of [
+      ["host", "127.0.0.1"],
+      ["port", "28787"],
+      ["timezone", "UTC"],
+      ["data-dir", "./data"],
+    ] as const) {
+      for (const appSection of ["", "app:\n  host: 0.0.0.0\n"]) {
+        writeFileSync(configFile, `${appSection}${name}: ${value}\n`);
+        const result = spawnSync(process.execPath, [
+          "-e",
+          "import { FrameConfig } from './server/src/frame/config/index.ts'; console.log(FrameConfig.App.host);",
+        ], {
+          cwd: root,
+          env: { ...process.env, APP_CONFIG_FILE: configFile, APP_ENV: "prod" },
+          encoding: "utf8",
+        });
+        expect(result.status).not.toBe(0);
+        expect(result.stderr).toContain(`Top-level ${name} is not supported; use app.${name}`);
+      }
+    }
   });
 
   it("applies context, base, imports, and mode in the governed order", () => {

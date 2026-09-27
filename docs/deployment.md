@@ -15,7 +15,7 @@ Copy-Item server/config.example.yaml server/config.yaml
 .\clipboard-x-server.exe --config .\server\config.yaml --migrate --serve
 ```
 
-The native YAML template exposes root-level `host`, `port`, `timezone`, and `data-dir`, plus
+The native YAML template puts `host`, `port`, `timezone`, and `data-dir` under `app`. The root also contains
 `web`, `limits`, `lifetimes`, `cleanup`, `administrator`, `devices`, and `channels`. The example
 listens on `127.0.0.1:28787` and uses UTC. Other internal settings use defaults defined in
 Server code. Relative paths in YAML resolve from its directory.
@@ -71,7 +71,11 @@ docker compose -f compose.yaml -f compose.tls.yaml up -d
 
 Compose mounts the two files read-only, without mounting a certificate directory; they must be readable by container UID 10001. Restart the container after certificate renewal.
 
-The image contains `config.yaml` with `${env:...}` placeholders. A named volume holds that file so the Web console can update it; another volume stores SQLite and binary objects. Keep both volumes when updating the image. Environment changes apply to placeholders that remain in YAML. If the console has written a concrete value, that YAML value takes precedence. An existing configuration volume is not replaced by a newer image. If upgrading from a Compose file that passed `CBX_HOST` and `CBX_PORT` into the container, replace the old `app.hostname` and `app.port` placeholders in the persisted YAML with `0.0.0.0` and `28787` before starting the new Compose file.
+The image contains `config.yaml` with `app.host`, `app.port`, `app.timezone`, and `app.data-dir`, plus `${env:...}` placeholders for container-specific settings. Keep `app.tls.cert-file`, `app.tls.key-file`, `web.public-origin`, and `web.cookie-secure` in the container YAML so the HTTPS and browser-origin settings can be supplied through `.env`.
+
+A named volume holds that file so the Web console can update it; another volume stores SQLite and binary objects. Keep both volumes when updating the image. Environment changes apply to placeholders that remain in YAML. If the console has written a concrete value, that YAML value takes precedence. An existing configuration volume is not replaced by a newer image.
+
+Before starting the new image with an older persisted YAML, put the listener, timezone, and data directory settings in `app.host`, `app.port`, `app.timezone`, and `app.data-dir`; for the stock container configuration, use `0.0.0.0`, `28787`, `UTC`, and `../data`. Remove the old `app.hostname` field and any root-level `host`, `port`, `timezone`, or `data-dir` fields. The Server reads these settings only from `app`.
 
 The built-in health paths are unauthenticated: `/health/live` checks the process, while
 `/health/ready` also checks SQLite. The container health check reads the same YAML file.

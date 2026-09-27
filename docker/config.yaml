@@ -1,30 +1,12 @@
 # Container configuration. Environment placeholders are resolved at startup.
-data-dir: ../data
 app:
-  name: clipboard-x-server
-  hostname: 0.0.0.0
+  host: 0.0.0.0
   port: 28787
+  timezone: UTC
+  data-dir: ../data
   tls:
     cert-file: ${env:CBX_TLS_CERT_FILE}
     key-file: ${env:CBX_TLS_KEY_FILE}
-  timezone: Asia/Shanghai
-  api-prefix: /
-  shutdown-timeout-millis: 30000
-  route-surfaces:
-    admin: /admin/api
-    app: /api
-logger:
-  console:
-    enabled: true
-    level: info
-  file:
-    enabled: true
-    level: info
-    dir: ./logs
-    filename: app-%DATE%.log
-    max-files: 30d
-    max-size: 100m
-    zipped-archive: true
 web:
   root: ../web/dist
   public-origin: ${env:CBX_PUBLIC_ORIGIN}
@@ -40,30 +22,6 @@ cleanup:
   enabled: false
   interval-millis: 3600000
   clipboard: {}
-content:
-  supported-mime-types:
-    - text/plain;charset=utf-8
-    - text/html
-    - image/png
-    - image/jpeg
-    - image/webp
-    - image/gif
-http:
-  json-body-limit-bytes: 262144
-  rate-limit:
-    limit: 600
-    window-millis: 60000
-security:
-  jwt-algorithm: HS256
-  token-prefix: Bearer
-  access-token-ttl-millis: 900000
-  password:
-    memory-cost: 65536
-    time-cost: 3
-session:
-  ttl-millis: 604800000
-  touch-interval-millis: 300000
-  token-bytes: 32
 administrator:
   username: ${env:CBX_ADMIN_USERNAME}
   password: ${env:CBX_ADMIN_PASSWORD}

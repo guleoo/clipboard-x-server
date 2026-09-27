@@ -1,6 +1,6 @@
-import { initZone, validZone } from "../core";
-import { z } from "zod";
+import { initZone } from "../core";
 import { Config, configMode } from "./instance";
+import { ConfigError } from "./error";
 import { AppOptions, LoggerConfigOptions } from "./schema";
 
 export * from "./error";
@@ -15,14 +15,18 @@ export type * from "./types";
 
 export namespace FrameConfig {
   export const Environment = configMode;
-  const appOverrides = Config.section("app", AppOptions.optional());
-  export const App = Object.freeze(AppOptions.parse({
-    ...appOverrides,
-    hostname: Config.section("host", z.string().trim().min(1).optional()) ?? appOverrides?.hostname,
-    port: Config.section("port", z.coerce.number().int().nonnegative().optional()) ?? appOverrides?.port,
-    timezone: Config.section("timezone", z.string().refine(validZone, "Invalid time zone").optional()) ?? appOverrides?.timezone,
-  }));
-  export const DataDir = Config.resolvePath(Config.section("dataDir", z.string().trim().min(1).default("./data")));
+  for (const [key, sourceName] of [
+    ["host", "host"],
+    ["port", "port"],
+    ["timezone", "timezone"],
+    ["dataDir", "data-dir"],
+  ] as const) {
+    if (Object.hasOwn(Config.get(), key)) {
+      throw new ConfigError(`Top-level ${sourceName} is not supported; use app.${sourceName}`, { path: Config.filePath });
+    }
+  }
+  export const App = Config.section("app", AppOptions);
+  export const DataDir = Config.resolvePath(App.dataDir);
   const logger = Config.section("logger", LoggerConfigOptions);
   export const Logger = Object.freeze({
     ...logger,

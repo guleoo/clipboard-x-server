@@ -39,11 +39,10 @@ describe("Docker configuration", () => {
 
     expect((config.administrator as Record<string, unknown>).password).toBe("strong-password");
     expect((config.administrator as Record<string, unknown>).username).toBe("admin");
-    expect(AppOptions.parse(config.app)).toMatchObject({ hostname: "0.0.0.0", port: 28787 });
-    expect(config.dataDir).toBe("../data");
+    expect(AppOptions.parse(config.app)).toMatchObject({ host: "0.0.0.0", port: 28787, timezone: "UTC", dataDir: "../data" });
     expect(config.database).toBeUndefined();
     expect(config.storage).toBeUndefined();
-    expect((config.logger as { file: { dir: string } }).file.dir).toBe("./logs");
+    expect(config.logger).toBeUndefined();
     expect((config.web as Record<string, unknown>).publicOrigin).toBe("");
     expect(effectivePublicOrigin(env)).toBe("request origin");
   });
@@ -64,7 +63,7 @@ describe("Docker configuration", () => {
     });
 
     expect(AppOptions.parse(config.app)).toMatchObject({
-      hostname: "0.0.0.0",
+      host: "0.0.0.0",
       port: 28787,
       tls: { certFile: "../tls/fullchain.pem", keyFile: "../tls/privkey.pem" },
     });

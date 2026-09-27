@@ -42,9 +42,9 @@ export namespace Server {
 
   export async function listen(application: Application): Promise<Listener> {
     if (current) throw new SystemError("Server is already listening");
-    const { hostname, port: configuredPort, shutdownTimeoutMillis, tls } = FrameConfig.App;
+    const { host, port: configuredPort, shutdownTimeoutMillis, tls } = FrameConfig.App;
     const server = Bun.serve({
-      hostname,
+      hostname: host,
       port: configuredPort,
       ...(tls?.certFile && tls.keyFile ? {
         tls: {
@@ -56,7 +56,7 @@ export namespace Server {
     });
     const port = server.port ?? configuredPort;
     const address = new URL(tls?.certFile ? "https://localhost" : "http://localhost");
-    address.hostname = hostname;
+    address.hostname = host;
     address.port = String(port);
     const target: ManagedServer = { server, unregister() {} };
 
@@ -81,7 +81,7 @@ export namespace Server {
     current = target;
     url = address;
     return {
-      hostname,
+      hostname: host,
       port,
       url: address,
       stop: (force) => stopManaged(target, force),
