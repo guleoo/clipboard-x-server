@@ -67,6 +67,7 @@ cp server/config.example.yaml server/config.yaml
 ```
 
 管理界面默认位于 **http://127.0.0.1:28787**。
+配置文件在根级设置 `host`、`port`、`timezone` 和 `data-dir`；未列入模板的内部选项使用代码中的默认值。更多部署方式见[部署指南](docs/deployment.md)。
 
 ### 从源码启动
 

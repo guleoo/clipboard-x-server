@@ -29,6 +29,7 @@ describe("project README", () => {
     }
     expect(readme).toContain("CBX_PROXY_URL");
     expect(readme).toContain("server/config.yaml");
+    expect(readme).toContain("配置文件在根级设置 `host`、`port`、`timezone` 和 `data-dir`");
     expect(readme).toContain("server/data/");
     expect(readme).toContain("server/logs/");
     expect(readme).toContain("[GPL-3.0](LICENSE.md)");
@@ -54,6 +55,32 @@ describe("project README", () => {
     expect(readme).toContain("git clone https://github.com/guleoo/clipboard-x-server.git");
     expect(existsSync(resolve(root, "deploy/clipboard-x-server.service"))).toBe(false);
     expect(readFileSync(resolve(root, "docs/deployment.md"), "utf8")).not.toContain("systemd");
+  });
+
+  it("keeps the native example limited to the documented configuration fields", () => {
+    const example = parse(readFileSync(resolve(root, "server/config.example.yaml"), "utf8")) as Record<string, unknown>;
+    expect(Object.keys(example)).toEqual([
+      "host", "port", "timezone", "data-dir", "web", "limits", "lifetimes", "cleanup",
+      "administrator", "devices", "channels",
+    ]);
+    expect(example).toMatchObject({
+      host: "127.0.0.1",
+      port: 28787,
+      timezone: "UTC",
+      "data-dir": "./data",
+      web: { root: "../web/dist", "cookie-secure": false },
+      limits: {
+        "max-object-bytes": 83886080,
+        "max-item-bytes": 268435456,
+        "max-preview-bytes": 1048576,
+      },
+      lifetimes: { "key-overlap-millis": 300000, "materialization-ttl-millis": 600000 },
+      cleanup: { enabled: false, "interval-millis": 3600000, clipboard: {} },
+      administrator: { username: "admin", password: "change-this-password" },
+      devices: [],
+      channels: [],
+    });
+    expect(Object.keys(example.web as Record<string, unknown>)).toEqual(["root", "cookie-secure"]);
   });
 
   it("packages a persistent Docker config with environment placeholders", () => {

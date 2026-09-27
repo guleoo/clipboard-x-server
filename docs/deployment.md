@@ -15,9 +15,14 @@ Copy-Item server/config.example.yaml server/config.yaml
 .\clipboard-x-server.exe --config .\server\config.yaml --migrate --serve
 ```
 
-For direct HTTPS, set `app.tls.cert-file` and `app.tls.key-file` to readable PEM files and enable `web.cookie-secure`. `web.public-origin` is optional for direct access; configure it when the browser-facing origin differs from what the Server sees (for example, behind an HTTPS reverse proxy). Relative paths in YAML resolve from its directory. Keep the entire release directory, including `web/dist` and `server/drizzle`.
+The native YAML template exposes root-level `host`, `port`, `timezone`, and `data-dir`, plus
+`web`, `limits`, `lifetimes`, `cleanup`, `administrator`, `devices`, and `channels`. The example
+listens on `127.0.0.1:28787` and uses UTC. Other internal settings use defaults defined in
+Server code. Relative paths in YAML resolve from its directory.
 
-The YAML file is the sole authoritative source for runtime options, the administrator, devices,
+For optional direct HTTPS, add `app.tls.cert-file` and `app.tls.key-file` with readable PEM paths and enable `web.cookie-secure`. These TLS fields are intentionally absent from the minimal native template. `web.public-origin` is optional for direct access; configure it when the browser-facing origin differs from what the Server sees (for example, behind an HTTPS reverse proxy). Keep the entire release directory, including `web/dist` and `server/drizzle`.
+
+The YAML file is the authoritative source for configurable options, the administrator, devices,
 complete device API keys, channels, and memberships. The process reads it at startup. Changes made
 through the console are written with a temporary file, synced, atomically renamed, and forced to mode
 `0600`. Manual changes take effect on the next process start.
