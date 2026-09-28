@@ -1,0 +1,29 @@
+services:
+  clipboard-x-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    ports:
+      - "${CBX_HOST:-0.0.0.0}:${CBX_PORT:-28787}:28787"
+    environment:
+      CBX_ADMIN_USERNAME: ${CBX_ADMIN_USERNAME:-admin}
+      CBX_ADMIN_PASSWORD: ${CBX_ADMIN_PASSWORD:?Set CBX_ADMIN_PASSWORD in .env}
+      CBX_PUBLIC_ORIGIN: ${CBX_PUBLIC_ORIGIN:-}
+      CBX_COOKIE_SECURE: ${CBX_COOKIE_SECURE:-false}
+      CBX_TLS_CERT_FILE: ${CBX_TLS_CERT_FILE:-}
+      CBX_TLS_KEY_FILE: ${CBX_TLS_KEY_FILE:-}
+    volumes:
+      - clipboard-x-config:/app/config
+      - clipboard-x-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  clipboard-x-config:
+  clipboard-x-data:

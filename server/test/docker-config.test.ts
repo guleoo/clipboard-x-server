@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { parse } from "yaml";
 import { loadYamlConfigSync } from "../src/frame/config/loader";
 import { AppOptions } from "../src/frame/config/schema";
 
@@ -29,6 +31,22 @@ function effectivePublicOrigin(environment: typeof env): string {
 }
 
 describe("Docker configuration", () => {
+  it("builds the local Compose service from the project Dockerfile", () => {
+    type ComposeConfiguration = {
+      services: Record<string, Record<string, unknown>>;
+      volumes: unknown;
+    };
+    const base = parse(readFileSync(resolve(root, "docker/compose.yaml"), "utf8")) as ComposeConfiguration;
+    const local = parse(readFileSync(resolve(root, "docker/compose.local.yaml"), "utf8")) as ComposeConfiguration;
+    const { image, ...baseService } = base.services["clipboard-x-server"];
+    const { build, ...localService } = local.services["clipboard-x-server"];
+
+    expect(image).toBe("ghcr.io/guleoo/clipboard-x-server:latest");
+    expect(build).toEqual({ context: "..", dockerfile: "docker/Dockerfile" });
+    expect(localService).toEqual(baseService);
+    expect(local.volumes).toEqual(base.volumes);
+  });
+
   it("keeps the container listener fixed while resolving other environment placeholders", () => {
     const config = loadYamlConfigSync({
       filePath,
