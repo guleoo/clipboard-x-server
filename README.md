@@ -35,6 +35,7 @@ curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/do
 用 `openssl rand -hex 24` 生成管理员密码，然后编辑 `.env`，至少填入：
 
 ```dotenv
+CBX_HOST=0.0.0.0
 CBX_ADMIN_PASSWORD=粘贴生成的密码
 ```
 
@@ -52,7 +53,7 @@ docker compose up -d
 docker compose ps
 ```
 
-默认仅发布到宿主机的 `127.0.0.1:28787`。镜像已包含带环境变量占位符的 YAML 配置；
+默认发布到宿主机所有网络接口的 `28787` 端口。镜像已包含带环境变量占位符的 YAML 配置；
 Compose 将 `.env` 中的值传给 Server，配置和数据分别保存在持久化卷中。
 `CBX_HOST`/`CBX_PORT` 控制宿主机对外发布的地址和端口；容器内固定监听 `0.0.0.0:28787`。
 直连 TLS 的证书文件挂载方式见[部署指南](docs/deployment.md)。
@@ -96,7 +97,7 @@ bun run dev:server
 bun run dev:web
 ```
 
-打开 **http://127.0.0.1:3000**。Server 默认监听 `127.0.0.1:28787`；Web 的 Vite 代理从 `web/.env*` 读取 `CBX_PROXY_URL`，默认应指向该 Server 地址。`dev:server` 会先运行数据库迁移。
+打开 **http://127.0.0.1:3000**。Server 默认监听 `0.0.0.0:28787`；Web 的 Vite 代理从 `web/.env*` 读取 `CBX_PROXY_URL`，本机开发时应指向 `127.0.0.1:28787`。`dev:server` 会先运行数据库迁移。
 
 无论采用哪种方式，登录后都可以创建 Channel，登记客户端生成的 DeviceId 并签发绑定的 Key。客户端持有 Key 后，会把自己的设备名称和图标同步到服务端。
 

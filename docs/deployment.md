@@ -17,7 +17,7 @@ Copy-Item server/config.example.yaml server/config.yaml
 
 The native YAML template puts `host`, `port`, `timezone`, and `data-dir` under `app`. The root also contains
 `web`, `limits`, `lifetimes`, `cleanup`, `administrator`, `devices`, and `channels`. The example
-listens on `127.0.0.1:28787` and uses UTC. Other internal settings use defaults defined in
+listens on `0.0.0.0:28787` and uses UTC. Other internal settings use defaults defined in
 Server code. Relative paths in YAML resolve from its directory.
 
 For optional direct HTTPS, add `app.tls.cert-file` and `app.tls.key-file` with readable PEM paths and enable `web.cookie-secure`. These TLS fields are intentionally absent from the minimal native template. `web.public-origin` is optional for direct access; configure it when the browser-facing origin differs from what the Server sees (for example, behind an HTTPS reverse proxy). Keep the entire release directory, including `web/dist` and `server/drizzle`.
@@ -44,7 +44,7 @@ curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/do
 curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example -o .env
 ```
 
-Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env` (for example, generate one with `openssl rand -hex 24`). `CBX_HOST` and `CBX_PORT` set the host-side published address and port; the container always listens on `0.0.0.0:28787`. The defaults expose HTTP on the host's localhost port 28787; `CBX_PUBLIC_ORIGIN` may stay empty for direct HTTP access. For direct access from a trusted LAN, change `CBX_HOST` to `0.0.0.0`; the Server derives the origin from each request. Use HTTPS for public access. Start with `docker compose up -d`.
+Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env` (for example, generate one with `openssl rand -hex 24`). `CBX_HOST` and `CBX_PORT` set the host-side published address and port; the container always listens on `0.0.0.0:28787`. The defaults expose HTTP on port 28787 on all host network interfaces; `CBX_PUBLIC_ORIGIN` may stay empty for direct HTTP access. Set `CBX_HOST=127.0.0.1` if access should be limited to the host. The Server derives the origin from each request. Use HTTPS for public access. Start with `docker compose up -d`.
 
 For HTTPS behind a reverse proxy, set `CBX_PUBLIC_ORIGIN=https://clipboard.example.com` and `CBX_COOKIE_SECURE=true`. If serving HTTPS directly from the container instead, also download the optional TLS override:
 

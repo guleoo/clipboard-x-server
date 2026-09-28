@@ -37,7 +37,7 @@ describe("configuration", () => {
         mergeImportFiles: false,
       });
       expect(Object.keys(value).sort()).toEqual(requiredSections);
-      expect(value.app).toEqual({ host: "127.0.0.1", port: filename === "config-test.yaml" ? 0 : 28787, timezone: "UTC", dataDir });
+      expect(value.app).toEqual({ host: "0.0.0.0", port: filename === "config-test.yaml" ? 0 : 28787, timezone: "UTC", dataDir });
       expect(value.import).toBeUndefined();
     }
   });
@@ -55,7 +55,7 @@ describe("configuration", () => {
     });
     if (result.status !== 0) throw new Error(result.stderr);
     expect(JSON.parse(result.stdout)).toEqual({
-      host: "127.0.0.1",
+      host: "0.0.0.0",
       port: 28787,
       timezone: "UTC",
       apiPrefix: "/",
@@ -85,7 +85,7 @@ describe("configuration", () => {
     expect(Object.keys(value)).toEqual([
       "app", "web", "limits", "lifetimes", "cleanup", "administrator", "devices", "channels",
     ]);
-    expect(value.app).toEqual({ host: "127.0.0.1", port: 28787, timezone: "UTC", "data-dir": "./data" });
+    expect(value.app).toEqual({ host: "0.0.0.0", port: 28787, timezone: "UTC", "data-dir": "./data" });
     expect((value.administrator as Record<string, unknown>).password).toBe("longer-password");
     expect(saved).toContain("\nweb:\n");
     expect(saved).toContain("\ncleanup:\n");

@@ -5,6 +5,7 @@ const base = { name: "clipboard-x-server" };
 
 describe("TLS configuration", () => {
   it("accepts the app listener fields", () => {
+    expect(AppOptions.parse({}).host).toBe("0.0.0.0");
     expect(AppOptions.parse({ host: "0.0.0.0", port: 28787, timezone: "UTC", dataDir: "../data" }))
       .toMatchObject({ host: "0.0.0.0", port: 28787, timezone: "UTC", dataDir: "../data" });
   });

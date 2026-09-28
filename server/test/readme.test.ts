@@ -63,7 +63,7 @@ describe("project README", () => {
       "app", "web", "limits", "lifetimes", "cleanup", "administrator", "devices", "channels",
     ]);
     expect(example).toMatchObject({
-      app: { host: "127.0.0.1", port: 28787, timezone: "UTC", "data-dir": "./data" },
+      app: { host: "0.0.0.0", port: 28787, timezone: "UTC", "data-dir": "./data" },
       web: { root: "../web/dist", "cookie-secure": false },
       limits: {
         "max-object-bytes": 83886080,
@@ -101,7 +101,7 @@ describe("project README", () => {
     expect(compose.services["clipboard-x-server"]?.environment.CBX_PUBLIC_ORIGIN).toBe("${CBX_PUBLIC_ORIGIN:-}");
     expect(compose.services["clipboard-x-server"]?.environment.CBX_HOST).toBeUndefined();
     expect(compose.services["clipboard-x-server"]?.environment.CBX_PORT).toBeUndefined();
-    expect(compose.services["clipboard-x-server"]?.ports).toEqual(["${CBX_HOST:-127.0.0.1}:${CBX_PORT:-28787}:28787"]);
+    expect(compose.services["clipboard-x-server"]?.ports).toEqual(["${CBX_HOST:-0.0.0.0}:${CBX_PORT:-28787}:28787"]);
     expect(tlsCompose.services["clipboard-x-server"]?.volumes.map((volume) => volume.target)).toEqual([
       "/app/tls/fullchain.pem",
       "/app/tls/privkey.pem",
@@ -111,7 +111,7 @@ describe("project README", () => {
     expect(envExample).toContain("CBX_TLS_KEY_HOST_FILE=");
     expect(envExample).not.toContain("CBX_TLS_HOST_DIR");
     expect(envExample).toContain("CBX_PUBLIC_ORIGIN=\n");
-    expect(envExample).toContain("CBX_HOST=127.0.0.1\n");
+    expect(envExample).toContain("CBX_HOST=0.0.0.0\n");
     expect(envExample).toContain("CBX_PORT=28787\n");
     expect(envExample).not.toContain("CBX_PUBLISH_HOST");
     expect(envExample).not.toContain("CBX_PUBLISH_PORT");

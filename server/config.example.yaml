@@ -1,7 +1,7 @@
 # Copy to config.yaml before starting the server. This file contains plaintext
 # administrator and device credentials; keep its permissions at 0600.
 app:
-  host: 127.0.0.1
+  host: 0.0.0.0
   port: 28787
   timezone: UTC
   data-dir: ./data
