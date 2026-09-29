@@ -132,4 +132,4 @@ TLS 与容器部署步骤见[部署指南](docs/deployment_CN.md)。
 
 ## 许可证
 
-本项目采用 [GPL-3.0](LICENSE.md) 许可证。
+本项目采用 [GPL-3.0-or-later](LICENSE.md) 许可证。

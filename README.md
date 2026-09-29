@@ -132,4 +132,4 @@ The sync protocol is maintained in this repository; protocol changes update the 
 
 ## License
 
-This project is licensed under [GPL-3.0](LICENSE.md).
+This project is licensed under [GPL-3.0-or-later](LICENSE.md).

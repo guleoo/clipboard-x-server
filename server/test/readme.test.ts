@@ -16,7 +16,7 @@ describe("project README", () => {
       const top = readme.split("## ")[0];
       expect(top).toContain('<a href="README.md">English</a>');
       expect(top).toContain('<a href="README_CN.md">简体中文</a>');
-      expect(readme).toContain("[GPL-3.0](LICENSE.md)");
+      expect(readme).toContain("[GPL-3.0-or-later](LICENSE.md)");
       for (const speculative of ["仓库上线后", "等待仓库", "目前也可以直接使用本地源码目录"]) {
         expect(readme).not.toContain(speculative);
       }
@@ -55,7 +55,7 @@ describe("project README", () => {
     expect(englishReadme).toContain("(docs/release.md)");
     expect(chineseReadme).toContain("(docs/release_CN.md)");
     expect(readFileSync(resolve(root, "web/.env"), "utf8")).toContain("CBX_PROXY_URL=http://127.0.0.1:28787");
-    expect(packageJson.license).toBe("GPL-3.0-only");
+    expect(packageJson.license).toBe("GPL-3.0-or-later");
     expect(packageJson.scripts.package).toContain("--compile --archive");
     expect(existsSync(resolve(root, "LICENSE.md"))).toBe(true);
     const buildScript = readFileSync(resolve(root, "build.ts"), "utf8");

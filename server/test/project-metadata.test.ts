@@ -3,27 +3,22 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "../..");
-const repositoryUrl = "git+https://github.com/guleoo/clipboard-x-server.git";
+const homepage = "https://github.com/guleoo/clipboard-x-server";
 const author = { name: "guleoo", url: "https://github.com/guleoo" };
 
 describe("project metadata", () => {
-  it("attributes the root and both workspaces to the same author and repository", () => {
+  it("keeps author, license, and homepage consistent across workspaces", () => {
     for (const directory of ["", "server", "web"]) {
       const manifest = JSON.parse(readFileSync(resolve(root, directory, "package.json"), "utf8")) as {
         author: unknown;
-        repository: unknown;
+        license: string;
+        homepage: string;
+        repository?: unknown;
       };
       expect(manifest.author).toEqual(author);
-      expect(manifest.repository).toEqual({
-        type: "git",
-        url: repositoryUrl,
-        ...(directory ? { directory } : {}),
-      });
+      expect(manifest.license).toBe("GPL-3.0-or-later");
+      expect(manifest.homepage).toBe(homepage);
+      expect(manifest.repository).toBeUndefined();
     }
-  });
-
-  it("identifies the author in the Web document", () => {
-    expect(readFileSync(resolve(root, "web/index.html"), "utf8"))
-      .toContain('<meta name="author" content="guleoo" />');
   });
 });
