@@ -18,7 +18,7 @@ Clipboard X Server connects device clients across platforms, providing Channel s
 
 | Platform | Client implementation |
 | --- | --- |
-| GNOME Shell | [**`clipboard-x-gnome`**](https://github.com/Guleo/clipboard-x-gnome) |
+| GNOME Shell | [**`clipboard-x-gnome`**](https://github.com/guleoo/clipboard-x-gnome) |
 
 ## 🚀 Get started
 

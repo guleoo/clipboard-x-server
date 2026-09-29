@@ -29,7 +29,7 @@ describe("project README", () => {
       const platforms = readme.split(heading)[1]?.split("\n## ")[0];
       expect(introduction).not.toContain("clipboard-x-gnome");
       expect(platforms).toContain("GNOME Shell");
-      expect(platforms).toContain("[**`clipboard-x-gnome`**](https://github.com/Guleo/clipboard-x-gnome)");
+      expect(platforms).toContain("[**`clipboard-x-gnome`**](https://github.com/guleoo/clipboard-x-gnome)");
     }
   });
 

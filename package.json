@@ -1,6 +1,14 @@
 {
   "name": "clipboard-x-server",
   "version": "0.1.0",
+  "author": {
+    "name": "guleoo",
+    "url": "https://github.com/guleoo"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guleoo/clipboard-x-server.git"
+  },
   "license": "GPL-3.0-only",
   "private": true,
   "type": "module",

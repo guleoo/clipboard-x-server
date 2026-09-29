@@ -18,7 +18,7 @@ Clipboard X Server 连接不同平台的设备客户端，提供 Channel 同步�
 
 | 平台 | 客户端实现 |
 | --- | --- |
-| GNOME Shell | [**`clipboard-x-gnome`**](https://github.com/Guleo/clipboard-x-gnome) |
+| GNOME Shell | [**`clipboard-x-gnome`**](https://github.com/guleoo/clipboard-x-gnome) |
 
 ## 🚀 启动方式
 
