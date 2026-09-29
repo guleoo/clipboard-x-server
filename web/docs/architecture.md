@@ -1,60 +1,58 @@
-# Clipboard X Web 架构
+# Clipboard X Web architecture
 
-Web 是单入口、纯客户端渲染的 React SPA。登录后的首屏是用户级 Channel 剪切板工作区，而不是传统管理仪表盘：左侧切换 Channel，中间预览和操作剪切板内容，卡片区域独立滚动；Channel 创建、编辑和内容发布使用弹窗。设备、活动、配置和账户页面收纳在设置菜单中。配置页当前只承载服务端清理策略，按总开关、触发方式、剪切板条目、二进制对象和单轮执行预算分组；客户端本地历史不受该页面控制。Bun 负责工作区依赖、脚本和测试，Vite 负责开发服务器与生产构建。应用组合根是 `src/App.tsx`，唯一浏览器入口是 `src/main.tsx`。生产构建生成 `web/dist`，根发布流程将它和 Server 可执行文件一起组装，由 Server 同源提供。
+> English · [简体中文](architecture_CN.md)
 
-## 基础设施
+The Web package is a single-entry, client-rendered React SPA. After login, the home page is a Channel clipboard workspace: switch Channels on the left and preview or act on clipboard cards in an independently scrolling center region. Channel creation, editing, and content publication use dialogs. Devices, activity, configuration, and account pages live in the settings menu. The configuration page currently manages only periodic cleanup of server-side clipboard data; it does not govern local client history.
 
-- React 19、TypeScript 严格模式和 Vite。
-- React Router Declarative Mode。`src/routes` 的扁平 Route Node 是唯一导航事实；`frame/router/core` 校验并编译节点，`Router.View` 建立唯一 `BrowserRouter`。
-- Zustand 管理认证摘要、路由发布、最近页面和主题偏好。页面内交互状态仍由组件持有。
-- Axios 只存在于 `frame/request/transport.ts`。应用 API 通过不可变 Endpoint 绑定，页面使用 `useApi()`，不接触 Axios 类型或实例。
-- Zod 校验构建环境、LocalStorage、外部 Route Node 和全部 Admin API JSON 响应。
-- TanStack Query 管理服务器资源，因为概览和传输需要轮询，设备、Channel、条目等 mutation 需要明确失效协调；它不承载客户端状态。
-- Tailwind CSS 4、CSS Variables，以及 shadcn/ui 的 Base UI (`base-nova`) 组件。公共 UI 源码位于 `frame/components/ui`。
+Bun handles workspace dependencies, scripts, and tests. Vite provides the development server and production build. `src/App.tsx` composes the app, and `src/main.tsx` is its sole browser entry. The production build writes `web/dist`; the root release process packages it with the Server executable, which serves it from the same origin.
 
-## 依赖方向
+## Infrastructure
 
-`pages` 组合 `api`、`stores`、应用组件和 `frame`。`api`、`routes`、`stores` 可以依赖 `frame`；`frame` 不导入任何产品 API、页面、路由源或应用 store。服务器与 Web 不互相导入源码。
+- React 19, strict TypeScript, and Vite.
+- React Router Declarative Mode. Flat Route Nodes in `src/routes` are the navigation source of truth; `frame/router/core` validates and compiles them, and `Router.View` creates the sole `BrowserRouter`.
+- Zustand owns the non-sensitive authentication summary, route publication, recent page, and theme preference. Components retain their local interaction state.
+- Axios stays inside `frame/request/transport.ts`. The application API binds immutable Endpoints, and pages use `useApi()` without accessing Axios types or instances.
+- Zod validates browser storage, untrusted Route Nodes, and Admin API JSON responses. The Vite configuration checks the proxy URL loaded from `web/.env*`.
+- TanStack Query manages server resources, polling, and query invalidation after mutations; it does not own client state.
+- Tailwind CSS 4, CSS variables, and shadcn/ui components based on Base UI (`base-nova`). Shared UI source lives in `frame/components/ui`.
 
-## API 与认证
+## Dependency direction
 
-Admin API 固定使用同源 `/admin/api/v1` 和 HttpOnly、SameSite=Strict 会话 Cookie。Request Client 不接受 API origin，生产产物也不包含可切换后端的运行时配置。响应没有业务信封：成功响应直接解析为 Endpoint 对应的 Zod schema，错误响应解析为 `{ error: { code, message, requestId, details } }`，再映射为稳定的 `RequestError` 分类。
+`pages` composes `api`, `stores`, application components, and `frame`. The `api`, `routes`, and `stores` packages may depend on `frame`; `frame` does not import product APIs, pages, route definitions, or application stores. Server and Web do not import one another's source code.
 
-管理员密码和会话 Cookie 不写入浏览器存储。Zustand 仅保留当前管理员的非敏感摘要与凭据 revision；服务端始终是会话真源。服务没有 refresh token 端点，因此 401 不做伪刷新或隐式重试，而是由受认证布局返回登录 Route Node。
+## API and authentication
 
-Web 添加文本或图片时调用 Admin API 创建清单、上传预览和 eager 完整内容、再完成发布。
-服务端把来源固定为虚拟 Server 设备；Web 不生成或持有该设备的 API Key。虚拟设备在设备设置
-中只读展示，不能编辑、禁用、删除或管理 Key。
+The Admin API uses same-origin `/admin/api/v1` and an HttpOnly, SameSite=Strict session cookie. The request client does not accept an API origin, and the production bundle has no runtime backend selector. Successful responses are parsed directly against the Endpoint's Zod schema; errors use `{ error: { code, message, requestId, details } }` and map to stable `RequestError` categories.
 
-设备设置先登记 Clipboard X 客户端生成的 DeviceId，再为该设备签发、轮换和吊销绑定 Key，
-并支持禁用和删除。名称与图标由客户端持有，客户端连接和资料变化时通过 Device API 主动
-同步；Web 只读展示这些资料，不提供名称或图标编辑表单。
+Administrator passwords and session cookies are never stored in browser storage. Zustand keeps only a non-sensitive administrator summary and credential revision; the Server remains authoritative for the session. There is no refresh-token endpoint, so a 401 leads the authenticated layout back to login rather than triggering a fabricated refresh or implicit retry.
 
-图片卡片最初只读取服务端已有缩略图。用户打开图片预览时，如果完整表示仍需来源设备，页面会
-自动创建内容物化请求并轮询 transfer；完成后卡片与详情都切换到服务端保存的完整图片，并提供
-复制图片和下载操作。
+To publish text or an image, Web creates a manifest through the Admin API, uploads its preview and eager complete content, then completes publication. The Server attributes it to its virtual device; Web neither creates nor holds an API key for that device. The virtual device is read-only in device settings and cannot be edited, disabled, deleted, or issued keys.
 
-## 路由与布局
+Device settings register a client-generated DeviceId before issuing, rotating, or revoking its bound keys. Administrators can disable or delete a device. The client owns its name and icon and sends profile changes through the Device API; Web displays these fields without offering an edit form.
 
-`routes/base.ts` 定义登录、错误、404 与 catch-all；`routes/app.ts` 定义剪切板工作区和设置页面；`routes/user.ts` 使用 Zod 解析不可信扩展节点。根路径是唯一主工作区，旧的概览、Channel、剪切板和传输路径只做兼容重定向。即使当前没有远程路由，组合根仍显式发布空用户路由，使 `ready` 只在完整图发布后成立。
+An image card initially reads the thumbnail already stored by the Server. When the user opens its preview and the full representation is not yet present, the page requests materialization from the source device and polls the transfer. Once complete, both card and detail view use the full image stored by the Server, with copy-image and download actions.
 
-组件 key 只映射到 `App.tsx` 的静态 lazy registry，页面按路由分包。`normal` 和 `empty` 布局通过 registry 注册；未知组件或布局不会回退到其他页面。开发环境显示诊断细节，生产环境只显示通用故障信息。
+## Routes and layout
 
-## 浏览器存储与主题
+`routes/base.ts` defines login, error, 404, and catch-all routes. `routes/app.ts` defines the clipboard workspace and settings pages. `routes/user.ts` parses untrusted extension nodes with Zod. The root path is the primary workspace; former overview, Channel, clipboard, and transfer paths redirect. Even without remote routes, the composition root publishes an empty user route set so `ready` is reached only after the complete route graph is published.
 
-`frame/common/storage` 使用带版本、写入时间、可选过期时间和数据的信封；所有读取经过 Zod，损坏、过期或旧版本内容按契约处理。当前只持久化主题偏好和可恢复的最近页面，不存储密码、Cookie、API Key 或内容正文。跨标签页采用 storage event，同页写入主动通知，冲突语义为最后写入者生效。
+Component keys map only to the static lazy registry in `App.tsx`, which splits pages by route. The `normal` and `empty` layouts are registered explicitly; unknown components or layouts do not silently fall back. Development shows diagnostic details, while production shows a generic failure message.
 
-浅色、深色和系统主题由 Zustand theme store 管理，并统一切换根 `.dark` class。业务组件只消费语义 token。
+## Browser storage and theme
 
-## 打包边界与开发代理
+`frame/common/storage` uses an envelope with version, write time, optional expiry, and data; all reads pass Zod validation. Only the theme preference and recoverable recent page are persisted—not passwords, cookies, API keys, or clipboard content. Cross-tab updates use storage events; same-tab writes notify explicitly, and the last writer wins.
 
-- Web 不读取、解析或修改 `config.yaml`；该文件完全属于 Server。
-- Web 不提供 API origin、Server host/port 或独立部署配置，Router basename 固定为 `/`。
-- 根 `build.ts` 先执行 Vite 构建，再将 `web/dist` 复制进发布目录，与 Server 可执行文件共同交付。
-- Vite 的本地开发服务器固定使用 `3000`，代理目标只来自 `web/.env*` 中不带 `VITE_` 前缀的 `CBX_PROXY_URL`，缺失时启动失败，因此不会被代码默认值掩盖，也不会暴露到浏览器代码。管理员请求优先通过浏览器的 `Sec-Fetch-Site` 校验；若需要兼容不发送此头的客户端，可在 Server 配置中显式设置浏览器访问 Vite 的 `web.public-origin`。Web 代码及生产 bundle 都不读取 Server YAML。
+A Zustand theme store manages light, dark, and system themes and toggles the root `.dark` class. Product components consume semantic tokens.
 
-监听地址、数据库、对象目录、管理员、设备授权、Key、Channel 等配置只由 Server 使用 `yaml` 包解析，并由 Server 控制台负责原子回写。客户端维护的设备名称与图标属于 SQLite 运行数据，不进入 YAML。
+## Packaging boundary and development proxy
 
-## 有意省略
+- Web does not read, parse, or modify `config.yaml`; that file belongs to Server.
+- Web has no API-origin, Server-host/port, or standalone deployment configuration. The Router basename is `/`.
+- Root `build.ts` runs the Vite build and packages `web/dist` with the Server executable.
+- The Vite development server uses port `3000`. Its proxy target comes only from `CBX_PROXY_URL` in `web/.env*`, without a `VITE_` prefix. The current Vite configuration requires this variable whenever it loads, including for production builds; the variable is not exposed to browser code. Administrator requests prefer the browser's `Sec-Fetch-Site` check. To support clients without that header, Server can explicitly set `web.public-origin` to the origin used to access Vite.
 
-当前没有表单状态库、SSR、微前端、远程菜单和 keep-alive 页面缓存。表单规模尚不需要额外库；这些能力需要独立产品需求和架构决定后再沿现有边界扩展。
+Only Server parses listener, database, object storage, administrator, device authorization, key, and Channel configuration with `yaml`, and its console writes updates atomically. Client-owned device names and icons are SQLite runtime data, not YAML configuration.
+
+## Current scope
+
+There is no form-state library, SSR, micro-frontend, remote menu, or keep-alive page cache. Adding these capabilities requires a separate product need and architecture decision.

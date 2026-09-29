@@ -25,6 +25,7 @@ const release = `${root}/dist`
 await rm(release, { recursive: true, force: true })
 await mkdir(release, { recursive: true })
 await cp(`${root}/web/dist`, `${release}/web/dist`, { recursive: true })
+await cp(`${root}/web/docs`, `${release}/web/docs`, { recursive: true })
 await cp(
   compile ? `${root}/server/dist/${binaryName}` : `${root}/server/dist/server.js`,
   compile ? `${release}/${binaryName}` : `${release}/server.js`,
@@ -34,6 +35,7 @@ await cp(`${root}/server/config.example.yaml`, `${release}/server/config.example
 await cp(`${root}/server/openapi/openapi.json`, `${release}/server/openapi/openapi.json`)
 await cp(`${root}/docs`, `${release}/docs`, { recursive: true })
 await cp(`${root}/README.md`, `${release}/README.md`)
+await cp(`${root}/README_CN.md`, `${release}/README_CN.md`)
 await cp(`${root}/LICENSE.md`, `${release}/LICENSE.md`)
 
 console.log(`Release assembled in ${release}`)

@@ -1,42 +1,35 @@
 # GitHub Releases
 
-The [Release workflow](../.github/workflows/release.yml) builds six native archives: Linux,
-macOS, and Windows, each for x64 and ARM64. Every archive includes the compiled Server, Web
-assets, SQLite migrations, a configuration template, the license, and documentation. Windows
-archives are also `.tar.gz`; recent Windows versions can unpack them with `tar`. On a tag push,
-the workflow also publishes a Linux amd64/arm64 image to `ghcr.io/guleoo/clipboard-x-server`.
+> [简体中文](release_CN.md) · [Deployment guide](deployment.md)
+
+The [Release workflow](../.github/workflows/release.yml) builds six native `.tar.gz` archives: Linux, macOS, and Windows, each for x64 and ARM64. Every archive contains the compiled Server, Web assets, SQLite migrations, a configuration template, the OpenAPI specification, the license, and documentation. Windows archives are also `.tar.gz`; recent Windows versions can extract them with `tar`. Deployment steps are in the [deployment guide](deployment.md).
 
 ## Try the workflow without publishing
 
-Push the commits containing the workflow, then select **Actions → Release → Run workflow** on
-GitHub. This manual run validates the project, builds and smoke-tests all six packages, and leaves
-them as downloadable workflow artifacts. It does **not** create a GitHub Release or push an image.
+Push the commits containing the workflow, then choose **Actions → Release → Run workflow** on GitHub. This manual run verifies the project, builds and smoke-tests all six native packages, and leaves them as downloadable workflow artifacts. It does not create a GitHub Release or push a container image.
 
 ## Publish a beta or stable release
 
-1. Set the root `package.json` version, run `bun install` to update `bun.lock`, run the local tests,
-   commit the changes, and push the commit.
-2. Create and push an immutable tag pointing to that commit. A stable tag must be exactly
-   `v<package.version>`; a prerelease tag adds a suffix such as `-beta.1`.
-3. GitHub verifies the tag, builds and smoke-tests all six native archives, checks that all six
-   artifacts are present and readable, writes `SHA256SUMS`, then creates the Release. It also builds
-   and pushes the multi-platform GHCR image. A tag with a hyphen becomes a prerelease and receives
-   only its versioned image tag; a stable tag also updates `latest`.
+1. Set the root `package.json` version. Run `bun install` to update `bun.lock`, then run `bun run typecheck`, `bun run test`, and `bun run openapi:check` locally. Commit and push the changes.
+2. Create and push a tag pointing to that commit. A stable tag must be exactly `v<package.version>`; a prerelease tag starts with that version and adds a suffix such as `-beta.1`. Keep published tags fixed.
+3. On the tag push, GitHub checks the tag against `package.json`, verifies the project, builds and smoke-tests all six archives, confirms that every archive is present and readable, and creates `SHA256SUMS` plus a GitHub Release. A separate job builds and pushes a Linux amd64/arm64 image to `ghcr.io/guleoo/clipboard-x-server`. Both publishing jobs start only after all native packages succeed.
 
-For the current `0.1.0` package version, after pushing the commit:
+For the current `0.1.0` package version, after pushing the commit, publish a beta with:
 
 ```sh
 git tag -a v0.1.0-beta.1 -m "Beta 1"
 git push clipboard-x-server v0.1.0-beta.1
 ```
 
-For the final release, create and push `v0.1.0` instead. `clipboard-x-server` above is this local
-repository's Git remote name; substitute yours if different. Do not move a published tag. A new
-version should receive a new commit and tag.
+For a stable release, create and push `v0.1.0` instead:
 
-The workflow only publishes after every native build succeeds. Running it again for a tag that
-already has a GitHub Release does not overwrite that release. GitHub also shows its own automatic
-source-code archives in addition to the six platform packages.
+```sh
+git tag -a v0.1.0 -m "Release 0.1.0"
+git push clipboard-x-server v0.1.0
+```
 
-The first GHCR publication may require the repository owner to set the package visibility to
-**Public** in GitHub Packages before anonymous `docker compose` deployments can pull it.
+`clipboard-x-server` is this checkout's Git remote name; substitute your remote if it differs. A new package version needs a matching new commit and tag.
+
+The image always receives its versioned tag, such as `v0.1.0-beta.1` or `v0.1.0`. A prerelease tag (one containing `-`) marks the GitHub Release as a prerelease and does not update the image's `latest` tag. A stable tag also updates `latest`. GitHub publishes its own automatic source-code archives alongside the six platform packages and `SHA256SUMS`.
+
+The GitHub Release job and GHCR job are separate: either may fail after the package jobs pass. Re-running a tag whose GitHub Release already exists does not overwrite that Release; `gh release create` will fail for the existing tag. Before anonymous clients can pull the first GHCR image, the repository owner may need to set the package visibility to **Public** in GitHub Packages.

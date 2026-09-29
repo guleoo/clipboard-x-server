@@ -1,0 +1,61 @@
+# 运维
+
+[English](operations.md)
+
+## 备份与恢复
+
+SQLite 使用 WAL 模式。`config.yaml` 是权威状态的一部分，必须与 `app.data-dir` 指定的整个目录一起备份，包括存在的 SQLite WAL/SHM 文件和对象目录树。取得一致恢复点最简单的方式是先停止 Server 进程。原生部署时一同备份 `server/config.yaml` 和 `server/data/`；`server/logs/` 独立于恢复所需数据，可选择备份。Docker 部署时同时备份配置卷和数据卷。
+
+恢复时先停止 Server 进程，将当前数据目录移到一旁，再从同一个恢复点还原 `config.yaml`、完整数据库及对象目录树，保留所有权和权限，运行严格审计，然后启动并检查就绪状态。`config.yaml` 应保持 `0600` 权限。
+
+升级前先备份数据，并让新版本可执行文件针对副本运行。迁移在事务中执行且只向前推进；数据库版本高于可执行文件时会明确报错。
+
+## 服务端清理
+
+清理需要主动启用，也可在 Web 配置页面编辑。完整的 YAML 结构如下：
+
+```yaml
+cleanup:
+  enabled: true
+  interval-millis: 3600000
+  clipboard:
+    max-items: 10000
+    max-items-per-channel: 5000
+    max-items-per-device: 1000
+    max-items-per-device-per-channel: 500
+    max-age-millis: 2592000000
+```
+
+全局上限统计所有可见条目。设备上限统计一台设备在所有 Channel 中的条目，包含虚拟 Server 设备发布的内容；Channel 上限统计该 Channel 中所有设备的条目；设备与 Channel 交集上限控制两者的交集。条目先按创建时间、再按 ID 排序，优先移除符合条件的最早条目。省略某项剪贴板限制，表示该维度不设上限。`cleanup.enabled` 是总开关。无引用二进制对象属于内部维护事项，不提供面向用户的策略设置，并使用固定 24 小时宽限期。
+
+清理仅按配置的间隔运行，默认一小时。启动时、发布后或保存策略后都不会立即运行。调度器防止清理任务重叠。内部的候选项规划使用索引，清理以固定的小批次事务执行，并在批次间让出事件循环，因此积压量较大时仍可处理请求。活跃上传及内容请求会延后到后续批次或下一轮清理。
+
+清理只删除服务端副本，不产生 `remove` 同步事件；客户端历史遵循各客户端自身的策略。已删除的条目 ID 仍被保留，不能再次用于发布。启用限制前请先备份：没有备份时，服务端删除无法撤销。如果客户端只保留了预览，那么服务端删除该条目后，客户端将无法再请求完整内容。
+
+## 对象审计与回收
+
+以下命令使用与 Server 相同的数据环境。通常应在服务停止时运行，以取得稳定报告：
+
+```sh
+bun run audit:objects -- --config /path/to/config.yaml
+bun run server/scripts/objects.ts audit --strict --config /path/to/config.yaml
+bun run gc:objects -- --config /path/to/config.yaml
+bun run server/scripts/objects.ts gc --delete --config /path/to/config.yaml
+```
+
+两种命令都会先初始化数据库并运行迁移，再检查或回收对象；如果数据库 Schema 必须保持原样，请对副本运行。审计不更改对象文件。手动 GC 操作默认仅生成报告。指定 `--delete` 后，只删除超过固定 24 小时内部宽限期的无引用对象；宽限期从最后一条引用释放时开始计算。启用周期清理后，也会以固定的小批次完成相同的维护。仍被其他条目或上传引用的对象不会删除。没有备份时，文件删除无法撤销。
+
+## 故障演练
+
+1. 将备份恢复到临时目录，并把一份 YAML 副本中的 `app.data-dir` 指向该目录。
+2. 运行 `audit --strict`，把 `app.port` 设为临时端口，启动 Server，然后检查 `/health/ready`、管理员登录和一次对象下载。
+3. 停止临时 Server，记录耗时与审计结果。
+4. 演练对象缺失时，只在一次性恢复副本中删除一个对象，并确认严格审计报告 `missing_file`；不要为演练修改生产数据。
+
+控制台和文件日志使用人类可读文本，且不会记录请求或响应正文、凭证、Cookie 和完整对象路径。监控 5xx 响应、`failed`/`expired` 传输、就绪状态、磁盘使用量与审计失败。文件日志按 Server 内置的保留期和大小默认值轮转。
+
+在允许本地监听的环境中运行 `bun run test:network`，除默认的不占用端口的 Hono 路由测试外，再验证真实 Bun `Fetch` 流式传输。
+
+在发布目标硬件上运行 `bun run benchmark`，覆盖文档列出的 2,000 次发布、200 次内容物化、100,000 次进度写入、100,000 行 Keyset 分页、100,000 行清理候选项规划，以及实际 80 MiB 流式对象。打印出的耗时是该主机的基线，不是通用的通过或失败阈值。
+
+针对兼容 npm 的审计端点运行 `bun audit`，检查已知依赖安全公告；运行 `bun run audit:licenses`，检查每个直接的运行时及开发依赖许可证。仓库 HTTP 错误表示无法完成安全公告扫描，不表示不存在漏洞。

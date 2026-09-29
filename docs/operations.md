@@ -1,8 +1,10 @@
 # Operations
 
+[简体中文](operations_CN.md)
+
 ## Backup and restore
 
-SQLite runs in WAL mode. `config.yaml` is part of the authoritative state and must be backed up together with the complete directory set by `app.data-dir`, including SQLite WAL/SHM files and the object tree. For the simplest consistent recovery point, stop the Server process first. In the native layout, back up `server/config.yaml` and `server/data/` together; `server/logs/` is independent and optional for recovery. In Docker, back up both the configuration and data volumes.
+SQLite runs in WAL mode. `config.yaml` is part of the authoritative state and must be backed up together with the complete directory set by `app.data-dir`, including SQLite WAL/SHM files when present and the object tree. For the simplest consistent recovery point, stop the Server process first. In the native layout, back up `server/config.yaml` and `server/data/` together; `server/logs/` is independent and optional for recovery. In Docker, back up both the configuration and data volumes.
 
 To restore, stop the Server process, move the current data directory aside, restore `config.yaml`, the complete database, and the object tree from the same recovery point with ownership/mode preserved, run the strict audit, then start and check readiness. Keep `config.yaml` at mode `0600`.
 
@@ -53,7 +55,9 @@ bun run gc:objects -- --config /path/to/config.yaml
 bun run server/scripts/objects.ts gc --delete --config /path/to/config.yaml
 ```
 
-Audit is read-only. The manual GC command is report-only by default. `--delete` removes only
+Both commands initialize the database and run migrations before inspecting or collecting objects; run
+them against a copy if the database schema must remain untouched. Audit does not change object files.
+The manual GC action is report-only by default. `--delete` removes only
 unreferenced objects older than the fixed 24-hour internal grace period, measured from the time the last
 reference was released. Enabled periodic cleanup performs the same maintenance in fixed small batches.
 An object still referenced by another item or upload is not removed. File deletion is irreversible

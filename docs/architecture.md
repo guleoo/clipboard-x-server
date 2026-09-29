@@ -1,5 +1,7 @@
 # Architecture
 
+[简体中文](architecture_CN.md)
+
 Clipboard X Server is a Bun monorepo with a React management SPA and a Hono API service. The Web
 workspace imports no Server source. Production releases package the built SPA beside the Server so
 both are served from one origin.
@@ -76,7 +78,8 @@ Device operations are mounted at `/api/v1`; administrator operations are mounted
 `/admin/api/v1`; health remains at `/health/live` and `/health/ready`. Frame surface configuration
 produces these paths from one static route collection, and OpenAPI is generated from those mounted
 routes. Clipboard X Server owns this cross-platform contract: the generated OpenAPI document is the
-machine-readable authority, while `docs/protocol.md` defines semantics that schemas cannot express.
+machine-readable authority, while [the protocol document](protocol.md) defines semantics that schemas
+cannot express.
 GNOME and future clients on other operating systems consume published API versions and do not define
 Server behavior.
 
@@ -101,9 +104,10 @@ content created through the Web and fans those changes out to real members throu
 feed. It has no API key and every device-side receive path rejects it, so content published by other
 devices is never delivered back to the virtual identity.
 
-Server cleanup is disabled by default. When enabled, one hierarchical policy controls trigger timing,
-global/device/Channel/device-in-Channel/age item limits, unreferenced-object grace, and bounded work per
-run. It removes only server copies and preserves client-local history. Synchronization changes,
+Server cleanup is disabled by default. When enabled, its policy sets the interval and
+global/device/Channel/device-in-Channel/age item limits. Unreferenced objects have a fixed 24-hour
+grace period, and cleanup processes work in bounded batches. It removes only server copies and preserves
+client-local history. Synchronization changes,
 deletion tombstones, and transfer history are deliberately excluded because pruning them requires an
 offline cursor reset protocol. The manual object command still requires `--delete`. The trusted
 self-hosted Server can read uploaded content; it is not end-to-end encrypted.

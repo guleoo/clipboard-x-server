@@ -1,41 +1,49 @@
 # Deployment
 
+> [简体中文](deployment_CN.md) · [Release guide](release.md)
+
 ## Native release
 
-Download and unpack the archive for your platform. In the unpacked directory, copy `server/config.example.yaml` to `server/config.yaml` and set a unique `administrator.password`. Start with migration enabled:
+Download the archive for your platform from [GitHub Releases](https://github.com/guleoo/clipboard-x-server/releases) and unpack it. Keep the extracted directory together: it contains the executable, Web assets, SQLite migrations, the configuration template, OpenAPI specification, license, and documentation.
+
+In the extracted directory, copy the template, set a unique `administrator.password` in `server/config.yaml`, and start the Server with migrations enabled:
 
 ```sh
+cp server/config.example.yaml server/config.yaml
+chmod 600 server/config.yaml
 ./clipboard-x-server --config ./server/config.yaml --migrate --serve
 ```
 
-On Windows, extract the `.tar.gz` archive, then use PowerShell in its unpacked directory:
+On Windows, the archive is also `.tar.gz`. Extract it, then run these commands in its extracted directory with PowerShell:
 
 ```powershell
 Copy-Item server/config.example.yaml server/config.yaml
+# Edit server/config.yaml and set a unique administrator.password.
 .\clipboard-x-server.exe --config .\server\config.yaml --migrate --serve
 ```
 
-The native YAML template puts `host`, `port`, `timezone`, and `data-dir` under `app`. The root also contains
-`web`, `limits`, `lifetimes`, `cleanup`, `administrator`, `devices`, and `channels`. The example
-listens on `0.0.0.0:28787` and uses UTC. Other internal settings use defaults defined in
-Server code. Relative paths in YAML resolve from its directory.
+The template listens on `0.0.0.0:28787` and uses UTC. Listener `host` and `port`, `timezone`, and `data-dir` belong under `app`; the root also contains `web`, `limits`, `lifetimes`, `cleanup`, `administrator`, `devices`, and `channels`. Other internal settings use Server defaults. Relative paths in YAML resolve from the YAML file's directory. Binding a privileged port such as 443 requires the appropriate operating-system permissions.
 
-For optional direct HTTPS, add `app.tls.cert-file` and `app.tls.key-file` with readable PEM paths and enable `web.cookie-secure`. These TLS fields are intentionally absent from the minimal native template. `web.public-origin` is optional for direct access; configure it when the browser-facing origin differs from what the Server sees (for example, behind an HTTPS reverse proxy). Keep the entire release directory, including `web/dist` and `server/drizzle`.
+For direct HTTPS, add readable PEM certificate and key paths to `app.tls` and set `web.cookie-secure` to `true`:
 
-The YAML file is the authoritative source for configurable options, the administrator, devices,
-complete device API keys, channels, and memberships. The process reads it at startup. Changes made
-through the console are written with a temporary file, synced, atomically renamed, and forced to mode
-`0600`. Manual changes take effect on the next process start.
+```yaml
+app:
+  tls:
+    cert-file: /absolute/path/to/fullchain.pem
+    key-file: /absolute/path/to/privkey.pem
+web:
+  cookie-secure: true
+```
 
-Server-side `cleanup` is optional and disabled by default. When enabled, it removes
-older server copies on the configured interval without deleting local client history;
-see [operations](operations.md) before applying a limit to existing data.
+Add these fields to the existing template rather than replacing its other settings. The TLS fields are absent from the native template. Restart the process after certificate renewal. If an HTTPS reverse proxy terminates TLS instead, set `web.public-origin` to the browser-facing HTTPS origin and `web.cookie-secure` to `true`; the Server does not need its own certificate in that setup. `web.public-origin` is optional for direct access when the browser-facing origin matches what the Server sees.
 
-The archive includes the executable, Web assets, migrations, a configuration template, the license, and documentation. Keep the extracted directory together. Restart the process after certificate renewal; binding a privileged port such as 443 requires appropriate operating-system permissions.
+The YAML file is the authoritative source for configurable options, the administrator, devices, complete device API keys, channels, and memberships. The process reads it at startup. Console changes are written to the file through a synced temporary file and atomic rename, with mode `0600`; manual edits take effect after restarting the process.
+
+Server-side `cleanup` is optional and disabled by default. When enabled, it removes older server copies on the configured interval without deleting local client history. Read [operations](operations.md) and back up data before applying a limit to existing items.
 
 ## Container from GHCR
 
-The public image is `ghcr.io/guleoo/clipboard-x-server:latest`. Download only the two deployment files; no source checkout or local build is needed:
+The public image is `ghcr.io/guleoo/clipboard-x-server:latest`. A stable release tag publishes `latest`; a prerelease publishes only its versioned tag. Download the two deployment files into a new directory; no source checkout or local build is needed:
 
 ```sh
 mkdir -p clipboard-x-server
@@ -44,15 +52,23 @@ curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/do
 curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example -o .env
 ```
 
-Set a unique `CBX_ADMIN_PASSWORD` of 7-256 characters in `.env` (for example, generate one with `openssl rand -hex 24`). `CBX_HOST` and `CBX_PORT` set the host-side published address and port; the container always listens on `0.0.0.0:28787`. The defaults expose HTTP on port 28787 on all host network interfaces; `CBX_PUBLIC_ORIGIN` may stay empty for direct HTTP access. Set `CBX_HOST=127.0.0.1` if access should be limited to the host. The Server derives the origin from each request. Use HTTPS for public access. Start with `docker compose up -d`.
+In `.env`, set a unique `CBX_ADMIN_PASSWORD` of 7–256 characters (for example, generate one with `openssl rand -hex 24`). You can change `CBX_ADMIN_USERNAME` from its `admin` default. `CBX_HOST` and `CBX_PORT` control the host-side published address and port; the container always listens on `0.0.0.0:28787`. By default, HTTP is published on port 28787 on all host interfaces. Set `CBX_HOST=127.0.0.1` to limit access to the host. For direct HTTP access, `CBX_PUBLIC_ORIGIN` can stay empty: the Server derives the origin from each request. Use HTTPS for public access.
 
-For HTTPS behind a reverse proxy, set `CBX_PUBLIC_ORIGIN=https://clipboard.example.com` and `CBX_COOKIE_SECURE=true`. If serving HTTPS directly from the container instead, also download the optional TLS override:
+Start the service from the directory containing `compose.yaml` and `.env`:
+
+```sh
+docker compose up -d
+```
+
+For HTTPS behind a reverse proxy, set `CBX_PUBLIC_ORIGIN=https://clipboard.example.com` and `CBX_COOKIE_SECURE=true` in `.env`. Configure the proxy to forward to the published HTTP port; it handles the certificate.
+
+For HTTPS directly from the container, also download the TLS override:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/compose.tls.yaml -o compose.tls.yaml
 ```
 
-Set the two existing host PEM files and the corresponding container paths in `.env`:
+Set both existing host PEM files and their matching paths inside the container in `.env`:
 
 ```dotenv
 CBX_TLS_CERT_HOST_FILE=/absolute/path/to/fullchain.pem
@@ -69,13 +85,10 @@ CBX_COOKIE_SECURE=true
 docker compose -f compose.yaml -f compose.tls.yaml up -d
 ```
 
-Compose mounts the two files read-only, without mounting a certificate directory; they must be readable by container UID 10001. Restart the container after certificate renewal.
+The override binds each certificate file read-only at its fixed container path; it does not mount a certificate directory. The files must be readable by container UID `10001`. `CBX_PORT=443` changes the host-side port; the container still listens on 28787. Restart the container after certificate renewal.
 
-The image contains `config.yaml` with `app.host`, `app.port`, `app.timezone`, and `app.data-dir`, plus `${env:...}` placeholders for container-specific settings. Keep `app.tls.cert-file`, `app.tls.key-file`, `web.public-origin`, and `web.cookie-secure` in the container YAML so the HTTPS and browser-origin settings can be supplied through `.env`.
+The image provides `/app/config/config.yaml` with `app.host`, `app.port`, `app.timezone`, and `app.data-dir`, plus environment placeholders for container-specific settings. Keep `app.tls.cert-file`, `app.tls.key-file`, `web.public-origin`, and `web.cookie-secure` in this YAML if those settings are to come from `.env`. A named configuration volume holds the YAML so the Web console can update it; another volume stores SQLite and binary objects. Keep and back up both volumes when updating. Environment changes affect only placeholders still present in YAML: a concrete value saved by the console takes precedence, and a newer image does not replace an existing configuration volume.
 
-A named volume holds that file so the Web console can update it; another volume stores SQLite and binary objects. Keep both volumes when updating the image. Environment changes apply to placeholders that remain in YAML. If the console has written a concrete value, that YAML value takes precedence. An existing configuration volume is not replaced by a newer image.
+To update the image while retaining the volumes, run `docker compose pull` followed by `docker compose up -d` (or use both `-f` options for direct TLS). Before starting a new image against an older persisted YAML, place listener, timezone, and data-directory values in `app.host`, `app.port`, `app.timezone`, and `app.data-dir`. For the stock container, these are `0.0.0.0`, `28787`, `UTC`, and `../data`. Remove an old `app.hostname` or root-level `host`, `port`, `timezone`, or `data-dir`: the Server reads these settings only from `app`.
 
-Before starting the new image with an older persisted YAML, put the listener, timezone, and data directory settings in `app.host`, `app.port`, `app.timezone`, and `app.data-dir`; for the stock container configuration, use `0.0.0.0`, `28787`, `UTC`, and `../data`. Remove the old `app.hostname` field and any root-level `host`, `port`, `timezone`, or `data-dir` fields. The Server reads these settings only from `app`.
-
-The built-in health paths are unauthenticated: `/health/live` checks the process, while
-`/health/ready` also checks SQLite. The container health check reads the same YAML file.
+The unauthenticated `/health/live` endpoint checks the process; `/health/ready` also checks SQLite. The container health check reads the same YAML file. See [operations](operations.md) for backup and recovery guidance.
