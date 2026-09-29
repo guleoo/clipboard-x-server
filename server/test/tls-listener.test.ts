@@ -77,6 +77,12 @@ describe("TLS listener", () => {
       });
       expect(login.status).toBe(200);
       expect(login.headers.get("set-cookie")).toContain("Secure");
+
+      const devices = await fetch(`https://127.0.0.1:${port}/admin/api/v1/devices`, {
+        headers: { Cookie: login.headers.get("set-cookie")! },
+        tls: { rejectUnauthorized: false },
+      });
+      expect(devices.status).toBe(200);
     } finally {
       child?.kill("SIGKILL");
       if (child) await child.exited;

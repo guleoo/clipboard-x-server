@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, spyOn } from "bun:test"
+import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test"
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { Database as SQLite } from "bun:sqlite"
@@ -6,6 +6,8 @@ import { sql } from "drizzle-orm"
 import { sqliteValue } from "../src/common/sqlite"
 import { CleanupOptions, config } from "../src/config"
 import { createApp, mountRoutes } from "../src/frame/hono"
+import { Provider } from "../src/frame/core"
+import { SecurityFrameService } from "../src/frame/security"
 import { Database, db } from "../src/db"
 import { databaseConfig } from "../src/frame/db"
 import { ClipboardRepo, type ClipboardCleanupPolicy } from "../src/repo/clipboard"
@@ -25,6 +27,7 @@ const deviceC = crypto.randomUUID()
 const channelA = crypto.randomUUID()
 const channelB = crypto.randomUUID()
 const channelC = crypto.randomUUID()
+let previousSecurity: SecurityFrameService | undefined
 
 function objectReferences(id: string): number | undefined {
   return sqliteValue(db.all<{ ref_count: number }>(sql`SELECT ref_count FROM objects WHERE id = ${id}`))[0]?.ref_count
@@ -49,6 +52,9 @@ function cleanupPolicy(clipboard: ClipboardCleanupPolicy = {}) {
 }
 
 beforeAll(async () => {
+  previousSecurity = Provider.has(SecurityFrameService)
+    ? Provider.inject(SecurityFrameService)
+    : undefined
   Database.init()
   Database.migrate({ migrationsFolder: databaseConfig.migrationsFolder })
   await objectStore.initialize()
@@ -59,9 +65,15 @@ beforeAll(async () => {
   db.run(sql`INSERT INTO channel_members (channel_id, device_id, joined_at) VALUES (${channelA}, ${deviceA}, 1)`)
 })
 
+afterAll(() => {
+  Provider.unprovide(SecurityFrameService)
+  if (previousSecurity) Provider.provide(SecurityFrameService, previousSecurity)
+})
+
 describe("server-only cleanup", () => {
   it("authenticates cleanup settings, persists changes, and reconfigures the active scheduler", async () => {
     await administratorService.synchronize()
+    Provider.unprovide(SecurityFrameService)
     registerSecurity()
     const app = createApp()
     app.onError(productErrorHandler)

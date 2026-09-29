@@ -8,7 +8,7 @@ const workflow = parse(readFileSync(resolve(root, ".github/workflows/release.yml
   on: { push: { tags: string[] }; workflow_dispatch: unknown };
   env: { CBX_RELEASE_TAG: string };
   jobs: {
-    verify: { steps: Array<{ run?: string }> };
+    verify: { steps: Array<{ run?: string; uses?: string }> };
     package: {
       needs: string;
       strategy: { matrix: { include: Array<{ runner: string; target: string }> } };
@@ -30,6 +30,12 @@ const workflow = parse(readFileSync(resolve(root, ".github/workflows/release.yml
 };
 
 describe("GitHub Release workflow", () => {
+  it("uses Node 24 checkout in every job", () => {
+    for (const job of [workflow.jobs.verify, workflow.jobs.package, workflow.jobs.publish, workflow.jobs["publish-image"]]) {
+      expect(job.steps.find((step) => step.uses?.startsWith("actions/checkout@"))?.uses).toBe("actions/checkout@v5");
+    }
+  });
+
   it("supports a build-only manual run and checks tags against the package version", () => {
     expect(workflow.on.push.tags).toEqual(["v*"]);
     expect(workflow.on).toHaveProperty("workflow_dispatch");
@@ -58,7 +64,7 @@ describe("GitHub Release workflow", () => {
     const publish = workflow.jobs.publish;
     expect(publish.needs).toBe("package");
     expect(publish.permissions.contents).toBe("write");
-    expect(publish.steps[0]?.uses).toBe("actions/checkout@v4");
+    expect(publish.steps[0]?.uses).toBe("actions/checkout@v5");
     expect(publish.steps.find((step) => step.uses === "actions/download-artifact@v4")?.with?.["merge-multiple"]).toBe(true);
     expect(publish.steps.some((step) => step.run?.includes("tar -tzf") && step.run.includes("SHA256SUMS"))).toBe(true);
     expect(publish.steps.some((step) => step.run?.includes("gh release create") && step.run.includes("--prerelease"))).toBe(true);
