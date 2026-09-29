@@ -1,3 +1,4 @@
+name: clipboard-x-server
 services:
   clipboard-x-server:
     image: ghcr.io/guleoo/clipboard-x-server:latest

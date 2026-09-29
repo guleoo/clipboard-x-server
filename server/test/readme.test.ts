@@ -48,8 +48,6 @@ describe("project README", () => {
       for (const [, path] of readme.matchAll(/\]\((docs\/[^)]+|web\/docs\/[^)]+|server\/openapi\/[^)]+)\)/g)) {
         expect(existsSync(resolve(root, path!))).toBe(true);
       }
-      expect(readme).toContain("(web/docs/architecture");
-      expect(readme).toContain("CBX_PROXY_URL");
       expect(readme).toContain("server/config.yaml");
       expect(readme).toContain("server/data/");
       expect(readme).toContain("server/logs/");

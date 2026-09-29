@@ -10,7 +10,7 @@ Clipboard X Server connects device clients across platforms, providing Channel s
 | | Feature | Description |
 | :---: | --- | --- |
 | 🔄 | Cross-device sync | Distributes clipboard content through Channels and incremental cursors. You can also publish items manually from the Server. |
-| 🖼️ | On-demand access | View a preview first and fetch the complete content when needed, with progress tracking for uploads and downloads. |
+| 🖼️ | On-demand access | View a preview first, then materialize the complete content when needed; uploads and downloads have trackable progress. |
 | 🔑 | Device identity | Register a client's DeviceId before issuing a device-bound API Key. The client syncs its name and icon. |
 | 🧹 | Retention controls | Configure periodic cleanup and item limits in the Web console; cleanup removes only server-side copies. |
 
@@ -24,7 +24,7 @@ Clipboard X Server connects device clients across platforms, providing Channel s
 
 ### Quick start: deploy from GHCR
 
-The public image is `ghcr.io/guleoo/clipboard-x-server:latest`. Download the Compose file and environment example:
+Public image: `ghcr.io/guleoo/clipboard-x-server:latest`.
 
 ```sh
 mkdir -p clipboard-x-server
@@ -33,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/do
 curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example -o .env
 ```
 
-Edit `.env` and set a unique administrator password (you can generate one with `openssl rand -hex 24`):
+Edit `.env` and set the administrator password:
 
 ```dotenv
 CBX_HOST=0.0.0.0
@@ -56,19 +56,18 @@ docker compose up -d
 docker compose ps
 ```
 
-Open the Web console at **http://127.0.0.1:28787** on the host. By default, `CBX_HOST` and `CBX_PORT` publish HTTP on all host interfaces at port 28787; the container listens on `0.0.0.0:28787`. The image already includes `config.yaml`, so no configuration file download is needed. Compose keeps configuration and data in separate named volumes. See the [deployment guide](docs/deployment.md) for TLS options.
+The Web console is available at **http://127.0.0.1:28787** by default.
 
 ### Native release
 
-Download and extract the archive for your platform from [GitHub Releases](https://github.com/guleoo/clipboard-x-server/releases). In the extracted directory, copy the configuration template, set a unique `administrator.password` in `server/config.yaml`, and start the Server:
+Download and extract the archive for your platform from [GitHub Releases](https://github.com/guleoo/clipboard-x-server/releases).
 
 ```sh
 cp server/config.example.yaml server/config.yaml
 ./clipboard-x-server --config ./server/config.yaml --migrate --serve
 ```
 
-The Web console is available at **http://127.0.0.1:28787**. The YAML template sets `host`, `port`, `timezone`, and `data-dir` under `app`; other internal options use code defaults. See the [deployment guide](docs/deployment.md) for more deployment options.
-On Windows, use the PowerShell commands in that guide instead of the shell commands above.
+The Web console is available at **http://127.0.0.1:28787** by default.
 
 ### Run from source
 
@@ -79,7 +78,7 @@ git clone https://github.com/guleoo/clipboard-x-server.git
 cd clipboard-x-server
 ```
 
-Install Bun 1.3.14, then run these commands from the repository root:
+Bun 1.3.14 is required. Run these commands from the repository root:
 
 ```sh
 bun install --frozen-lockfile
@@ -87,7 +86,7 @@ cp server/config.example.yaml server/config.yaml
 chmod 600 server/config.yaml
 ```
 
-Set `administrator.password` in `server/config.yaml`, then use two terminals:
+Edit `administrator.password` in `server/config.yaml`. Run these in two terminals:
 
 ```sh
 bun run dev:server
@@ -96,10 +95,6 @@ bun run dev:server
 ```sh
 bun run dev:web
 ```
-
-Open **http://127.0.0.1:3000**. The Server listens on `0.0.0.0:28787`; the Web development proxy reads `CBX_PROXY_URL` from `web/.env*` and points to `127.0.0.1:28787` for local development. `dev:server` runs database migrations first.
-
-With any startup method, sign in to create a Channel, register a client's DeviceId, and issue its bound Key. The client then syncs its device name and icon.
 
 ## 📦 Verify and package
 
@@ -127,7 +122,6 @@ See the [deployment guide](docs/deployment.md) for TLS and container deployment.
 | Document | Contents |
 | --- | --- |
 | [Architecture](docs/architecture.md) | Responsibilities of the Server, Web console, configuration, SQLite, and object storage. |
-| [Web architecture](web/docs/architecture.md) | Web application structure and major UI modules. |
 | [Deployment](docs/deployment.md) | Executables, TLS, and containers. |
 | [Releases](docs/release.md) | Verification, beta, and stable GitHub Releases for six platforms. |
 | [Operations](docs/operations.md) | Backup and restore, periodic cleanup, object audits, and garbage collection. |
