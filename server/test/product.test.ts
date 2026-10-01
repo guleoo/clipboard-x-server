@@ -33,8 +33,18 @@ describe("Clipboard X product contracts", () => {
     })).toThrow();
   });
 
-  it("keeps cleanup opt-in and validates the complete policy", () => {
-    expect(config.cleanup).toEqual(CleanupOptions.parse(undefined));
+  it("enables cleanup with a 1000-item device-in-channel limit and 30-day retention by default", () => {
+    const defaults = {
+      enabled: true,
+      intervalMillis: 3_600_000,
+      clipboard: { maxItemsPerDevicePerChannel: 1000, maxAgeMillis: 2_592_000_000 },
+    };
+    expect(CleanupOptions.parse(undefined)).toEqual(defaults);
+    expect(CleanupOptions.parse({})).toEqual(defaults);
+    expect(config.cleanup).toEqual(defaults);
+    expect(CleanupOptions.parse({ enabled: false, clipboard: {} })).toEqual({
+      enabled: false, intervalMillis: 3_600_000, clipboard: {},
+    });
     const parsed = CleanupOptions.parse({
       enabled: true,
       intervalMillis: 60_000,

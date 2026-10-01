@@ -11,7 +11,7 @@ const { i18n, resources } = await import("../src/i18n")
 const { usePreferences } = await import("../src/stores/preferences")
 const { RouterStore } = await import("../src/stores/router")
 const { LanguageSelector } = await import("../src/components/domain/language-selector")
-const { DisplayPreferences } = await import("../src/pages/account")
+const { DisplayPreferences } = await import("../src/components/domain/display-preferences")
 const { formatDate, messageOf, errorMessage } = await import("../src/utils/format")
 
 beforeEach(() => {

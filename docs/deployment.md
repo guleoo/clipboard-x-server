@@ -39,7 +39,7 @@ Add these fields to the existing template rather than replacing its other settin
 
 The YAML file is the authoritative source for configurable options, the administrator, devices, complete device API keys, channels, and memberships. The process reads it at startup. Console changes are written to the file through a synced temporary file and atomic rename, with mode `0600`; manual edits take effect after restarting the process.
 
-Server-side `cleanup` is optional and disabled by default. When enabled, it removes older server copies on the configured interval without deleting local client history. Read [operations](operations.md) and back up data before applying a limit to existing items.
+Server-side `cleanup` is enabled by default, retaining up to 1,000 items per device in each Channel for at most 30 days. It removes older server copies on the configured interval without deleting local client history. Edit or disable the policy on the Web configuration page. Read [operations](operations.md) for details.
 
 ## Container from GHCR
 

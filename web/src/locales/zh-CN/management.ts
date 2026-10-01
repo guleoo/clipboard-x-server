@@ -27,7 +27,7 @@ export default {
     cancelDescription: "已经写入的临时数据会在后续清理中移除，已完成的对象不受影响。",
   },
   configuration: {
-    title: "配置", description: "集中管理服务端行为；当前仅开放清理策略。",
+    title: "配置", description: "配置当前浏览器的语言与时间显示，以及服务端清理策略。",
     policy: "清理策略", policyDescription: "只清理服务器副本，不影响任何客户端的本地历史。",
     enabled: "启用自动清理", enabledDescription: "开启后，服务器只会按照设定周期在后台清理；关闭时保留下面的规则。",
     schedule: "清理周期", scheduleDescription: "周期任务采用内部固定的小批次执行，并在批次之间让出处理时间。",

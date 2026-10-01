@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useApi, type CleanupConfiguration } from "@/api"
 import { ErrorState, LoadingState } from "@/components/domain/states"
+import { DisplayPreferences } from "@/components/domain/display-preferences"
 import { Button } from "@/frame/components/ui/button"
 import { Input } from "@/frame/components/ui/input"
 import { Label } from "@/frame/components/ui/label"
@@ -199,6 +200,7 @@ export function ConfigurationPage() {
 
   return (
     <Page title={t("configuration.title")} description={t("configuration.description")}>
+      <DisplayPreferences />
       {query.isPending ? <LoadingState /> : query.error ? (
         <ErrorState error={query.error} retry={() => query.refetch()} />
       ) : draft ? (

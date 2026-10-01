@@ -4,8 +4,8 @@
 
 ## 语言与时间显示
 
-Web 界面默认使用英文和 UTC。在登录页或设置菜单中切换英文与简体中文；在「账户 → 显示偏好」
-设置 UTC 时区偏移，例如 `8` 表示 UTC+08:00，`5.5` 表示 UTC+05:30。两项偏好均保存在当前浏览器中。
+Web 界面默认使用英文和 UTC。在登录页或设置菜单中切换英文与简体中文；在「配置 → 显示偏好」
+设置语言和 UTC 时区偏移，例如 `8` 表示 UTC+08:00，`5.5` 表示 UTC+05:30。两项偏好均保存在当前浏览器中。
 数据库存储不带时区标记的 UTC 毫秒时间戳；浏览器仅在显示时间时应用偏移。
 
 ## 备份与恢复
@@ -18,17 +18,14 @@ SQLite 使用 WAL 模式。`config.yaml` 是权威状态的一部分，必须与
 
 ## 服务端清理
 
-清理需要主动启用，也可在 Web 配置页面编辑。完整的 YAML 结构如下：
+自动清理默认开启，可在 Web 配置页面编辑。每个设备在每个 Channel 最多保留 1000 条，最长保存 30 天。默认 YAML 如下：
 
 ```yaml
 cleanup:
   enabled: true
   interval-millis: 3600000
   clipboard:
-    max-items: 10000
-    max-items-per-channel: 5000
-    max-items-per-device: 1000
-    max-items-per-device-per-channel: 500
+    max-items-per-device-per-channel: 1000
     max-age-millis: 2592000000
 ```
 

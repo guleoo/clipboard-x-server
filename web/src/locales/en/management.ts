@@ -27,7 +27,7 @@ export default {
     cancelDescription: "Temporary data already written will be removed during a later cleanup. Completed objects are unaffected.",
   },
   configuration: {
-    title: "Configuration", description: "Manage server behavior. Cleanup policies are currently available.",
+    title: "Configuration", description: "Configure this browser's language and time display, and the server's cleanup policy.",
     policy: "Cleanup policy", policyDescription: "Only server copies are cleaned up. Clients retain their local history.",
     enabled: "Enable automatic cleanup", enabledDescription: "Run cleanup in the background at the configured interval. Rules remain saved when cleanup is disabled.",
     schedule: "Cleanup schedule", scheduleDescription: "Periodic cleanup runs in small batches and yields between batches.",

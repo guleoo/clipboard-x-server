@@ -38,6 +38,11 @@ describe("configuration", () => {
       });
       expect(Object.keys(value).sort()).toEqual(requiredSections);
       expect(value.app).toEqual({ host: "0.0.0.0", port: filename === "config-test.yaml" ? 0 : 28787, timezone: "UTC", dataDir });
+      expect(value.cleanup).toEqual({
+        enabled: true,
+        intervalMillis: 3_600_000,
+        clipboard: { maxItemsPerDevicePerChannel: 1000, maxAgeMillis: 2_592_000_000 },
+      });
       expect(value.import).toBeUndefined();
     }
   });

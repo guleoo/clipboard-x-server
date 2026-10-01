@@ -9,6 +9,7 @@ const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query
 const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react")
 const { ApiProvider } = await import("../src/api")
 const { ConfigurationPage } = await import("../src/pages/configuration")
+const { usePreferences } = await import("../src/stores/preferences")
 await import("../src/i18n")
 const { i18n } = await import("../src/frame/common/i18n")
 
@@ -45,6 +46,33 @@ function input(id: string): HTMLInputElement {
   if (!(element instanceof HTMLInputElement)) throw new Error(`Missing input #${id}`)
   return element
 }
+
+test("shows the enabled cleanup defaults and saves display preferences independently", async () => {
+  const initial: CleanupConfiguration = {
+    enabled: true,
+    intervalMillis: 3_600_000,
+    clipboard: { maxItemsPerDevicePerChannel: 1000, maxAgeMillis: 2_592_000_000 },
+  }
+  const { updateCleanup } = renderPage(initial)
+  await waitFor(() => expect(input("cleanup-device-channel").value).toBe("1000"))
+  expect(input("cleanup-age").value).toBe("30")
+  expect(screen.getByRole("switch", { name: "Enable automatic cleanup" }).getAttribute("aria-checked")).toBe("true")
+  expect(screen.getByRole("combobox", { name: "Language" })).toBeTruthy()
+  const previousOffset = usePreferences.getState().offsetMinutes
+  try {
+    fireEvent.change(screen.getByLabelText("UTC offset (hours)"), { target: { value: "8" } })
+    fireEvent.click(screen.getByRole("button", { name: "Save preferences" }))
+    expect(usePreferences.getState().offsetMinutes).toBe(480)
+    expect(updateCleanup).not.toHaveBeenCalled()
+    expect(input("cleanup-device-channel").value).toBe("1000")
+    expect(input("cleanup-age").value).toBe("30")
+    fireEvent.click(screen.getByRole("button", { name: "Save cleanup policy" }))
+    await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith(initial))
+  } finally {
+    cleanup()
+    usePreferences.getState().setOffset(previousOffset)
+  }
+})
 
 test("enabling periodic cleanup confirms and submits the retention policy", async () => {
   const { updateCleanup } = renderPage(defaults)

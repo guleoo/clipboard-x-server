@@ -100,7 +100,11 @@ describe("project README", () => {
         "max-preview-bytes": 1048576,
       },
       lifetimes: { "key-overlap-millis": 300000, "materialization-ttl-millis": 600000 },
-      cleanup: { enabled: false, "interval-millis": 3600000, clipboard: {} },
+      cleanup: {
+        enabled: true,
+        "interval-millis": 3600000,
+        clipboard: { "max-items-per-device-per-channel": 1000, "max-age-millis": 2592000000 },
+      },
       administrator: { username: "admin", password: "change-this-password" },
       devices: [],
       channels: [],

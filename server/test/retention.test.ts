@@ -409,8 +409,43 @@ describe("server-only cleanup", () => {
       .toThrow("Upload session is no longer available")
   })
 
-  it("preserves explicit deletion events and leaves cleanup disabled by default", async () => {
-    expect(await cleanupService.enforceClipboard(config.cleanup)).toBe(0)
+  it("applies the default count and age limits independently to each device in each channel", async () => {
+    const firstChannel = crypto.randomUUID()
+    const secondChannel = crypto.randomUUID()
+    const now = Date.now()
+    const day = 86_400_000
+    let oldest = ""
+    let newest = ""
+    let otherDevice = ""
+    let otherChannel = ""
+    let expired = ""
+    repo.transaction(() => {
+      for (const id of [firstChannel, secondChannel]) {
+        db.run(sql`INSERT INTO channels (id, name, created_at, updated_at) VALUES (${id}, 'Defaults', ${now}, ${now})`)
+      }
+      for (let index = 0; index < 1001; index += 1) {
+        const id = addItem(firstChannel, deviceA, now - day + index)
+        if (index === 0) oldest = id
+        newest = id
+      }
+      otherDevice = addItem(firstChannel, deviceB, now - day)
+      otherChannel = addItem(secondChannel, deviceA, now - 29 * day)
+      expired = addItem(secondChannel, deviceA, now - 31 * day)
+    })
+    await cleanupService.enforceClipboard(CleanupOptions.parse(undefined))
+    expect(repo.item(oldest)).toBeUndefined()
+    expect(repo.item(expired)).toBeUndefined()
+    expect(repo.item(newest)).toBeDefined()
+    expect(repo.item(otherDevice)).toBeDefined()
+    expect(repo.item(otherChannel)).toBeDefined()
+    expect(sqliteValue(db.all<{ count: number }>(sql`
+      SELECT COUNT(*) AS count FROM clipboard_items
+      WHERE channel_id = ${firstChannel} AND origin_device_id = ${deviceA} AND deleted_at IS NULL
+    `))[0]?.count).toBe(1000)
+  })
+
+  it("preserves explicit deletion events and allows automatic cleanup to be disabled", async () => {
+    expect(await cleanupService.enforceClipboard({ ...config.cleanup, enabled: false })).toBe(0)
     const id = addItem(channelA, deviceA, Date.now())
     repo.transaction(() => repo.deleteItem(repo.item(id)!, Date.now()))
     expect(repo.changes(channelA, 0, 100).at(-1)).toMatchObject({ item_id: id, kind: "remove", reason: "deleted" })

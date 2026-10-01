@@ -14,9 +14,11 @@ lifetimes:
   key-overlap-millis: 300000
   materialization-ttl-millis: 600000
 cleanup:
-  enabled: false
+  enabled: true
   interval-millis: 3600000
-  clipboard: {}
+  clipboard:
+    max-items-per-device-per-channel: 1000
+    max-age-millis: 2592000000
 administrator:
   username: admin
   password: test-password

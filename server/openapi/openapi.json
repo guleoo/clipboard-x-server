@@ -1429,14 +1429,17 @@
               "application/json": {
                 "schema": {
                   "default": {
-                    "enabled": false,
+                    "enabled": true,
                     "intervalMillis": 3600000,
-                    "clipboard": {}
+                    "clipboard": {
+                      "maxItemsPerDevicePerChannel": 1000,
+                      "maxAgeMillis": 2592000000
+                    }
                   },
                   "type": "object",
                   "properties": {
                     "enabled": {
-                      "default": false,
+                      "default": true,
                       "type": "boolean"
                     },
                     "intervalMillis": {
@@ -1446,7 +1449,10 @@
                       "maximum": 86400000
                     },
                     "clipboard": {
-                      "default": {},
+                      "default": {
+                        "maxItemsPerDevicePerChannel": 1000,
+                        "maxAgeMillis": 2592000000
+                      },
                       "type": "object",
                       "properties": {
                         "maxItems": {
@@ -1595,14 +1601,17 @@
               "application/json": {
                 "schema": {
                   "default": {
-                    "enabled": false,
+                    "enabled": true,
                     "intervalMillis": 3600000,
-                    "clipboard": {}
+                    "clipboard": {
+                      "maxItemsPerDevicePerChannel": 1000,
+                      "maxAgeMillis": 2592000000
+                    }
                   },
                   "type": "object",
                   "properties": {
                     "enabled": {
-                      "default": false,
+                      "default": true,
                       "type": "boolean"
                     },
                     "intervalMillis": {
@@ -1612,7 +1621,10 @@
                       "maximum": 86400000
                     },
                     "clipboard": {
-                      "default": {},
+                      "default": {
+                        "maxItemsPerDevicePerChannel": 1000,
+                        "maxAgeMillis": 2592000000
+                      },
                       "type": "object",
                       "properties": {
                         "maxItems": {
@@ -1746,14 +1758,17 @@
             "application/json": {
               "schema": {
                 "default": {
-                  "enabled": false,
+                  "enabled": true,
                   "intervalMillis": 3600000,
-                  "clipboard": {}
+                  "clipboard": {
+                    "maxItemsPerDevicePerChannel": 1000,
+                    "maxAgeMillis": 2592000000
+                  }
                 },
                 "type": "object",
                 "properties": {
                   "enabled": {
-                    "default": false,
+                    "default": true,
                     "type": "boolean"
                   },
                   "intervalMillis": {
@@ -1763,7 +1778,10 @@
                     "maximum": 86400000
                   },
                   "clipboard": {
-                    "default": {},
+                    "default": {
+                      "maxItemsPerDevicePerChannel": 1000,
+                      "maxAgeMillis": 2592000000
+                    },
                     "type": "object",
                     "properties": {
                       "maxItems": {
