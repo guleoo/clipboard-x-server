@@ -34,7 +34,7 @@ export default {
   home: "返回剪切板",
   unmatchedPath: "未匹配路径",
   loginTitle: "登录 Clipboard X",
-  loginDescription: "访问你的 Channels 与同步剪切板。",
+  loginDescription: "访问你的频道与同步剪切板。",
   username: "用户名",
   password: "密码",
   signingIn: "正在登录…",
