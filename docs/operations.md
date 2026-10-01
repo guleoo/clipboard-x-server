@@ -5,8 +5,8 @@
 ## Language and time display
 
 The Web interface defaults to English and UTC. Switch between English and Simplified Chinese on the
-login page or in the settings menu. Language and UTC offset are also available under Configuration → Display preferences; for
-example, `8` means UTC+08:00 and `5.5` means UTC+05:30. Both preferences are saved in the current browser.
+login page or in the settings menu. Language and UTC offset are also available under Configuration → Language; for
+example, `08:00` means UTC+08:00 and `-05:30` means UTC−05:30. Valid changes apply immediately and are saved in the current browser.
 The database stores UTC millisecond timestamps without a timezone marker; the browser applies the
 offset only when displaying a time.
 

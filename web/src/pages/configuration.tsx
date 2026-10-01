@@ -217,50 +217,43 @@ export function ConfigurationPage() {
               checked={draft.enabled}
               onCheckedChange={(checked) => set("enabled", checked)}
             />
-          </section>
-
-          <section className="surface-raised space-y-4 p-5 sm:p-6">
-            <div>
-              <h2 className="font-semibold">{t("configuration.schedule")}</h2>
+            <div className="space-y-4 border-t border-border pt-4">
               <p className="mt-1 text-sm text-muted-foreground">
                 {t("configuration.scheduleDescription")}
               </p>
+              <div className="max-w-sm">
+                <NumberField id="cleanup-interval" label={t("configuration.fields.interval")}
+                  description={t("configuration.descriptions.interval")} value={draft.intervalMinutes}
+                  min={1} max={1440} step="any" onChange={(value) => set("intervalMinutes", value)} />
+              </div>
             </div>
-            <div className="max-w-sm">
-              <NumberField id="cleanup-interval" label={t("configuration.fields.interval")}
-                description={t("configuration.descriptions.interval")} value={draft.intervalMinutes}
-                min={1} max={1440} step="any" onChange={(value) => set("intervalMinutes", value)} />
-            </div>
-          </section>
 
-          <section className="surface-raised space-y-4 p-5 sm:p-6">
-            <div>
-              <h2 className="font-semibold">{t("configuration.items")}</h2>
+            <div className="space-y-4 border-t border-border pt-4">
               <p className="mt-1 text-sm text-muted-foreground">{t("configuration.itemsDescription")}</p>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <NumberField id="cleanup-total" label={t("configuration.fields.maxItems")} description={t("configuration.descriptions.maxItems")}
-                optional value={draft.maxItems} onChange={(value) => set("maxItems", value)} />
-              <NumberField id="cleanup-channel" label={t("configuration.fields.maxItemsPerChannel")} description={t("configuration.descriptions.maxItemsPerChannel")}
-                optional value={draft.maxItemsPerChannel} onChange={(value) => set("maxItemsPerChannel", value)} />
-              <NumberField id="cleanup-device" label={t("configuration.fields.maxItemsPerDevice")} description={t("configuration.descriptions.maxItemsPerDevice")}
-                optional value={draft.maxItemsPerDevice} onChange={(value) => set("maxItemsPerDevice", value)} />
-              <NumberField id="cleanup-device-channel" label={t("configuration.fields.maxItemsPerDevicePerChannel")}
-                description={t("configuration.descriptions.maxItemsPerDevicePerChannel")} optional value={draft.maxItemsPerDevicePerChannel}
-                onChange={(value) => set("maxItemsPerDevicePerChannel", value)} />
-              <NumberField id="cleanup-age" label={t("configuration.fields.maxAge")} description={t("configuration.descriptions.maxAge")}
-                optional step="any" value={draft.maxAgeDays} onChange={(value) => set("maxAgeDays", value)} />
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <NumberField id="cleanup-total" label={t("configuration.fields.maxItems")} description={t("configuration.descriptions.maxItems")}
+                  optional value={draft.maxItems} onChange={(value) => set("maxItems", value)} />
+                <NumberField id="cleanup-channel" label={t("configuration.fields.maxItemsPerChannel")} description={t("configuration.descriptions.maxItemsPerChannel")}
+                  optional value={draft.maxItemsPerChannel} onChange={(value) => set("maxItemsPerChannel", value)} />
+                <NumberField id="cleanup-device" label={t("configuration.fields.maxItemsPerDevice")} description={t("configuration.descriptions.maxItemsPerDevice")}
+                  optional value={draft.maxItemsPerDevice} onChange={(value) => set("maxItemsPerDevice", value)} />
+                <NumberField id="cleanup-device-channel" label={t("configuration.fields.maxItemsPerDevicePerChannel")}
+                  description={t("configuration.descriptions.maxItemsPerDevicePerChannel")} optional value={draft.maxItemsPerDevicePerChannel}
+                  onChange={(value) => set("maxItemsPerDevicePerChannel", value)} />
+                <NumberField id="cleanup-age" label={t("configuration.fields.maxAge")} description={t("configuration.descriptions.maxAge")}
+                  optional step="any" value={draft.maxAgeDays} onChange={(value) => set("maxAgeDays", value)} />
+              </div>
             </div>
           </section>
 
           {error !== null || mutation.error ? (
             <p role="alert" className="text-sm text-destructive">{messageOf(error ?? mutation.error)}</p>
           ) : null}
-          <div className="flex flex-wrap items-center gap-3">
+          {!confirm ? <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? t("configuration.saving") : t("configuration.save")}
             </Button>
-          </div>
+          </div> : null}
           {confirm ? (
             <section data-slot="cleanup-confirmation" role="group" aria-labelledby="cleanup-confirmation-title"
               className="surface-raised space-y-3 border-destructive/40 p-5">

@@ -47,7 +47,7 @@ function input(id: string): HTMLInputElement {
   return element
 }
 
-test("shows the enabled cleanup defaults and saves display preferences independently", async () => {
+test("shows the enabled cleanup defaults and applies language settings without another save button", async () => {
   const initial: CleanupConfiguration = {
     enabled: true,
     intervalMillis: 3_600_000,
@@ -58,11 +58,18 @@ test("shows the enabled cleanup defaults and saves display preferences independe
   expect(input("cleanup-age").value).toBe("30")
   expect(screen.getByRole("switch", { name: "Enable automatic cleanup" }).getAttribute("aria-checked")).toBe("true")
   expect(screen.getByRole("combobox", { name: "Language" })).toBeTruthy()
+  expect(screen.getAllByRole("button", { name: /save/i })).toHaveLength(1)
+  const policyPanel = screen.getByRole("heading", { name: "Cleanup policy" }).closest("section")!
+  for (const id of ["cleanup-enabled", "cleanup-interval", "cleanup-total", "cleanup-channel", "cleanup-device", "cleanup-device-channel", "cleanup-age"]) {
+    expect(policyPanel.contains(document.getElementById(id))).toBe(true)
+  }
+  expect(screen.queryByRole("heading", { name: "Display preferences" })).toBeNull()
+  expect(screen.queryByRole("heading", { name: "Cleanup schedule" })).toBeNull()
+  expect(screen.queryByRole("heading", { name: "Clipboard items" })).toBeNull()
   const previousOffset = usePreferences.getState().offsetMinutes
   try {
-    fireEvent.change(screen.getByLabelText("UTC offset (hours)"), { target: { value: "8" } })
-    fireEvent.click(screen.getByRole("button", { name: "Save preferences" }))
-    expect(usePreferences.getState().offsetMinutes).toBe(480)
+    fireEvent.change(screen.getByLabelText("UTC offset"), { target: { value: "08:30" } })
+    expect(usePreferences.getState().offsetMinutes).toBe(510)
     expect(updateCleanup).not.toHaveBeenCalled()
     expect(input("cleanup-device-channel").value).toBe("1000")
     expect(input("cleanup-age").value).toBe("30")
@@ -88,6 +95,7 @@ test("enabling periodic cleanup confirms and submits the retention policy", asyn
   const confirmation = dialogTitle.closest<HTMLElement>("[data-slot=cleanup-confirmation]")
   if (!confirmation) throw new Error("Cleanup confirmation did not open")
   expect(updateCleanup).not.toHaveBeenCalled()
+  expect(screen.getAllByRole("button", { name: /save/i })).toHaveLength(1)
   fireEvent.click(screen.getByText("Confirm and save"))
   await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith({
     ...defaults,
@@ -122,7 +130,7 @@ test("loosening one limit saves without a destructive confirmation", async () =>
 
 test("exposes only periodic retention controls", async () => {
   renderPage(defaults)
-  await screen.findByText("Cleanup schedule")
+  await screen.findByRole("heading", { name: "Cleanup policy" })
   expect(screen.queryByText("On startup")).toBeNull()
   expect(screen.queryByText("After publishing")).toBeNull()
   expect(screen.queryByText("Binary objects")).toBeNull()
