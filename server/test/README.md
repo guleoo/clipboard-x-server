@@ -10,7 +10,6 @@ Tests are grouped by the module or domain whose behavior they verify:
 | `device/` | Client profiles, device response contracts, and the virtual device |
 | `clipboard/` | Retention policies, scheduled cleanup, and object lifecycle |
 | `http/` | Application composition, sessions, request validation, origins, errors, OpenAPI, and TLS listening |
-| `project/` | Workspace metadata, CI, release packaging, Docker configuration, and documentation |
 | `support/` | Shared test helpers, not test cases |
 
 `preload.ts` creates an isolated temporary configuration and data directory. Keep it
@@ -27,3 +26,5 @@ bun run --cwd server test ./test/config/cleanup.test.ts
 Each test file must provide its own required initialization instead of relying on
 another test file running first. TLS listener tests require permission to bind a
 local port. Keep fixtures beside their domain unless they are genuinely shared.
+
+Repository-wide release, deployment, and documentation checks live in [`../../tests`](../../tests).

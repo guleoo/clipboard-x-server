@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { compileTargets, executableName, releaseName, releaseTag, releaseTarget } from "../../../scripts/release";
+import { compileTargets, executableName, releaseName, releaseTag, releaseTarget } from "../scripts/release";
 
 describe("release names", () => {
   it("uses the package version for local archives and preserves prerelease tags", () => {
