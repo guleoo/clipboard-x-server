@@ -12,7 +12,7 @@ const document = await generateSpecs(app, {
     openapi: "3.1.0",
     info: {
       title: "Clipboard X Server API",
-      version: "1.0.0",
+      version: "v1",
       description:
         "Device synchronization API and same-origin single-administrator API.",
     },

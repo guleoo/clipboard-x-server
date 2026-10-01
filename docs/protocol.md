@@ -1,10 +1,13 @@
 # Clipboard X synchronization protocol (HTTP API v1)
 
-> English · [简体中文](protocol_CN.md)
+> Protocol version: v1 · English · [简体中文](protocol_CN.md)
 
 This document is the authoritative human-readable protocol between Clipboard X Server and every
 device client. The protocol is intentionally independent of any desktop environment, operating
 system, UI toolkit, or client implementation.
+
+Protocol versions follow `v{n}` and match the API path version: `v1` corresponds to `/api/v1`
+and `/admin/api/v1`. They are independent of the Server's release version.
 
 ## Read this first
 
@@ -114,7 +117,7 @@ Returns the protocol version, server version, state, and capability limits:
 ```json
 {
   "apiVersion": 1,
-  "serverVersion": "1.0.0",
+  "serverVersion": "<server release version>",
   "state": "online",
   "capabilities": {
     "supportedMimeTypes": ["text/plain;charset=utf-8", "image/png"],
@@ -128,7 +131,8 @@ Returns the protocol version, server version, state, and capability limits:
 }
 ```
 
-`apiVersion` must be `1`. `state` is `online` or `degraded`.
+`apiVersion` must be `1`, identifying protocol `v1`. `serverVersion` contains the running Server's
+release version; the example uses a placeholder. `state` is `online` or `degraded`.
 
 | Field | How a client uses it |
 | --- | --- |

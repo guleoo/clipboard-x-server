@@ -9,6 +9,25 @@ function document(path: string): string {
 }
 
 describe("protocol ownership", () => {
+  it("names the protocol after the API version without binding guides to a server release", () => {
+    const specification = JSON.parse(document("server/openapi/openapi.json"));
+    expect(specification.info.version).toBe("v1");
+    for (const path of ["docs/protocol.md", "docs/protocol_CN.md"]) {
+      const guide = document(path);
+      expect(guide).toContain("`v{n}`");
+      expect(guide).toContain("`/api/v1`");
+      expect(guide).toContain('"apiVersion": 1');
+      expect(guide).toContain('"serverVersion": "<server release version>"');
+    }
+    for (const path of ["README.md", "README_CN.md", "docs/release.md", "docs/release_CN.md", "docs/protocol.md", "docs/protocol_CN.md"]) {
+      expect(document(path)).not.toMatch(/\bv\d+\.\d+\.\d+\b/gu);
+      expect(document(path)).not.toContain('"serverVersion": "1.0.0"');
+    }
+    for (const path of ["docs/release.md", "docs/release_CN.md"]) {
+      expect(document(path)).toContain('bun -p \'require("./package.json").version\'');
+    }
+  });
+
   it("keeps the machine and human contracts in the Server repository", () => {
     const english = document("docs/protocol.md");
     const chinese = document("docs/protocol_CN.md");

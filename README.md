@@ -78,7 +78,7 @@ git clone https://github.com/guleoo/clipboard-x-server.git
 cd clipboard-x-server
 ```
 
-Bun 1.3.14 is required. Run these commands from the repository root:
+Use the Bun version declared in `package.json`. Run these commands from the repository root:
 
 ```sh
 bun install --frozen-lockfile

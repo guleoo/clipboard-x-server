@@ -3,7 +3,7 @@
   "info": {
     "title": "Clipboard X Server API",
     "description": "Device synchronization API and same-origin single-administrator API.",
-    "version": "1.0.0"
+    "version": "v1"
   },
   "servers": [
     {

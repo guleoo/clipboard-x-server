@@ -16,7 +16,7 @@ import { operationResponseSchemas } from "../src/dto/response";
 import { routes } from "../src/route";
 
 describe("Clipboard X product contracts", () => {
-  it("reports version 1.0.0 consistently across packages, status and OpenAPI", async () => {
+  it("keeps the server release version separate from the protocol version", async () => {
     Database.init();
     Database.migrate({ migrationsFolder: databaseConfig.migrationsFolder });
     const { clipboardService } = await import("../src/service/clipboard");
@@ -25,7 +25,8 @@ describe("Clipboard X product contracts", () => {
       expect(JSON.parse(readFileSync(join(import.meta.dir, "../..", file), "utf8")).version).toBe("1.0.0");
     }
     const specification = JSON.parse(readFileSync(join(import.meta.dir, "../openapi/openapi.json"), "utf8"));
-    expect(specification.info.version).toBe("1.0.0");
+    expect(specification.info.version).toBe("v1");
+    expect(specification.components.schemas.ServerStatus.properties.apiVersion).toEqual({ type: "number", const: 1 });
   });
 
   it("exposes one process-wide configuration and database facade", async () => {

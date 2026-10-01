@@ -78,7 +78,7 @@ git clone https://github.com/guleoo/clipboard-x-server.git
 cd clipboard-x-server
 ```
 
-需要 Bun 1.3.14。在源码根目录执行：
+使用 `package.json` 中声明的 Bun 版本。在源码根目录执行：
 
 ```sh
 bun install --frozen-lockfile
