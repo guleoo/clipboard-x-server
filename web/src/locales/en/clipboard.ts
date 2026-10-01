@@ -3,6 +3,7 @@ export default {
   channels: "Channels",
   createChannel: "Create channel",
   editChannel: "Edit channel",
+  refresh: "Refresh clipboard",
   renameChannel: "Rename channel",
   deleteChannel: "Delete channel",
   selectChannel: "Select channel",

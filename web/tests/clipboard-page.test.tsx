@@ -247,3 +247,75 @@ test("switches clipboard labels immediately without replacing channel or item da
   expect(screen.getAllByText("Pictures").length).toBeGreaterThan(0)
   expect(api.items).toHaveBeenCalledTimes(1)
 })
+
+test("refreshes loaded clipboard pages before the edit button while preserving the channel and search", async () => {
+  let finishRefresh: ((value: { items: ClipboardItem[]; cursor: string; hasMore: boolean }) => void) | undefined
+  const api = {
+    channels: mock(async () => [channel]),
+    devices: mock(async () => []),
+    items: mock(async (filters: { channelId?: string; query?: string; cursor?: string; limit?: number }) => {
+      if (api.items.mock.calls.length === 1) return { items: [item(3)], cursor: "old-next", hasMore: true }
+      if (api.items.mock.calls.length === 2) return { items: [item(2)], cursor: "", hasMore: false }
+      if (!filters.cursor) return new Promise<{ items: ClipboardItem[]; cursor: string; hasMore: boolean }>((resolve) => { finishRefresh = resolve })
+      return { items: [item(4)], cursor: "", hasMore: false }
+    }),
+    transfers: mock(async () => []),
+  }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <ApiProvider client={api as unknown as Client}>
+      <QueryClientProvider client={query}>
+        <MemoryRouter initialEntries={["/?channelId=channel-1&query=hello"]}><ClipboardPage /></MemoryRouter>
+      </QueryClientProvider>
+    </ApiProvider>,
+  )
+  await screen.findByText("Device 3")
+  fireEvent.click(screen.getByRole("button", { name: "Load more" }))
+  await screen.findByText("Device 2")
+  const refresh = screen.getByRole("button", { name: "Refresh clipboard" }) as HTMLButtonElement
+  expect(refresh.nextElementSibling).toBe(screen.getByRole("button", { name: "Edit channel" }))
+  fireEvent.click(refresh)
+  await waitFor(() => expect(api.items).toHaveBeenCalledTimes(3))
+  expect(refresh.disabled).toBe(true)
+  fireEvent.click(refresh)
+  expect(api.items).toHaveBeenCalledTimes(3)
+  await act(async () => { finishRefresh!({ items: [item(5)], cursor: "new-next", hasMore: true }) })
+  await screen.findByText("Device 5")
+  await screen.findByText("Device 4")
+  await waitFor(() => expect(refresh.disabled).toBe(false))
+  expect(api.items.mock.calls[2]![0]).toEqual({ channelId: channel.id, query: "hello", limit: 100 })
+  expect(api.items.mock.calls[3]![0]).toEqual({ channelId: channel.id, query: "hello", limit: 100, cursor: "new-next" })
+  expect(screen.queryByText("Device 3")).toBeNull()
+  expect(screen.queryByText("Device 2")).toBeNull()
+  expect((screen.getByRole("textbox", { name: "Search clipboard content" }) as HTMLInputElement).value).toBe("hello")
+  await act(async () => { await i18n.changeLanguage("zh-CN") })
+  expect(screen.getByRole("button", { name: "刷新剪切板" })).toBeTruthy()
+  expect(api.items).toHaveBeenCalledTimes(4)
+})
+
+test("localizes waiting devices in the channel editor without changing their names", async () => {
+  const device = {
+    id: "waiting-device", tag: "Waiting for device profile", iconKind: "other",
+    iconColor: { light: "#ffffff" }, state: "offline", lastSeenAt: 0,
+    createdAt: 1, updatedAt: 1, kind: "client", keys: [],
+  }
+  const api = {
+    channels: mock(async () => [channel]), devices: mock(async () => [device]),
+    items: mock(async () => ({ items: [], cursor: "", hasMore: false })),
+    transfers: mock(async () => []),
+  }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <ApiProvider client={api as unknown as Client}>
+      <QueryClientProvider client={query}>
+        <MemoryRouter initialEntries={["/?channelId=channel-1"]}><ClipboardPage /></MemoryRouter>
+      </QueryClientProvider>
+    </ApiProvider>,
+  )
+  fireEvent.click(await screen.findByRole("button", { name: "Edit channel" }))
+  const dialog = await screen.findByRole("dialog")
+  expect(within(dialog).getByText("Waiting for device connection")).toBeTruthy()
+  await act(async () => { await i18n.changeLanguage("zh-CN") })
+  expect(within(dialog).getByText("等待设备连接")).toBeTruthy()
+  expect(device.tag).toBe("Waiting for device profile")
+})

@@ -16,7 +16,7 @@ import {
 } from "@/frame/components/ui/dialog"
 import { Input } from "@/frame/components/ui/input"
 import { Label } from "@/frame/components/ui/label"
-import { messageOf } from "@/utils/format"
+import { deviceName, messageOf } from "@/utils/format"
 
 export function ChannelEditor({ channel, devices, trigger, saved }: {
   readonly channel?: Channel
@@ -102,7 +102,7 @@ export function ChannelEditor({ channel, devices, trigger, saved }: {
                       checked={members.has(device.id)}
                       onChange={(event) => toggle(device.id, event.target.checked)}
                     />
-                    <span className="min-w-0 flex-1 truncate text-sm">{device.tag}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm">{deviceName(device)}</span>
                     <span className="text-xs text-muted-foreground">{t(device.disabledAt ? "disabled" : device.state === "online" ? "online" : "offline")}</span>
                   </label>
                 ))}

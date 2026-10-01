@@ -19,7 +19,7 @@ import {
 import { Input } from "@/frame/components/ui/input"
 import { Label } from "@/frame/components/ui/label"
 import { Page } from "@/frame/layout"
-import { formatDate, messageOf } from "@/utils/format"
+import { deviceName, formatDate, messageOf } from "@/utils/format"
 import { usePreferences } from "@/stores/preferences"
 
 const deviceIcons: Readonly<Record<string, string>> = {
@@ -60,7 +60,7 @@ function DeviceHeading({ device }: { readonly device: Device }) {
     <div className="flex min-w-0 items-center gap-2">
       <span className="size-5 shrink-0 bg-[var(--device-icon-light)] dark:bg-[var(--device-icon-dark)]"
         style={colors} aria-hidden="true" />
-      <h2 className="min-w-0 truncate font-semibold">{device.kind === "virtual" ? t("devices.virtualName") : device.tag}</h2>
+      <h2 className="min-w-0 truncate font-semibold">{device.kind === "virtual" ? t("devices.virtualName") : deviceName(device)}</h2>
     </div>
   )
 }
@@ -256,7 +256,7 @@ export function DevicesPage() {
                   </Button>
                   <ConfirmAction
                     trigger={<Button variant="destructive" size="sm"><Trash2Icon className="size-3.5" />{t("common.delete")}</Button>}
-                    title={t("devices.deleteTitle", { name: device.tag })}
+                    title={t("devices.deleteTitle", { name: deviceName(device) })}
                     description={t("devices.deleteDescription")}
                     confirmLabel={t("devices.deleteConfirm")}
                     pending={remove.isPending}

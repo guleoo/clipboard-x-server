@@ -2,6 +2,7 @@ export default {
   language: "Language",
   clipboard: "Clipboard",
   devices: "Devices",
+  waitingDevice: "Waiting for device connection",
   activity: "Activity",
   configuration: "Configuration",
   account: "Account",

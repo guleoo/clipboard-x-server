@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { HashIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react"
+import { HashIcon, PencilIcon, PlusIcon, RefreshCwIcon, SearchIcon, Trash2Icon } from "lucide-react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
 import { useApi, type Channel, type ClipboardItem, type Transfer } from "@/api"
@@ -227,6 +227,12 @@ export function ClipboardPage() {
           </div>
           {current ? (
             <>
+              <Button variant="ghost" size="icon-sm" title={t("refresh")} aria-label={t("refresh")}
+                disabled={items.isFetching} onClick={() => {
+                  void items.refetch().then(({ error }) => { if (error) toast.error(messageOf(error)) })
+                }}>
+                <RefreshCwIcon className={items.isFetching ? "size-4 animate-spin" : "size-4"} aria-hidden="true" />
+              </Button>
               <ChannelEditor
                 channel={current}
                 devices={devices.data}

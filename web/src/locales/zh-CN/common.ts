@@ -2,6 +2,7 @@ export default {
   language: "语言",
   clipboard: "剪切板",
   devices: "设备",
+  waitingDevice: "等待设备连接",
   activity: "活动",
   configuration: "配置",
   account: "账户",

@@ -115,3 +115,31 @@ test("shows each client's configured device icon beside its name", async () => {
     expect(icon?.style.getPropertyValue("--device-icon-dark")).toBe("#45abc9")
   }
 })
+
+test("localizes the newly registered device's waiting state and keeps client names unchanged", async () => {
+  const waiting: Device = {
+    id: "device-waiting", tag: "Waiting for device profile", kind: "client",
+    iconKind: "other", iconColor: { light: "#ffffff" }, state: "offline",
+    lastSeenAt: 0, createdAt: 1, updatedAt: 1, keys: [],
+  }
+  const named = { ...waiting, id: "device-named", tag: "My laptop" }
+  const connected = { ...waiting, id: "device-connected", lastSeenAt: 10 }
+  let devices = [waiting, named, connected]
+  const api = { devices: mock(async () => devices) }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <ApiProvider client={api as unknown as Client}>
+      <QueryClientProvider client={query}><DevicesPage /></QueryClientProvider>
+    </ApiProvider>,
+  )
+  await screen.findByRole("heading", { name: "Waiting for device connection" })
+  await act(async () => { await i18n.changeLanguage("zh-CN") })
+  expect(screen.getByRole("heading", { name: "等待设备连接" })).toBeTruthy()
+  expect(screen.getByRole("heading", { name: "My laptop" })).toBeTruthy()
+  expect(screen.getByRole("heading", { name: "Waiting for device profile" })).toBeTruthy()
+  expect(waiting.tag).toBe("Waiting for device profile")
+  devices = [{ ...waiting, tag: "我的电脑", lastSeenAt: 10 }, named, connected]
+  await act(async () => { await query.invalidateQueries({ queryKey: ["devices"] }) })
+  await screen.findByRole("heading", { name: "我的电脑" })
+  expect(screen.queryByRole("heading", { name: "等待设备连接" })).toBeNull()
+})

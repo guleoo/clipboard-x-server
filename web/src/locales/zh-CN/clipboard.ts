@@ -3,6 +3,7 @@ export default {
   channels: "频道",
   createChannel: "创建频道",
   editChannel: "编辑频道",
+  refresh: "刷新剪切板",
   renameChannel: "重命名频道",
   deleteChannel: "删除频道",
   selectChannel: "选择频道",

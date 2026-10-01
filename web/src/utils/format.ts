@@ -5,6 +5,13 @@ import { i18n } from "@/frame/common/i18n"
 import { RequestError } from "@/frame/request"
 import errors from "@/locales/en/errors"
 import { usePreferences } from "@/stores/preferences"
+import type { Device } from "@/api"
+
+export function deviceName(device: Pick<Device, "tag" | "kind" | "lastSeenAt">): string {
+  return device.kind === "client" && device.lastSeenAt === 0 && device.tag === "Waiting for device profile"
+    ? i18n.t("waitingDevice")
+    : device.tag
+}
 
 export function formatDate(value: number): string {
   return value > 0 ? DateTime.format(value, {
