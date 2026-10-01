@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { HashIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react"
 import { useSearchParams } from "react-router"
@@ -18,8 +19,9 @@ function ChannelList({ channels, selected, select }: {
   readonly selected?: string
   readonly select: (channelId: string) => void
 }) {
+  const { t } = useTranslation("clipboard")
   return (
-    <nav aria-label="Channels" className="space-y-1 px-2 py-2">
+    <nav aria-label={t("channels")} className="space-y-1 px-2 py-2">
       {channels.map((channel) => (
         <button
           key={channel.id}
@@ -83,6 +85,7 @@ function ClipboardFeed({ items, transfers, remove }: {
 }
 
 export function ClipboardPage() {
+  const { t } = useTranslation("clipboard")
   const api = useApi()
   const queryClient = useQueryClient()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -147,7 +150,7 @@ export function ClipboardPage() {
     mutationFn: (item: ClipboardItem) => api.deleteItem(item.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["items"] })
-      toast.success("内容已删除")
+      toast.success(t("contentDeleted"))
     },
     onError: (error) => toast.error(messageOf(error)),
   })
@@ -156,7 +159,7 @@ export function ClipboardPage() {
     onSuccess: async () => {
       setSearch(new URLSearchParams(), { replace: true })
       await queryClient.invalidateQueries({ queryKey: ["channels"] })
-      toast.success("Channel 已删除")
+      toast.success(t("channelDeleted"))
     },
     onError: (error) => toast.error(messageOf(error)),
   })
@@ -192,16 +195,16 @@ export function ClipboardPage() {
     <div className="mx-auto grid h-[calc(100dvh-3.5rem)] min-h-0 w-full max-w-[1600px] overflow-hidden lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="hidden min-h-0 border-r bg-muted/15 lg:flex lg:flex-col">
         <div className="flex h-12 items-center justify-between border-b px-4">
-          <h1 className="text-sm font-semibold">Channels</h1>
+          <h1 className="text-sm font-semibold">{t("channels")}</h1>
           <ChannelEditor
             devices={devices.data}
-            trigger={<Button variant="ghost" size="icon-sm" title="创建 Channel" aria-label="创建 Channel"><PlusIcon className="size-4" /></Button>}
+            trigger={<Button variant="ghost" size="icon-sm" title={t("createChannel")} aria-label={t("createChannel")}><PlusIcon className="size-4" /></Button>}
             saved={saved}
           />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {channels.data.length ? <ChannelList channels={channels.data} {...(current ? { selected: current.id } : {})} select={selectChannel} /> : (
-            <p className="px-5 py-8 text-center text-sm text-muted-foreground">还没有 Channel</p>
+            <p className="px-5 py-8 text-center text-sm text-muted-foreground">{t("noChannels")}</p>
           )}
         </div>
       </aside>
@@ -210,31 +213,31 @@ export function ClipboardPage() {
         <div className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2 sm:px-6">
           <select
             className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm lg:hidden"
-            aria-label="选择 Channel"
+            aria-label={t("selectChannel")}
             value={current?.id ?? ""}
             onChange={(event) => selectChannel(event.target.value)}
           >
-            <option value="" disabled>选择 Channel</option>
+            <option value="" disabled>{t("selectChannel")}</option>
             {channels.data.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
           </select>
           <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
             <HashIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <h2 className="truncate text-sm font-semibold">{current?.name ?? "剪切板"}</h2>
-            {current ? <span className="text-xs text-muted-foreground">{current.members.length} 个成员</span> : null}
+            <h2 className="truncate text-sm font-semibold">{current?.name ?? t("clipboard")}</h2>
+            {current ? <span className="text-xs text-muted-foreground">{t("members", { count: current.members.length })}</span> : null}
           </div>
           {current ? (
             <>
               <ChannelEditor
                 channel={current}
                 devices={devices.data}
-                trigger={<Button variant="ghost" size="icon-sm" title="编辑 Channel" aria-label="编辑 Channel"><PencilIcon className="size-4" /></Button>}
+                trigger={<Button variant="ghost" size="icon-sm" title={t("editChannel")} aria-label={t("editChannel")}><PencilIcon className="size-4" /></Button>}
                 saved={saved}
               />
               <ConfirmAction
-                trigger={<Button variant="ghost" size="icon-sm" title="删除 Channel" aria-label="删除 Channel"><Trash2Icon className="size-4 text-destructive" /></Button>}
-                title={`删除“${current.name}”？`}
-                description="Channel 会从列表中移除，现有成员将无法再访问它。"
-                confirmLabel="删除"
+                trigger={<Button variant="ghost" size="icon-sm" title={t("deleteChannel")} aria-label={t("deleteChannel")}><Trash2Icon className="size-4 text-destructive" /></Button>}
+                title={t("deleteNamedChannel", { name: current.name })}
+                description={t("deleteChannelDescription")}
+                confirmLabel={t("delete")}
                 pending={removeChannel.isPending}
                 onConfirm={() => removeChannel.mutate(current)}
               />
@@ -249,13 +252,13 @@ export function ClipboardPage() {
           ) : null}
         </div>
 
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" aria-label="剪切板内容">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" aria-label={t("clipboardContent")}>
           {current ? (
             <>
               <label className="relative mb-5 block max-w-md">
-                <span className="sr-only">搜索剪切板内容</span>
+                <span className="sr-only">{t("searchContent")}</span>
                 <SearchIcon className="pointer-events-none absolute left-2.5 top-2 size-4 text-muted-foreground" aria-hidden="true" />
-                <Input className="pl-8" value={queryText} placeholder="搜索当前 Channel" onChange={(event) => setQuery(event.target.value)} />
+                <Input className="pl-8" value={queryText} placeholder={t("searchChannel")} onChange={(event) => setQuery(event.target.value)} />
               </label>
               {items.isPending ? <LoadingState /> : items.error && !items.data ? <ErrorState error={items.error} retry={() => items.refetch()} />
                 : visibleItems.length ? (
@@ -267,15 +270,15 @@ export function ClipboardPage() {
                 ) : (
                   <div className="grid min-h-72 place-items-center border-y border-dashed text-center">
                     <div>
-                      <p className="text-sm font-medium">{queryText ? "没有匹配的内容" : "这个 Channel 还是空的"}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{queryText ? "试试其他关键词" : "从这里添加文本或图片，内容会同步到频道设备。"}</p>
+                      <p className="text-sm font-medium">{queryText ? t("noMatches") : t("emptyChannel")}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{queryText ? t("tryKeywords") : t("addContentDescription")}</p>
                     </div>
                   </div>
                 )}
               {items.hasNextPage ? (
                 <div ref={loadMoreRef} className="flex min-h-16 items-center justify-center py-4">
                   <Button variant="outline" disabled={items.isFetchingNextPage} onClick={() => void items.fetchNextPage()}>
-                    {items.isFetchingNextPage ? "正在加载" : items.isFetchNextPageError ? "加载失败，重试" : "加载更多"}
+                    {items.isFetchingNextPage ? t("loading") : items.isFetchNextPageError ? t("retryLoading") : t("loadMore")}
                   </Button>
                 </div>
               ) : null}
@@ -284,9 +287,9 @@ export function ClipboardPage() {
             <div className="grid min-h-96 place-items-center text-center">
               <div className="max-w-sm">
                 <HashIcon className="mx-auto mb-4 size-8 text-muted-foreground" aria-hidden="true" />
-                <h2 className="font-semibold">创建第一个 Channel</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">Channel 会连接你的设备，也承载从 Web 发布的剪切板内容。</p>
-                <div className="mt-5"><ChannelEditor devices={devices.data} trigger={<Button><PlusIcon className="size-4" />创建 Channel</Button>} saved={saved} /></div>
+                <h2 className="font-semibold">{t("firstChannel")}</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("firstChannelDescription")}</p>
+                <div className="mt-5"><ChannelEditor devices={devices.data} trigger={<Button><PlusIcon className="size-4" />{t("createChannel")}</Button>} saved={saved} /></div>
               </div>
             </div>
           ) : null}

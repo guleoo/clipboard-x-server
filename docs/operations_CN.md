@@ -2,6 +2,12 @@
 
 [English](operations.md)
 
+## 语言与时间显示
+
+Web 界面默认使用英文和 UTC。在登录页或设置菜单中切换英文与简体中文；在「账户 → 显示偏好」
+设置 UTC 时区偏移，例如 `8` 表示 UTC+08:00，`5.5` 表示 UTC+05:30。两项偏好均保存在当前浏览器中。
+数据库存储不带时区标记的 UTC 毫秒时间戳；浏览器仅在显示时间时应用偏移。
+
 ## 备份与恢复
 
 SQLite 使用 WAL 模式。`config.yaml` 是权威状态的一部分，必须与 `app.data-dir` 指定的整个目录一起备份，包括存在的 SQLite WAL/SHM 文件和对象目录树。取得一致恢复点最简单的方式是先停止 Server 进程。原生部署时一同备份 `server/config.yaml` 和 `server/data/`；`server/logs/` 独立于恢复所需数据，可选择备份。Docker 部署时同时备份配置卷和数据卷。

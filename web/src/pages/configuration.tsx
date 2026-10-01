@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react"
+import { useTranslation } from "react-i18next"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useApi, type CleanupConfiguration } from "@/api"
@@ -8,6 +9,7 @@ import { Input } from "@/frame/components/ui/input"
 import { Label } from "@/frame/components/ui/label"
 import { Switch } from "@/frame/components/ui/switch"
 import { Page } from "@/frame/layout"
+import { LocalizedError } from "@/frame/common/error"
 import { messageOf } from "@/utils/format"
 
 interface Draft {
@@ -37,7 +39,7 @@ function draftOf(value: CleanupConfiguration): Draft {
 
 function positiveNumber(
   value: string,
-  label: string,
+  fieldKey: string,
   options: { readonly optional?: boolean; readonly multiplier?: number; readonly min?: number; readonly max?: number } = {},
 ): number | undefined {
   if (value.trim() === "" && options.optional) return undefined
@@ -46,27 +48,27 @@ function positiveNumber(
   const result = number * multiplier
   if (!Number.isFinite(number) || number <= 0 || !Number.isSafeInteger(result)
     || result < (options.min ?? 1) || (options.max !== undefined && result > options.max)) {
-    throw new Error(`${label}超出允许范围`)
+    throw new LocalizedError("management:configuration.invalidNumber", { fieldKey })
   }
   return result
 }
 
 function configurationOf(draft: Draft): CleanupConfiguration {
-  const maxItems = positiveNumber(draft.maxItems, "服务端总保留条数", { optional: true })
-  const maxItemsPerChannel = positiveNumber(draft.maxItemsPerChannel, "每 Channel 保留条数", { optional: true })
-  const maxItemsPerDevice = positiveNumber(draft.maxItemsPerDevice, "每设备保留条数", { optional: true })
+  const maxItems = positiveNumber(draft.maxItems, "management:configuration.fields.maxItems", { optional: true })
+  const maxItemsPerChannel = positiveNumber(draft.maxItemsPerChannel, "management:configuration.fields.maxItemsPerChannel", { optional: true })
+  const maxItemsPerDevice = positiveNumber(draft.maxItemsPerDevice, "management:configuration.fields.maxItemsPerDevice", { optional: true })
   const maxItemsPerDevicePerChannel = positiveNumber(
     draft.maxItemsPerDevicePerChannel,
-    "每设备在每 Channel 的保留条数",
+    "management:configuration.fields.maxItemsPerDevicePerChannel",
     { optional: true },
   )
-  const maxAgeMillis = positiveNumber(draft.maxAgeDays, "最长保留时间", {
+  const maxAgeMillis = positiveNumber(draft.maxAgeDays, "management:configuration.fields.maxAge", {
     optional: true,
     multiplier: dayMillis,
   })
   return {
     enabled: draft.enabled,
-    intervalMillis: positiveNumber(draft.intervalMinutes, "周期清理间隔", {
+    intervalMillis: positiveNumber(draft.intervalMinutes, "management:configuration.fields.interval", {
       multiplier: minuteMillis,
       min: minuteMillis,
       max: dayMillis,
@@ -132,6 +134,7 @@ interface NumberFieldProps {
 function NumberField({
   id, label, description, value, optional, disabled, min = 0.000001, max, step = "1", onChange,
 }: NumberFieldProps) {
+  const { t } = useTranslation("management")
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
@@ -142,7 +145,7 @@ function NumberField({
         min={min}
         max={max}
         step={step}
-        placeholder={optional ? "不限" : undefined}
+        placeholder={optional ? t("configuration.unlimited") : undefined}
         required={!optional}
         disabled={disabled}
         value={value}
@@ -154,12 +157,13 @@ function NumberField({
 }
 
 export function ConfigurationPage() {
+  const { t } = useTranslation("management")
   const api = useApi()
   const queryClient = useQueryClient()
   const queryKey = ["configuration", "cleanup"] as const
   const query = useQuery({ queryKey, queryFn: api.configuration.getCleanup })
   const [draft, setDraft] = useState<Draft | null>(null)
-  const [error, setError] = useState("")
+  const [error, setError] = useState<unknown>(null)
   const [confirm, setConfirm] = useState<CleanupConfiguration | null>(null)
   useEffect(() => {
     if (query.data) setDraft((current) => current ?? draftOf(query.data))
@@ -170,13 +174,13 @@ export function ConfigurationPage() {
       queryClient.setQueryData(queryKey, saved)
       setDraft(draftOf(saved))
       setConfirm(null)
-      setError("")
-      toast.success("清理策略已更新")
+      setError(null)
+      toast.success(t("configuration.saved"))
     },
   })
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
     setDraft((current) => current && { ...current, [key]: value })
-    setError("")
+    setError(null)
     mutation.reset()
   }
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -184,30 +188,30 @@ export function ConfigurationPage() {
     if (!draft || !query.data) return
     try {
       const next = configurationOf(draft)
-      setError("")
+      setError(null)
       mutation.reset()
       if (tightens(query.data, next)) setConfirm(next)
       else mutation.mutate(next)
     } catch (cause) {
-      setError(messageOf(cause))
+      setError(cause)
     }
   }
 
   return (
-    <Page title="配置" description="集中管理服务端行为；当前仅开放清理策略。">
+    <Page title={t("configuration.title")} description={t("configuration.description")}>
       {query.isPending ? <LoadingState /> : query.error ? (
         <ErrorState error={query.error} retry={() => query.refetch()} />
       ) : draft ? (
         <form className="max-w-4xl space-y-5" onSubmit={submit}>
           <section className="surface-raised space-y-4 p-5 sm:p-6">
             <div>
-              <h2 className="font-semibold">清理策略</h2>
-              <p className="mt-1 text-sm text-muted-foreground">只清理服务器副本，不影响任何客户端的本地历史。</p>
+              <h2 className="font-semibold">{t("configuration.policy")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("configuration.policyDescription")}</p>
             </div>
             <ToggleField
               id="cleanup-enabled"
-              label="启用自动清理"
-              description="开启后，服务器只会按照设定周期在后台清理；关闭时保留下面的规则。"
+              label={t("configuration.enabled")}
+              description={t("configuration.enabledDescription")}
               checked={draft.enabled}
               onCheckedChange={(checked) => set("enabled", checked)}
             />
@@ -215,44 +219,44 @@ export function ConfigurationPage() {
 
           <section className="surface-raised space-y-4 p-5 sm:p-6">
             <div>
-              <h2 className="font-semibold">清理周期</h2>
+              <h2 className="font-semibold">{t("configuration.schedule")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                周期任务采用内部固定的小批次执行，并在批次之间让出处理时间。
+                {t("configuration.scheduleDescription")}
               </p>
             </div>
             <div className="max-w-sm">
-              <NumberField id="cleanup-interval" label="周期清理间隔（分钟）"
-                description="1 到 1440 分钟；修改配置不会立即触发清理。" value={draft.intervalMinutes}
+              <NumberField id="cleanup-interval" label={t("configuration.fields.interval")}
+                description={t("configuration.descriptions.interval")} value={draft.intervalMinutes}
                 min={1} max={1440} step="any" onChange={(value) => set("intervalMinutes", value)} />
             </div>
           </section>
 
           <section className="surface-raised space-y-4 p-5 sm:p-6">
             <div>
-              <h2 className="font-semibold">剪切板条目</h2>
-              <p className="mt-1 text-sm text-muted-foreground">多个限制同时存在时，命中任意一个的最旧条目就会成为候选。</p>
+              <h2 className="font-semibold">{t("configuration.items")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("configuration.itemsDescription")}</p>
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <NumberField id="cleanup-total" label="服务端总保留条数" description="所有 Channel 与设备合计。"
+              <NumberField id="cleanup-total" label={t("configuration.fields.maxItems")} description={t("configuration.descriptions.maxItems")}
                 optional value={draft.maxItems} onChange={(value) => set("maxItems", value)} />
-              <NumberField id="cleanup-channel" label="每 Channel 保留条数" description="一个 Channel 内所有设备合计。"
+              <NumberField id="cleanup-channel" label={t("configuration.fields.maxItemsPerChannel")} description={t("configuration.descriptions.maxItemsPerChannel")}
                 optional value={draft.maxItemsPerChannel} onChange={(value) => set("maxItemsPerChannel", value)} />
-              <NumberField id="cleanup-device" label="每设备保留条数" description="一个设备跨所有 Channel 合计。"
+              <NumberField id="cleanup-device" label={t("configuration.fields.maxItemsPerDevice")} description={t("configuration.descriptions.maxItemsPerDevice")}
                 optional value={draft.maxItemsPerDevice} onChange={(value) => set("maxItemsPerDevice", value)} />
-              <NumberField id="cleanup-device-channel" label="每设备在每 Channel 保留条数"
-                description="限制设备与 Channel 的交叉范围。" optional value={draft.maxItemsPerDevicePerChannel}
+              <NumberField id="cleanup-device-channel" label={t("configuration.fields.maxItemsPerDevicePerChannel")}
+                description={t("configuration.descriptions.maxItemsPerDevicePerChannel")} optional value={draft.maxItemsPerDevicePerChannel}
                 onChange={(value) => set("maxItemsPerDevicePerChannel", value)} />
-              <NumberField id="cleanup-age" label="最长保留时间（天）" description="按条目创建时间计算，可输入小数。"
+              <NumberField id="cleanup-age" label={t("configuration.fields.maxAge")} description={t("configuration.descriptions.maxAge")}
                 optional step="any" value={draft.maxAgeDays} onChange={(value) => set("maxAgeDays", value)} />
             </div>
           </section>
 
-          {error || mutation.error ? (
-            <p role="alert" className="text-sm text-destructive">{error || messageOf(mutation.error)}</p>
+          {error !== null || mutation.error ? (
+            <p role="alert" className="text-sm text-destructive">{messageOf(error ?? mutation.error)}</p>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "正在保存…" : "保存清理策略"}
+              {mutation.isPending ? t("configuration.saving") : t("configuration.save")}
             </Button>
           </div>
           {confirm ? (
@@ -260,17 +264,17 @@ export function ConfigurationPage() {
               className="surface-raised space-y-3 border-destructive/40 p-5">
               <div>
                 <h2 id="cleanup-confirmation-title" className="font-semibold text-destructive">
-                  确认应用更严格的清理策略？
+                  {t("configuration.confirmTitle")}
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  保存后将从下一个清理周期开始应用。任务会在后台分批处理；已清理的服务器内容无法恢复，客户端本地历史不会被删除。
+                  {t("configuration.confirmDescription")}
                 </p>
               </div>
               {mutation.error ? <p role="alert" className="text-sm text-destructive">{messageOf(mutation.error)}</p> : null}
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => setConfirm(null)}>取消</Button>
+                <Button type="button" variant="outline" onClick={() => setConfirm(null)}>{t("common.cancel")}</Button>
                 <Button type="button" variant="destructive" disabled={mutation.isPending}
-                  onClick={() => mutation.mutate(confirm)}>确认保存</Button>
+                  onClick={() => mutation.mutate(confirm)}>{t("configuration.confirmSave")}</Button>
               </div>
             </section>
           ) : null}

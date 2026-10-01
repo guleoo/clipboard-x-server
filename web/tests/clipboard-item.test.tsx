@@ -1,4 +1,4 @@
-import { afterEach, expect, mock, test } from "bun:test"
+import { afterEach, beforeEach, expect, mock, test } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import type { Client } from "../src/api/client"
 import type { ClipboardItem, Transfer } from "../src/api/schemas"
@@ -6,15 +6,24 @@ import type { ClipboardItem, Transfer } from "../src/api/schemas"
 if (!("document" in globalThis)) GlobalRegistrator.register({ url: "http://localhost" })
 
 const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query")
-const { cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react")
+const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react")
 const { ApiProvider } = await import("../src/api")
+await import("../src/i18n")
+const { i18n } = await import("../src/frame/common/i18n")
+const { usePreferences } = await import("../src/stores/preferences")
 const { ClipboardItemCard } = await import("../src/components/domain/clipboard-item")
+
+beforeEach(async () => {
+  usePreferences.setState({ offsetMinutes: 0 })
+  await i18n.changeLanguage("en")
+})
 
 const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard")
 const clipboardItemDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ClipboardItem")
 
 afterEach(() => {
   cleanup()
+  usePreferences.setState({ offsetMinutes: 0 })
   if (clipboardDescriptor) Object.defineProperty(navigator, "clipboard", clipboardDescriptor)
   else Reflect.deleteProperty(navigator, "clipboard")
   if (clipboardItemDescriptor) Object.defineProperty(globalThis, "ClipboardItem", clipboardItemDescriptor)
@@ -83,9 +92,9 @@ test("clicking a lazy image preview materializes and displays its full content",
     </ApiProvider>,
   )
 
-  fireEvent.click(screen.getByRole("button", { name: "查看剪切板内容" }))
+  fireEvent.click(screen.getByRole("button", { name: "View clipboard content" }))
   await waitFor(() => expect(requestContent).toHaveBeenCalledWith(item.id, "original"))
-  const fullImages = await screen.findAllByAltText("来自 Laptop 的完整图片")
+  const fullImages = await screen.findAllByAltText("Full image from Laptop")
   expect(fullImages).toHaveLength(2)
   expect(fullImages.every((image) => image.getAttribute("src") === "/admin/api/v1/items/item-1/contents/original")).toBe(true)
 })
@@ -117,9 +126,52 @@ test("copies an available image with the conventional copy icon", async () => {
     </ApiProvider>,
   )
 
-  const copy = screen.getByRole("button", { name: "复制图片" })
+  const copy = screen.getByRole("button", { name: "Copy image" })
   expect(copy.querySelector(".lucide-copy")).toBeTruthy()
   fireEvent.click(copy)
   await waitFor(() => expect(content).toHaveBeenCalledWith(item.id, "original"))
   expect(write).toHaveBeenCalledTimes(1)
+})
+
+test("updates image accessibility labels when the language changes", async () => {
+  const availableItem: ClipboardItem = {
+    ...item,
+    contents: item.contents.map((representation) => ({ ...representation, availability: "available" })),
+  }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <ApiProvider client={{} as Client}>
+      <QueryClientProvider client={query}>
+        <ClipboardItemCard item={availableItem} remove={() => undefined} />
+      </QueryClientProvider>
+    </ApiProvider>,
+  )
+
+  expect(screen.getByAltText("Full image from Laptop")).toBeTruthy()
+  expect(screen.getByRole("button", { name: "Copy image" })).toBeTruthy()
+  await act(async () => { await i18n.changeLanguage("zh-CN") })
+  expect(screen.getByAltText("来自 Laptop 的完整图片")).toBeTruthy()
+  expect(screen.getByRole("button", { name: "复制图片" })).toBeTruthy()
+  expect(screen.getByRole("button", { name: "查看剪切板内容" })).toBeTruthy()
+  expect(screen.getByText("Laptop")).toBeTruthy()
+})
+
+test("updates clipboard timestamps immediately when the UTC offset changes", () => {
+  const availableItem: ClipboardItem = {
+    ...item,
+    contents: item.contents.map((representation) => ({ ...representation, availability: "available" })),
+  }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const view = render(
+    <ApiProvider client={{} as Client}>
+      <QueryClientProvider client={query}>
+        <ClipboardItemCard item={availableItem} remove={() => undefined} />
+      </QueryClientProvider>
+    </ApiProvider>,
+  )
+
+  expect(view.container.querySelector("time")?.textContent).toContain("12:00 AM")
+  act(() => usePreferences.setState({ offsetMinutes: 480 }))
+  expect(view.container.querySelector("time")?.textContent).toContain("8:00 AM")
+  expect(screen.getByText("Laptop")).toBeTruthy()
 })

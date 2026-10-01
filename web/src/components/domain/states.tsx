@@ -1,28 +1,32 @@
 import type { ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import { AlertTriangleIcon, InboxIcon, LoaderCircleIcon } from "lucide-react"
 import { Button } from "@/frame/components/ui/button"
+import { messageOf } from "@/utils/format"
 
-export function LoadingState({ label = "正在加载" }: { readonly label?: string }) {
+export function LoadingState({ label }: { readonly label?: string }) {
+  const { t } = useTranslation("common")
   return (
     <div className="grid min-h-48 place-items-center text-sm text-muted-foreground" role="status">
       <span className="inline-flex items-center gap-2">
         <LoaderCircleIcon className="size-4 animate-spin" aria-hidden="true" />
-        {label}
+        {label ?? t("loading")}
       </span>
     </div>
   )
 }
 
 export function ErrorState({ error, retry }: { readonly error: unknown; readonly retry?: () => void }) {
+  const { t } = useTranslation("common")
   return (
     <div className="surface-raised grid min-h-40 place-items-center p-6 text-center" role="alert">
       <div>
         <AlertTriangleIcon className="mx-auto size-5 text-destructive" aria-hidden="true" />
-        <p className="mt-3 text-sm font-medium">加载失败</p>
+        <p className="mt-3 text-sm font-medium">{t("loadFailed")}</p>
         <p className="mt-1 max-w-lg text-sm text-muted-foreground">
-          {error instanceof Error ? error.message : "服务器暂时无法完成请求"}
+          {messageOf(error)}
         </p>
-        {retry ? <Button className="mt-4" variant="outline" onClick={retry}>重试</Button> : null}
+        {retry ? <Button className="mt-4" variant="outline" onClick={retry}>{t("retry")}</Button> : null}
       </div>
     </div>
   )

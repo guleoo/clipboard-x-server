@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useTranslation } from "react-i18next"
 import { BanIcon, RefreshCwIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useApi, type Transfer } from "@/api"
@@ -9,17 +10,14 @@ import { Button } from "@/frame/components/ui/button"
 import { Progress } from "@/frame/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/frame/components/ui/table"
 import { Page } from "@/frame/layout"
-import { formatBytes, formatDate, formatProgress, messageOf } from "@/utils/format"
+import { errorMessage, formatBytes, formatDate, formatProgress, messageOf } from "@/utils/format"
+import { usePreferences } from "@/stores/preferences"
 
 const terminalStates = new Set(["completed", "failed", "cancelled", "expired"])
 
-function transferLabel(transfer: Transfer): string {
-  const kind = transfer.kind === "publish" ? "发布" : "内容物化"
-  const direction = transfer.direction === "upload" ? "上传" : "下载"
-  return `${kind} · ${direction}`
-}
-
 export function TransfersPage() {
+  const { t } = useTranslation("management")
+  usePreferences((state) => state.offsetMinutes)
   const api = useApi()
   const client = useQueryClient()
   const transfers = useQuery({
@@ -32,30 +30,30 @@ export function TransfersPage() {
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["transfers"] })
       client.invalidateQueries({ queryKey: ["overview"] })
-      toast.success("已取消传输")
+      toast.success(t("transfers.cancelled"))
     },
     onError: (error) => toast.error(messageOf(error)),
   })
 
   return (
     <Page
-      title="活动"
-      description="查看内容发布与按需同步的进度、参与设备和失败原因。"
-      action={<Button variant="outline" onClick={() => transfers.refetch()} disabled={transfers.isFetching}><RefreshCwIcon className={transfers.isFetching ? "animate-spin" : ""} />刷新</Button>}
+      title={t("transfers.title")}
+      description={t("transfers.description")}
+      action={<Button variant="outline" onClick={() => transfers.refetch()} disabled={transfers.isFetching}><RefreshCwIcon className={transfers.isFetching ? "animate-spin" : ""} />{t("common.refresh")}</Button>}
     >
       {transfers.isPending ? <LoadingState /> : transfers.error ? <ErrorState error={transfers.error} retry={() => transfers.refetch()} />
-        : transfers.data.length === 0 ? <EmptyState title="还没有传输" description="设备发布剪切板或请求按需内容后，会在这里显示进度。" />
+        : transfers.data.length === 0 ? <EmptyState title={t("transfers.emptyTitle")} description={t("transfers.emptyDescription")} />
         : (
           <div className="surface-raised overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow><TableHead>类型</TableHead><TableHead>状态</TableHead><TableHead>进度</TableHead><TableHead>设备</TableHead><TableHead>更新时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow>
+                <TableRow><TableHead>{t("transfers.type")}</TableHead><TableHead>{t("transfers.state")}</TableHead><TableHead>{t("transfers.progress")}</TableHead><TableHead>{t("transfers.device")}</TableHead><TableHead>{t("transfers.updatedAt")}</TableHead><TableHead className="text-right">{t("transfers.actions")}</TableHead></TableRow>
               </TableHeader>
               <TableBody>
                 {transfers.data.map((transfer) => (
                   <TableRow key={transfer.id}>
                     <TableCell>
-                      <p className="font-medium">{transferLabel(transfer)}</p>
+                      <p className="font-medium">{t("transfers.label", { kind: transfer.kind === "publish" ? t("transfers.publish") : t("transfers.content"), direction: transfer.direction === "upload" ? t("transfers.upload") : t("transfers.download") })}</p>
                       <code className="block max-w-44 truncate text-xs text-muted-foreground" title={transfer.itemId}>{transfer.itemId}</code>
                     </TableCell>
                     <TableCell><StatusBadge value={transfer.state} /></TableCell>
@@ -65,20 +63,20 @@ export function TransfersPage() {
                         <span>{formatProgress(transfer.completedBytes, transfer.totalBytes)}</span>
                       </div>
                       <Progress value={transfer.totalBytes ? (transfer.completedBytes / transfer.totalBytes) * 100 : 0} />
-                      {transfer.error.message ? <p className="mt-1 text-xs text-destructive">{transfer.error.message}</p> : null}
+                      {transfer.error.code || transfer.error.message ? <p className="mt-1 text-xs text-destructive">{errorMessage(transfer.error.code)}</p> : null}
                     </TableCell>
                     <TableCell>
                       <code className="text-xs">{transfer.deviceId.slice(0, 8)}</code>
-                      {transfer.peerDeviceIds.length ? <p className="text-xs text-muted-foreground">对端 {transfer.peerDeviceIds.length} 台</p> : null}
+                      {transfer.peerDeviceIds.length ? <p className="text-xs text-muted-foreground">{t("transfers.peers", { count: transfer.peerDeviceIds.length })}</p> : null}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(transfer.updatedAt)}</TableCell>
                     <TableCell className="text-right">
                       {!terminalStates.has(transfer.state) ? (
                         <ConfirmAction
-                          trigger={<Button variant="ghost" size="icon-sm" aria-label="取消传输"><BanIcon className="size-4" /></Button>}
-                          title="取消此传输？"
-                          description="已经写入的临时数据会在后续清理中移除，已完成的对象不受影响。"
-                          confirmLabel="取消传输"
+                          trigger={<Button variant="ghost" size="icon-sm" aria-label={t("transfers.cancel")}><BanIcon className="size-4" /></Button>}
+                          title={t("transfers.cancelTitle")}
+                          description={t("transfers.cancelDescription")}
+                          confirmLabel={t("transfers.cancel")}
                           pending={cancel.isPending}
                           onConfirm={() => cancel.mutate(transfer)}
                         />

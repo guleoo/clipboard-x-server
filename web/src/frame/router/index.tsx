@@ -1,4 +1,5 @@
 import { createContext, useContext, type ComponentType, type ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router"
 import { useStore } from "zustand"
 import type { Layout, Snapshot } from "./core"
@@ -19,7 +20,8 @@ export function useRouter() {
 }
 
 function Failure({ detail }: { readonly detail: string }) {
-  return <main className="grid min-h-screen place-items-center p-6"><section className="surface-raised max-w-lg p-6"><h1 className="font-semibold">页面无法显示</h1><p className="mt-2 text-sm text-muted-foreground">{import.meta.env.DEV ? detail : "应用路由配置无效，请联系管理员。"}</p></section></main>
+  const { t } = useTranslation("common")
+  return <main className="grid min-h-screen place-items-center p-6"><section className="surface-raised max-w-lg p-6"><h1 className="font-semibold">{t("pageUnavailable")}</h1><p className="mt-2 text-sm text-muted-foreground">{import.meta.env.DEV ? detail : t("invalidRouter")}</p></section></main>
 }
 
 export function View({ store, basename, components, layouts }: {
@@ -28,8 +30,9 @@ export function View({ store, basename, components, layouts }: {
   readonly components: Readonly<Record<string, ComponentType>>
   readonly layouts: Readonly<Record<Layout, ComponentType>>
 }) {
+  const { t } = useTranslation("common")
   const state = useStore(store.state)
-  if (!state.ready) return <main className="grid min-h-screen place-items-center text-sm text-muted-foreground">正在准备应用…</main>
+  if (!state.ready) return <main className="grid min-h-screen place-items-center text-sm text-muted-foreground">{t("preparing")}</main>
   if (state.error) return <Failure detail={state.error.message} />
   return (
     <Context value={store}>
@@ -44,7 +47,7 @@ export function View({ store, basename, components, layouts }: {
                   if (route.target.kind === "redirect") element = <Navigate replace to={route.target.redirect} />
                   else {
                     const Component = components[route.target.component]
-                    element = Component ? <Component /> : <Failure detail={`未知页面组件：${route.target.component}`} />
+                    element = Component ? <Component /> : <Failure detail={`Unknown page component: ${route.target.component}`} />
                   }
                   return <Route key={route.id} path={route.path} element={element} />
                 })}

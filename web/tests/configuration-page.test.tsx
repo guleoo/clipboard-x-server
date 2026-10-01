@@ -1,4 +1,4 @@
-import { afterEach, expect, mock, test } from "bun:test"
+import { afterEach, beforeEach, expect, mock, test } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import type { Client } from "../src/api/client"
 import type { CleanupConfiguration } from "../src/api"
@@ -6,11 +6,14 @@ import type { CleanupConfiguration } from "../src/api"
 if (!("document" in globalThis)) GlobalRegistrator.register({ url: "http://localhost" })
 
 const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query")
-const { cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react")
+const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react")
 const { ApiProvider } = await import("../src/api")
 const { ConfigurationPage } = await import("../src/pages/configuration")
+await import("../src/i18n")
+const { i18n } = await import("../src/frame/common/i18n")
 
 afterEach(cleanup)
+beforeEach(async () => { await i18n.changeLanguage("en") })
 
 const defaults: CleanupConfiguration = {
   enabled: false,
@@ -45,19 +48,19 @@ function input(id: string): HTMLInputElement {
 
 test("enabling periodic cleanup confirms and submits the retention policy", async () => {
   const { updateCleanup } = renderPage(defaults)
-  await screen.findByText("清理策略")
+  await screen.findByText("Cleanup policy")
   await waitFor(() => expect(input("cleanup-interval").value).toBe("60"))
   fireEvent.click(document.getElementById("cleanup-enabled")!)
   fireEvent.change(input("cleanup-total"), { target: { value: "500" } })
   fireEvent.change(input("cleanup-device-channel"), { target: { value: "25" } })
   fireEvent.change(input("cleanup-age"), { target: { value: "1.5" } })
   fireEvent.change(input("cleanup-interval"), { target: { value: "30" } })
-  fireEvent.click(screen.getByRole("button", { name: "保存清理策略" }))
-  const dialogTitle = await screen.findByText("确认应用更严格的清理策略？")
+  fireEvent.click(screen.getByRole("button", { name: "Save cleanup policy" }))
+  const dialogTitle = await screen.findByText("Apply a stricter cleanup policy?")
   const confirmation = dialogTitle.closest<HTMLElement>("[data-slot=cleanup-confirmation]")
   if (!confirmation) throw new Error("Cleanup confirmation did not open")
   expect(updateCleanup).not.toHaveBeenCalled()
-  fireEvent.click(screen.getByText("确认保存"))
+  fireEvent.click(screen.getByText("Confirm and save"))
   await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith({
     ...defaults,
     enabled: true,
@@ -68,11 +71,11 @@ test("enabling periodic cleanup confirms and submits the retention policy", asyn
       maxAgeMillis: 129_600_000,
     },
   }))
-  await waitFor(() => expect(screen.queryByText("确认应用更严格的清理策略？")).toBeNull())
+  await waitFor(() => expect(screen.queryByText("Apply a stricter cleanup policy?")).toBeNull())
   fireEvent.change(input("cleanup-total"), { target: { value: "600" } })
-  fireEvent.click(screen.getByRole("button", { name: "保存清理策略" }))
+  fireEvent.click(screen.getByRole("button", { name: "Save cleanup policy" }))
   await waitFor(() => expect(updateCleanup).toHaveBeenCalledTimes(2))
-  expect(screen.queryByText("确认应用更严格的清理策略？")).toBeNull()
+  expect(screen.queryByText("Apply a stricter cleanup policy?")).toBeNull()
 })
 
 test("loosening one limit saves without a destructive confirmation", async () => {
@@ -84,25 +87,38 @@ test("loosening one limit saves without a destructive confirmation", async () =>
   const { updateCleanup } = renderPage(initial)
   await waitFor(() => expect(input("cleanup-channel").value).toBe("10"))
   fireEvent.change(input("cleanup-channel"), { target: { value: "" } })
-  fireEvent.click(screen.getByRole("button", { name: "保存清理策略" }))
+  fireEvent.click(screen.getByRole("button", { name: "Save cleanup policy" }))
   await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith({ ...initial, clipboard: {} }))
-  expect(screen.queryByText("确认应用更严格的清理策略？")).toBeNull()
+  expect(screen.queryByText("Apply a stricter cleanup policy?")).toBeNull()
 })
 
 test("exposes only periodic retention controls", async () => {
   renderPage(defaults)
-  await screen.findByText("清理周期")
-  expect(screen.queryByText("启动时")).toBeNull()
-  expect(screen.queryByText("发布后")).toBeNull()
-  expect(screen.queryByText("二进制对象")).toBeNull()
-  expect(screen.queryByText("单轮执行预算")).toBeNull()
+  await screen.findByText("Cleanup schedule")
+  expect(screen.queryByText("On startup")).toBeNull()
+  expect(screen.queryByText("After publishing")).toBeNull()
+  expect(screen.queryByText("Binary objects")).toBeNull()
+  expect(screen.queryByText("Execution budget")).toBeNull()
 })
 
 test("timing fields enforce the same minimum as the server schema", async () => {
   const { updateCleanup } = renderPage(defaults)
   await waitFor(() => expect(input("cleanup-interval").value).toBe("60"))
   fireEvent.change(input("cleanup-interval"), { target: { value: "0.5" } })
-  fireEvent.submit(screen.getByRole("button", { name: "保存清理策略" }).closest("form")!)
-  expect(screen.getByRole("alert").textContent).toContain("周期清理间隔超出允许范围")
+  fireEvent.submit(screen.getByRole("button", { name: "Save cleanup policy" }).closest("form")!)
+  expect(screen.getByRole("alert").textContent).toContain("Cleanup interval (minutes) is outside the allowed range")
+  expect(updateCleanup).not.toHaveBeenCalled()
+})
+
+test("retranslates an existing validation error and preserves the form when switching languages", async () => {
+  const { updateCleanup } = renderPage(defaults)
+  await waitFor(() => expect(input("cleanup-interval").value).toBe("60"))
+  fireEvent.change(input("cleanup-interval"), { target: { value: "0.5" } })
+  fireEvent.submit(screen.getByRole("button", { name: "Save cleanup policy" }).closest("form")!)
+  expect(screen.getByRole("alert").textContent).toContain("Cleanup interval (minutes) is outside the allowed range")
+  await act(async () => { await i18n.changeLanguage("zh-CN") })
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("周期清理间隔（分钟）超出允许范围"))
+  expect(screen.getByRole("button", { name: "保存清理策略" })).toBeTruthy()
+  expect(input("cleanup-interval").value).toBe("0.5")
   expect(updateCleanup).not.toHaveBeenCalled()
 })

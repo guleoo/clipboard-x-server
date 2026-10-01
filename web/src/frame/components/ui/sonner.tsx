@@ -1,13 +1,16 @@
 "use client"
 
 import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { useTranslation } from "react-i18next"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 const Toaster = ({ theme: requestedTheme, ...props }: ToasterProps) => {
+  const { t } = useTranslation("common")
   const resolvedTheme = requestedTheme ?? "system"
 
   return (
     <Sonner
+      containerAriaLabel={t("activity")}
       theme={resolvedTheme}
       className="toaster group"
       icons={{

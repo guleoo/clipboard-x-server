@@ -21,11 +21,11 @@ export interface Transport {
 
 function map(error: unknown): RequestError {
   if (!(error instanceof AxiosError)) {
-    return new RequestError("network", "请求失败", undefined, undefined, undefined, { cause: error })
+    return new RequestError("network", "Request failed", undefined, undefined, undefined, { cause: error })
   }
-  if (axios.isCancel(error)) return new RequestError("canceled", "请求已取消", undefined, undefined, undefined, { cause: error })
+  if (axios.isCancel(error)) return new RequestError("canceled", "Request cancelled", undefined, undefined, undefined, { cause: error })
   if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
-    return new RequestError("timeout", "请求超时", undefined, undefined, undefined, { cause: error })
+    return new RequestError("timeout", "Request timed out", undefined, undefined, undefined, { cause: error })
   }
   const document = error.response?.data as ErrorDocument | undefined
   const status = error.response?.status
@@ -33,7 +33,7 @@ function map(error: unknown): RequestError {
   const category = status === 401 ? "auth" : code ? "business" : status ? "http" : "network"
   return new RequestError(
     category,
-    document?.error?.message ?? (status ? `请求失败（HTTP ${status}）` : "无法连接服务器"),
+    document?.error?.message ?? (status ? `Request failed (HTTP ${status})` : "Unable to connect to server"),
     status,
     code,
     document?.error?.requestId,

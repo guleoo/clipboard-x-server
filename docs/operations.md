@@ -2,6 +2,14 @@
 
 [简体中文](operations_CN.md)
 
+## Language and time display
+
+The Web interface defaults to English and UTC. Switch between English and Simplified Chinese on the
+login page or in the settings menu. Set the UTC offset under Account → Display preferences; for
+example, `8` means UTC+08:00 and `5.5` means UTC+05:30. Both preferences are saved in the current browser.
+The database stores UTC millisecond timestamps without a timezone marker; the browser applies the
+offset only when displaying a time.
+
 ## Backup and restore
 
 SQLite runs in WAL mode. `config.yaml` is part of the authoritative state and must be backed up together with the complete directory set by `app.data-dir`, including SQLite WAL/SHM files when present and the object tree. For the simplest consistent recovery point, stop the Server process first. In the native layout, back up `server/config.yaml` and `server/data/` together; `server/logs/` is independent and optional for recovery. In Docker, back up both the configuration and data volumes.

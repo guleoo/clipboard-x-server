@@ -1,4 +1,5 @@
 import { useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ClipboardIcon,
@@ -23,12 +24,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/frame/components/ui/dropdown-menu"
 import { Layout } from "@/frame/layout/normal"
 import { RequestError } from "@/frame/request"
-import { useAuth, useTabs, useTheme } from "@/stores"
+import { useAuth, usePreferences, useTabs, useTheme } from "@/stores"
 
 function SessionGate() {
+  const { t } = useTranslation("common")
   const api = useApi()
   const establish = useAuth((state) => state.establish)
   const clear = useAuth((state) => state.clear)
@@ -37,13 +41,15 @@ function SessionGate() {
     if (query.data) establish(query.data.administrator)
     else if (query.error instanceof RequestError && query.error.status === 401) clear()
   }, [clear, establish, query.data, query.error])
-  if (query.isPending) return <LoadingState label="正在验证会话" />
+  if (query.isPending) return <LoadingState label={t("validatingSession")} />
   if (query.error instanceof RequestError && query.error.status === 401) return <Navigate replace to="/login" />
   if (query.error) return <main className="p-6"><ErrorState error={query.error} retry={() => query.refetch()} /></main>
   return <AuthenticatedLayout />
 }
 
 function AuthenticatedLayout() {
+  const { t, i18n } = useTranslation("common")
+  const setLanguage = usePreferences((state) => state.setLanguage)
   const api = useApi()
   const location = useLocation()
   const navigate = useNavigate()
@@ -54,7 +60,7 @@ function AuthenticatedLayout() {
   const resolved = useTheme((state) => state.resolved)
   const setTheme = useTheme((state) => state.set)
   useEffect(() => {
-    visit({ path: location.pathname, title: location.pathname === "/" ? "剪切板" : "设置" })
+    visit({ path: location.pathname })
   }, [location.pathname, visit])
   const logout = useMutation({
     mutationFn: api.logout,
@@ -73,7 +79,7 @@ function AuthenticatedLayout() {
     </NavLink>
   )
   const navigation = (
-    <nav aria-label="主导航" className="flex items-center">
+    <nav aria-label={t("navigation")} className="flex items-center">
       <NavLink
         to="/"
         end
@@ -82,7 +88,7 @@ function AuthenticatedLayout() {
           isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground",
         ].join(" ")}
       >
-        剪切板
+        {t("clipboard")}
       </NavLink>
     </nav>
   )
@@ -91,34 +97,43 @@ function AuthenticatedLayout() {
       <Button
         variant="ghost"
         size="icon"
-        aria-label="切换浅色或深色主题"
+        aria-label={t("toggleTheme")}
         onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
       >
         {resolved === "dark" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
       </Button>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="打开设置菜单" />}>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={t("openSettings")} />}>
           <SettingsIcon className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuGroup>
-            <DropdownMenuLabel>{administrator?.username ?? "管理员"}</DropdownMenuLabel>
+            <DropdownMenuLabel>{administrator?.username ?? t("administrator")}</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => navigate("/devices")}>
-              <LaptopIcon />设备
+              <LaptopIcon />{t("devices")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/activity")}>
-              <HistoryIcon />活动
+              <HistoryIcon />{t("activity")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/configuration")}>
-              <SlidersHorizontalIcon />配置
+              <SlidersHorizontalIcon />{t("configuration")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/account")}>
-              <UserRoundIcon />账户
+              <UserRoundIcon />{t("account")}
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
+          <DropdownMenuRadioGroup
+            value={i18n.resolvedLanguage ?? "en"}
+            onValueChange={(value) => { if (value === "en" || value === "zh-CN") setLanguage(value) }}
+          >
+            <DropdownMenuLabel>{t("language")}</DropdownMenuLabel>
+            <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="zh-CN">简体中文</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" disabled={logout.isPending} onClick={() => logout.mutate()}>
-            <LogOutIcon />退出登录
+            <LogOutIcon />{t("logout")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

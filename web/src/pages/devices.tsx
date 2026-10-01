@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
+import { useTranslation } from "react-i18next"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { KeyRoundIcon, PlusIcon, PowerIcon, RotateCwIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
@@ -19,6 +20,7 @@ import { Input } from "@/frame/components/ui/input"
 import { Label } from "@/frame/components/ui/label"
 import { Page } from "@/frame/layout"
 import { formatDate, messageOf } from "@/utils/format"
+import { usePreferences } from "@/stores/preferences"
 
 const deviceIcons: Readonly<Record<string, string>> = {
   computer: "computer-symbolic.svg",
@@ -41,6 +43,7 @@ function darkIconColor(light: string): string {
 }
 
 function DeviceHeading({ device }: { readonly device: Device }) {
+  const { t } = useTranslation("management")
   const icon = Object.hasOwn(deviceIcons, device.iconKind)
     ? deviceIcons[device.iconKind]
     : deviceIcons.computer
@@ -57,27 +60,28 @@ function DeviceHeading({ device }: { readonly device: Device }) {
     <div className="flex min-w-0 items-center gap-2">
       <span className="size-5 shrink-0 bg-[var(--device-icon-light)] dark:bg-[var(--device-icon-dark)]"
         style={colors} aria-hidden="true" />
-      <h2 className="min-w-0 truncate font-semibold">{device.tag}</h2>
+      <h2 className="min-w-0 truncate font-semibold">{device.kind === "virtual" ? t("devices.virtualName") : device.tag}</h2>
     </div>
   )
 }
 
 function IssuedKeyDialog({ issued, clear }: { readonly issued?: IssuedDeviceKey; readonly clear: () => void }) {
+  const { t } = useTranslation("management")
   return (
     <Dialog open={Boolean(issued)} onOpenChange={(open) => { if (!open) clear() }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>保存设备 API Key</DialogTitle>
+          <DialogTitle>{t("devices.saveKeyTitle")}</DialogTitle>
           <DialogDescription>
-            此 Key 已绑定到对应的 DeviceId。请把完整 Key 配置到该 Clipboard X 客户端，客户端连接后会同步名称和图标。
+            {t("devices.saveKeyDescription")}
           </DialogDescription>
         </DialogHeader>
         <code className="block break-all rounded-lg border bg-muted p-3 text-xs select-all">{issued?.key}</code>
         <DialogFooter>
           <Button type="button" onClick={async () => {
             if (issued) await navigator.clipboard.writeText(issued.key)
-            toast.success("API Key 已复制")
-          }}>复制 Key</Button>
+            toast.success(t("devices.keyCopied"))
+          }}>{t("devices.copyKey")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -95,6 +99,7 @@ function CreateDeviceDialog({
   readonly onOpenChange: (open: boolean) => void
   readonly onCreate: (deviceId: string) => void
 }) {
+  const { t } = useTranslation("management")
   const [deviceId, setDeviceId] = useState("")
   useEffect(() => {
     if (!open) setDeviceId("")
@@ -109,13 +114,13 @@ function CreateDeviceDialog({
       <DialogContent>
         <form onSubmit={submit}>
           <DialogHeader>
-            <DialogTitle>添加设备</DialogTitle>
+            <DialogTitle>{t("devices.add")}</DialogTitle>
             <DialogDescription>
-              输入客户端生成的 DeviceId。设备名称和图标会在客户端连接后自动同步。
+              {t("devices.createDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-5">
-            <Label htmlFor="device-id">DeviceId</Label>
+            <Label htmlFor="device-id">{t("devices.deviceId")}</Label>
             <Input
               id="device-id"
               className="mt-2 font-mono"
@@ -127,8 +132,8 @@ function CreateDeviceDialog({
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-            <Button type="submit" disabled={pending || !deviceId.trim()}>{pending ? "添加中…" : "添加设备"}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+            <Button type="submit" disabled={pending || !deviceId.trim()}>{pending ? t("devices.adding") : t("devices.add")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -137,6 +142,8 @@ function CreateDeviceDialog({
 }
 
 export function DevicesPage() {
+  const { t } = useTranslation("management")
+  usePreferences((state) => state.offsetMinutes)
   const api = useApi()
   const client = useQueryClient()
   const devices = useQuery({ queryKey: ["devices"], queryFn: () => api.devices() })
@@ -145,17 +152,17 @@ export function DevicesPage() {
   const refresh = () => client.invalidateQueries({ queryKey: ["devices"] })
   const create = useMutation({
     mutationFn: (deviceId: string) => api.createDevice(deviceId),
-    onSuccess: () => { setCreating(false); void refresh(); toast.success("设备已添加") },
+    onSuccess: () => { setCreating(false); void refresh(); toast.success(t("devices.added")) },
     onError: (error) => toast.error(messageOf(error)),
   })
   const update = useMutation({
     mutationFn: ({ device, disabled }: { device: Device; disabled: boolean }) => api.updateDevice(device.id, { disabled }),
-    onSuccess: () => { void refresh(); toast.success("设备状态已更新") },
+    onSuccess: () => { void refresh(); toast.success(t("devices.updated")) },
     onError: (error) => toast.error(messageOf(error)),
   })
   const remove = useMutation({
     mutationFn: (device: Device) => api.deleteDevice(device.id),
-    onSuccess: () => { void refresh(); toast.success("设备已删除") },
+    onSuccess: () => { void refresh(); toast.success(t("devices.deleted")) },
     onError: (error) => toast.error(messageOf(error)),
   })
   const issue = useMutation({
@@ -166,24 +173,24 @@ export function DevicesPage() {
   const revoke = useMutation({
     mutationFn: ({ deviceId, keyId }: { readonly deviceId: string; readonly keyId: string }) =>
       api.revokeDeviceKey(deviceId, keyId),
-    onSuccess: () => { void refresh(); toast.success("API Key 已吊销") },
+    onSuccess: () => { void refresh(); toast.success(t("devices.keyRevoked")) },
     onError: (error) => toast.error(messageOf(error)),
   })
 
   return (
     <Page
-      title="设备"
-      description="先登记客户端生成的 DeviceId，再签发绑定 Key；设备名称和图标由客户端维护并同步。"
+      title={t("devices.title")}
+      description={t("devices.description")}
       action={(
         <Button onClick={() => setCreating(true)}>
-          <PlusIcon className="size-4" />添加设备
+          <PlusIcon className="size-4" />{t("devices.add")}
         </Button>
       )}
     >
       {devices.isPending ? <LoadingState /> : devices.error ? (
         <ErrorState error={devices.error} retry={() => { void devices.refetch() }} />
       ) : !devices.data || devices.data.length === 0 ? (
-        <EmptyState title="还没有设备" description="添加客户端 DeviceId 后，再为它签发访问 Key。" />
+        <EmptyState title={t("devices.emptyTitle")} description={t("devices.emptyDescription")} />
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {devices.data.map((device) => (
@@ -196,20 +203,20 @@ export function DevicesPage() {
                   </div>
                   <code className="mt-1 block truncate text-xs text-muted-foreground">{device.id}</code>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {device.kind === "client" ? "客户端同步资料" : "服务器虚拟设备"} · 最后在线 {formatDate(device.lastSeenAt)}
+                    {device.kind === "client" ? t("devices.clientProfile") : t("devices.virtualProfile")} · {t("devices.lastSeen", { date: formatDate(device.lastSeenAt) })}
                   </p>
                 </div>
               </div>
               {device.kind === "virtual" ? (
                 <div className="mt-5 border-t pt-4 text-sm leading-6 text-muted-foreground">
-                  这是服务器在所有 Channel 中的固定身份，只发送从 Web 添加的内容，不接收其他设备的剪切板内容。
+                  {t("devices.virtualDescription")}
                 </div>
               ) : <>
                 <div className="mt-5 border-t pt-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground">API Keys</p>
-                      <p className="mt-1 text-xs text-muted-foreground">新 Key 只会在签发后显示一次。</p>
+                      <p className="text-xs font-medium text-muted-foreground">{t("devices.keys")}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("devices.keyNotice")}</p>
                     </div>
                     <Button
                       variant="outline"
@@ -218,22 +225,22 @@ export function DevicesPage() {
                       onClick={() => issue.mutate(device)}
                     >
                       {device.keys.some((key) => !key.revokedAt) ? <RotateCwIcon className="size-3.5" /> : <KeyRoundIcon className="size-3.5" />}
-                      {device.keys.some((key) => !key.revokedAt) ? "轮换 Key" : "签发 Key"}
+                      {device.keys.some((key) => !key.revokedAt) ? t("devices.rotate") : t("devices.issue")}
                     </Button>
                   </div>
-                  {device.keys.length === 0 ? <p className="text-xs text-muted-foreground">当前没有 Key</p> : (
+                  {device.keys.length === 0 ? <p className="text-xs text-muted-foreground">{t("devices.noKeys")}</p> : (
                     <ul className="space-y-2">
                       {device.keys.map((key) => (
                         <li key={key.id} className="flex items-center gap-2 rounded-lg bg-muted/55 px-3 py-2 text-xs">
-                          <span className="shrink-0 text-muted-foreground">Key ID</span>
+                          <span className="shrink-0 text-muted-foreground">{t("devices.keyId")}</span>
                           <code className="min-w-0 flex-1 truncate">{key.id}</code>
-                          <span className="text-muted-foreground">{key.revokedAt ? "已吊销" : key.expiresAt ? "重叠期" : "当前"}</span>
+                          <span className="text-muted-foreground">{key.revokedAt ? t("devices.revoked") : key.expiresAt ? t("devices.overlap") : t("devices.current")}</span>
                           {!key.revokedAt ? (
                             <ConfirmAction
-                              trigger={<Button variant="ghost" size="xs">吊销</Button>}
-                              title="吊销此 API Key？"
-                              description="使用此 Key 的设备会立即失去访问权限。"
-                              confirmLabel="吊销"
+                              trigger={<Button variant="ghost" size="xs">{t("devices.revoke")}</Button>}
+                              title={t("devices.revokeTitle")}
+                              description={t("devices.revokeDescription")}
+                              confirmLabel={t("devices.revoke")}
                               pending={revoke.isPending}
                               onConfirm={() => revoke.mutate({ deviceId: device.id, keyId: key.id })}
                             />
@@ -245,13 +252,13 @@ export function DevicesPage() {
                 </div>
                 <div className="mt-4 flex flex-wrap justify-end gap-2 border-t pt-4">
                   <Button variant="outline" size="sm" onClick={() => update.mutate({ device, disabled: !device.disabledAt })}>
-                    <PowerIcon className="size-3.5" />{device.disabledAt ? "启用" : "禁用"}
+                    <PowerIcon className="size-3.5" />{device.disabledAt ? t("devices.enable") : t("devices.disable")}
                   </Button>
                   <ConfirmAction
-                    trigger={<Button variant="destructive" size="sm"><Trash2Icon className="size-3.5" />删除</Button>}
-                    title={`删除设备“${device.tag}”？`}
-                    description="设备将被归档，所有 Key 会被吊销，并从全部 Channel 移除。历史条目的来源信息会保留。"
-                    confirmLabel="删除设备"
+                    trigger={<Button variant="destructive" size="sm"><Trash2Icon className="size-3.5" />{t("common.delete")}</Button>}
+                    title={t("devices.deleteTitle", { name: device.tag })}
+                    description={t("devices.deleteDescription")}
+                    confirmLabel={t("devices.deleteConfirm")}
                     pending={remove.isPending}
                     onConfirm={() => remove.mutate(device)}
                   />

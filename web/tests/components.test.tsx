@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
 
 if (!("document" in globalThis)) GlobalRegistrator.register({ url: "http://localhost" })
+const { i18n } = await import("../src/i18n")
 const { cleanup, fireEvent, render, screen } = await import("@testing-library/react")
 const { ConfirmAction } = await import("../src/components/domain/confirm-action")
 const { EmptyState, ErrorState, LoadingState } = await import("../src/components/domain/states")
@@ -16,6 +17,7 @@ const {
 } = await import("../src/frame/components/ui/dropdown-menu")
 
 afterEach(cleanup)
+beforeEach(async () => { await i18n.changeLanguage("en") })
 
 describe("domain components", () => {
   test("exposes loading, empty and retry states to assistive technology", () => {
@@ -27,7 +29,7 @@ describe("domain components", () => {
     empty.unmount()
     const retry = mock(() => undefined)
     render(<ErrorState error={new Error("连接失败")} retry={retry} />)
-    fireEvent.click(screen.getByRole("button", { name: "重试" }))
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }))
     expect(retry).toHaveBeenCalledTimes(1)
   })
 

@@ -1,4 +1,4 @@
-import { afterEach, expect, mock, test } from "bun:test"
+import { afterEach, beforeEach, expect, mock, test } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import type { Client } from "../src/api/client"
 import type { Channel, ClipboardItem } from "../src/api/schemas"
@@ -9,7 +9,11 @@ const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query
 const { act, cleanup, fireEvent, render, screen, waitFor, within } = await import("@testing-library/react")
 const { MemoryRouter } = await import("react-router")
 const { ApiProvider } = await import("../src/api")
+await import("../src/i18n")
+const { i18n } = await import("../src/frame/common/i18n")
 const { ClipboardPage } = await import("../src/pages/clipboard")
+
+beforeEach(async () => { await i18n.changeLanguage("en") })
 
 const originalWidth = window.innerWidth
 const originalObserver = Object.getOwnPropertyDescriptor(window, "IntersectionObserver")
@@ -90,9 +94,9 @@ test("keeps clipboard cards in an independently scrollable main region", async (
     </ApiProvider>,
   )
 
-  const cardRegion = await screen.findByLabelText("剪切板内容")
+  const cardRegion = await screen.findByLabelText("Clipboard content")
   expect(cardRegion.classList.contains("overflow-y-auto")).toBe(true)
-  expect(screen.queryByText("活动")).toBeNull()
+  expect(screen.queryByText("Activity")).toBeNull()
 })
 
 test("places the newest cards across the top before filling each masonry column", async () => {
@@ -157,7 +161,7 @@ test("loads the next page near the scroll bottom and resets pagination when sear
   )
 
   await screen.findByText("Device 3")
-  await waitFor(() => expect(observer.root).toBe(screen.getByLabelText("剪切板内容")))
+  await waitFor(() => expect(observer.root).toBe(screen.getByLabelText("Clipboard content")))
   expect(api.items).toHaveBeenNthCalledWith(1, { channelId: channel.id, limit: 100 })
 
   act(() => observer.intersect())
@@ -168,11 +172,11 @@ test("loads the next page near the scroll bottom and resets pagination when sear
   act(() => observer.intersect())
   await screen.findByText("Device 1")
   expect(api.items).toHaveBeenNthCalledWith(3, { channelId: channel.id, limit: 100, cursor: "last" })
-  expect(screen.queryByRole("button", { name: "加载更多" })).toBeNull()
+  expect(screen.queryByRole("button", { name: "Load more" })).toBeNull()
 
-  const scrollRegion = screen.getByLabelText("剪切板内容")
+  const scrollRegion = screen.getByLabelText("Clipboard content")
   scrollRegion.scrollTop = 500
-  fireEvent.change(screen.getByPlaceholderText("搜索当前 Channel"), { target: { value: "later" } })
+  fireEvent.change(screen.getByPlaceholderText("Search this channel"), { target: { value: "later" } })
   await screen.findByText("Device 9")
   expect(scrollRegion.scrollTop).toBe(0)
   expect(screen.queryByText("Device 3")).toBeNull()
@@ -206,10 +210,40 @@ test("keeps existing cards and allows retry when a later page fails", async () =
   )
 
   await screen.findByText("Device 3")
-  fireEvent.click(screen.getByRole("button", { name: "加载更多" }))
-  await screen.findByRole("button", { name: "加载失败，重试" })
+  fireEvent.click(screen.getByRole("button", { name: "Load more" }))
+  await screen.findByRole("button", { name: "Loading failed, retry" })
   expect(screen.getByText("Device 3")).toBeTruthy()
-  fireEvent.click(screen.getByRole("button", { name: "加载失败，重试" }))
+  fireEvent.click(screen.getByRole("button", { name: "Loading failed, retry" }))
   await screen.findByText("Device 2")
   expect(api.items).toHaveBeenCalledTimes(3)
+})
+
+test("switches clipboard labels immediately without replacing channel or item data", async () => {
+  const api = {
+    channels: mock(async () => [channel]),
+    devices: mock(async () => []),
+    items: mock(async () => ({ items: [item(3)], cursor: "", hasMore: false })),
+    transfers: mock(async () => []),
+  }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <ApiProvider client={api as unknown as Client}>
+      <QueryClientProvider client={query}>
+        <MemoryRouter initialEntries={["/?channelId=channel-1"]}>
+          <ClipboardPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ApiProvider>,
+  )
+
+  await screen.findByText("Device 3")
+  expect(screen.getByPlaceholderText("Search this channel")).toBeTruthy()
+  expect(screen.getByText("0 members")).toBeTruthy()
+  await act(async () => { await i18n.changeLanguage("zh-CN") })
+  expect(screen.getByPlaceholderText("搜索当前频道")).toBeTruthy()
+  expect(screen.getByLabelText("剪切板内容")).toBeTruthy()
+  expect(screen.getByText("0 个成员")).toBeTruthy()
+  expect(screen.getByText("Device 3")).toBeTruthy()
+  expect(screen.getAllByText("Pictures").length).toBeGreaterThan(0)
+  expect(api.items).toHaveBeenCalledTimes(1)
 })

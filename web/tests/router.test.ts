@@ -25,7 +25,7 @@ describe("route engine", () => {
   })
 
   test("publishes activity as a settings route and redirects the legacy transfer path", () => {
-    const snapshot = Engine.create(application).get()
+    const snapshot = Engine.create(application()).get()
     expect(snapshot.routes.find((route) => route.id === "app.activity")).toMatchObject({
       path: "/activity",
       target: { kind: "component", component: "transfers" },
