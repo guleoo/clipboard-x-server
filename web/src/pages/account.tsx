@@ -29,6 +29,7 @@ export function AccountPage() {
       clear()
       queryClient.resetQueries({ queryKey: ["session"] })
     },
+    onError: (error) => toast.error(messageOf(error)),
   })
   const submit = (event: FormEvent) => {
     event.preventDefault()

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -28,7 +28,7 @@ import { Progress } from "@/frame/components/ui/progress"
 import { LocalizedError } from "@/frame/common/error"
 import { i18n } from "@/frame/common/i18n"
 import { usePreferences } from "@/stores"
-import { formatBytes, formatDate, formatProgress, messageOf } from "@/utils/format"
+import { errorMessage, formatBytes, formatDate, formatProgress, messageOf } from "@/utils/format"
 
 async function clipboardImage(blob: Blob, mimeType: string): Promise<Blob> {
   const source = blob.type.startsWith("image/") ? blob : new Blob([blob], { type: mimeType })
@@ -82,9 +82,28 @@ async function downloadContent(api: ReturnType<typeof useApi>, item: ClipboardIt
   link.download = `${item.id}.${content.mimeType.split("/")[1]?.split(";")[0] ?? "bin"}`
   link.click()
   URL.revokeObjectURL(url)
+  toast.success(i18n.t("clipboard:downloadStarted"))
 }
 
 const terminalTransferStates = new Set(["completed", "failed", "cancelled", "expired"])
+
+function useTransferFeedback(transferId: string | undefined, transfer: Transfer | undefined, error: unknown) {
+  const reported = useRef<string | null>(null)
+  const { t } = useTranslation("clipboard")
+  useEffect(() => {
+    const state = error ? "error" : transfer?.state
+    if (!transferId || !state || (!error && !terminalTransferStates.has(state))) return
+    const result = `${transferId}:${state}`
+    if (reported.current === result) return
+    reported.current = result
+    const options = { id: `content-transfer-${transferId}` }
+    if (error) toast.error(messageOf(error), options)
+    else if (state === "completed") toast.success(t("contentReady"), options)
+    else if (state === "cancelled") toast.info(t("contentCancelled"), options)
+    else if (state === "expired") toast.error(errorMessage("transfer_expired"), options)
+    else toast.error(transfer?.error.code ? errorMessage(transfer.error.code) : t("contentFailed"), options)
+  }, [transferId, transfer?.state, transfer?.error.code, error, t])
+}
 
 function imageContentOf(item: ClipboardItem): ClipboardRepresentation | undefined {
   const previewContentId = item.previews.find((preview) => preview.mimeType.startsWith("image/"))?.contentId
@@ -160,7 +179,10 @@ function ContentAction({ item, content, available = false }: {
   const [transferId, setTransferId] = useState<string>()
   const request = useMutation({
     mutationFn: () => api.requestContent(item.id, content.id),
-    onSuccess: ({ transfer }) => setTransferId(transfer.id),
+    onSuccess: ({ transfer }) => {
+      setTransferId(transfer.id)
+      toast.info(t("contentRequested"), { id: `content-transfer-${transfer.id}` })
+    },
     onError: (error) => toast.error(messageOf(error)),
   })
   const transfer = useQuery({
@@ -172,6 +194,7 @@ function ContentAction({ item, content, available = false }: {
       return value && ["completed", "failed", "cancelled", "expired"].includes(value.state) ? false : 1_500
     },
   })
+  useTransferFeedback(transferId, transfer.data ?? request.data?.transfer, transfer.error)
   const ready = available || content.availability === "available" || transfer.data?.state === "completed"
   if (ready) {
     const text = content.mimeType.startsWith("text/")
@@ -232,6 +255,7 @@ export function ClipboardItemCard({ item, transfer, remove }: {
     onSuccess: ({ transfer: requested }) => {
       setImageTransferId(requested.id)
       queryClient.setQueryData(["transfer", requested.id], requested)
+      toast.info(t("contentRequested"), { id: `content-transfer-${requested.id}` })
     },
     onError: (error) => toast.error(messageOf(error)),
   })
@@ -245,6 +269,7 @@ export function ClipboardItemCard({ item, transfer, remove }: {
     },
   })
   const requestedTransfer = imageTransfer.data ?? requestImage.data?.transfer
+  useTransferFeedback(imageTransferId, requestedTransfer, imageTransfer.error)
   const imageReady = imageContent?.availability === "available" || requestedTransfer?.state === "completed"
   const imageLoading = requestImage.isPending || Boolean(requestedTransfer && !terminalTransferStates.has(requestedTransfer.state))
   const displayedTransfer = requestedTransfer ?? transfer

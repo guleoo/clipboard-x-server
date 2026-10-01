@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { LanguageSelector } from "@/components/domain/language-selector"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ClipboardIcon } from "lucide-react"
@@ -48,7 +49,9 @@ export function LoginPage() {
       establish(session.administrator)
       queryClient.setQueryData(["session"], session)
       await navigate("/", { replace: true })
+      toast.success(t("signedIn"))
     },
+    onError: (error) => toast.error(messageOf(error, "login")),
   })
   const submit = (event: FormEvent) => {
     event.preventDefault()

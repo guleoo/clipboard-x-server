@@ -17,6 +17,7 @@ export default {
     deleteConfirm: "删除设备", saveKeyTitle: "保存设备 API Key",
     saveKeyDescription: "此 Key 已绑定到对应的 DeviceId。请把完整 Key 配置到该 Clipboard X 客户端，客户端连接后会同步名称和图标。",
     copyKey: "复制 Key", keyCopied: "API Key 已复制",
+    keyCopyFailed: "无法复制 API Key，请检查浏览器的剪切板权限。",
   },
   transfers: {
     title: "活动", description: "查看内容发布与按需同步的进度、参与设备和失败原因。",

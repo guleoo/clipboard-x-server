@@ -178,6 +178,7 @@ export function ConfigurationPage() {
       setError(null)
       toast.success(t("configuration.saved"))
     },
+    onError: (error) => toast.error(messageOf(error)),
   })
   function set<Key extends keyof Draft>(key: Key, value: Draft[Key]) {
     setDraft((current) => current && { ...current, [key]: value })
@@ -195,6 +196,7 @@ export function ConfigurationPage() {
       else mutation.mutate(next)
     } catch (cause) {
       setError(cause)
+      toast.error(messageOf(cause))
     }
   }
 

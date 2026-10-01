@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, expect, mock, test } from "bun:test"
+import { afterEach, beforeEach, expect, mock, spyOn, test } from "bun:test"
+import { toast } from "sonner"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import type { Client } from "../src/api/client"
 import type { ClipboardItem, Transfer } from "../src/api/schemas"
@@ -174,4 +175,82 @@ test("updates clipboard timestamps immediately when the UTC offset changes", () 
   act(() => usePreferences.setState({ offsetMinutes: 480 }))
   expect(view.container.querySelector("time")?.textContent).toContain("8:00 AM")
   expect(screen.getByText("Laptop")).toBeTruthy()
+})
+
+test.each([
+  ["completed", "success", "Content synced"],
+  ["failed", "error", "Content sync failed. Please try again."],
+  ["expired", "error", "This transfer has expired. Start a new transfer."],
+  ["cancelled", "info", "Content sync cancelled"],
+] as const)("reports a requested image transfer ending in %s only once", async (state, kind, message) => {
+  const feedback = spyOn(toast, kind)
+  const api = {
+    requestContent: mock(async () => ({ transfer: transfer("waiting-for-peer") })),
+    transfer: mock(async () => transfer(state)),
+  }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  try {
+    render(<ApiProvider client={api as unknown as Client}><QueryClientProvider client={query}>
+      <ClipboardItemCard item={item} remove={() => undefined} />
+    </QueryClientProvider></ApiProvider>)
+    expect(feedback).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "View clipboard content" }))
+    await waitFor(() => expect(feedback).toHaveBeenCalledWith(message, { id: "content-transfer-transfer-1" }))
+    const reports = () => feedback.mock.calls.filter((call) => call[0] === message).length
+    expect(reports()).toBe(1)
+    await act(async () => { await query.invalidateQueries({ queryKey: ["transfer", "transfer-1"] }) })
+    await act(async () => { await i18n.changeLanguage("zh-CN") })
+    expect(reports()).toBe(1)
+  } finally {
+    cleanup()
+    feedback.mockRestore()
+  }
+})
+
+test("reports a content request's polling failure without repeating it on each retry", async () => {
+  const feedback = spyOn(toast, "error")
+  const api = {
+    requestContent: mock(async () => ({ transfer: transfer("waiting-for-peer") })),
+    transfer: mock(async () => { throw new Error("Read failed") }),
+  }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const fileItem: ClipboardItem = { ...item, contents: [{ ...item.contents[0]!, mimeType: "application/octet-stream" }], previews: [] }
+  try {
+    render(<ApiProvider client={api as unknown as Client}><QueryClientProvider client={query}>
+      <ClipboardItemCard item={fileItem} remove={() => undefined} />
+    </QueryClientProvider></ApiProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Get content" }))
+    await waitFor(() => expect(feedback).toHaveBeenCalledWith("Something went wrong. Please try again.", { id: "content-transfer-transfer-1" }))
+    await act(async () => { await query.invalidateQueries({ queryKey: ["transfer", "transfer-1"] }) })
+    expect(feedback).toHaveBeenCalledTimes(1)
+  } finally {
+    cleanup()
+    feedback.mockRestore()
+  }
+})
+
+test("reports download initiation only after receiving content and starting the browser download", async () => {
+  const feedback = spyOn(toast, "success")
+  const createUrl = spyOn(URL, "createObjectURL").mockReturnValue("blob:test-download")
+  const revokeUrl = spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+  const click = spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined)
+  const content = mock(async () => new Blob(["image"], { type: "image/png" }))
+  const availableItem: ClipboardItem = { ...item, contents: item.contents.map((representation) => ({ ...representation, availability: "available" })) }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  try {
+    render(<ApiProvider client={{ content } as unknown as Client}><QueryClientProvider client={query}>
+      <ClipboardItemCard item={availableItem} remove={() => undefined} />
+    </QueryClientProvider></ApiProvider>)
+    fireEvent.click(screen.getByRole("button", { name: "Download full content" }))
+    await waitFor(() => expect(feedback).toHaveBeenCalledWith("Download started"))
+    expect(content).toHaveBeenCalledWith(item.id, "original")
+    expect(click).toHaveBeenCalledTimes(1)
+    expect(revokeUrl).toHaveBeenCalledWith("blob:test-download")
+  } finally {
+    cleanup()
+    feedback.mockRestore()
+    createUrl.mockRestore()
+    revokeUrl.mockRestore()
+    click.mockRestore()
+  }
 })

@@ -35,6 +35,7 @@ function ChannelDialog({ channel, saved }: { readonly channel?: Channel; readonl
       if (!channel) setName("")
       toast.success(t(channel ? "channelUpdated" : "channelCreated"))
     },
+    onError: (error) => toast.error(messageOf(error)),
   })
   const submit = (event: FormEvent) => {
     event.preventDefault()

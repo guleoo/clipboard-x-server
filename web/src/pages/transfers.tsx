@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { BanIcon, RefreshCwIcon } from "lucide-react"
 import { toast } from "sonner"
+import { useRefresh } from "@/components/domain/use-refresh"
 import { useApi, type Transfer } from "@/api"
 import { ConfirmAction } from "@/components/domain/confirm-action"
 import { EmptyState, ErrorState, LoadingState } from "@/components/domain/states"
@@ -25,6 +26,7 @@ export function TransfersPage() {
     queryFn: () => api.transfers(200),
     refetchInterval: (query) => query.state.data?.some((transfer) => !terminalStates.has(transfer.state)) ? 2_000 : 15_000,
   })
+  const refresh = useRefresh(() => transfers.refetch(), "activity")
   const cancel = useMutation({
     mutationFn: (transfer: Transfer) => api.cancelTransfer(transfer.id),
     onSuccess: () => {
@@ -39,7 +41,7 @@ export function TransfersPage() {
     <Page
       title={t("transfers.title")}
       description={t("transfers.description")}
-      action={<Button variant="outline" onClick={() => transfers.refetch()} disabled={transfers.isFetching}><RefreshCwIcon className={transfers.isFetching ? "animate-spin" : ""} />{t("common.refresh")}</Button>}
+      action={<Button variant="outline" onClick={refresh} disabled={transfers.isFetching}><RefreshCwIcon className={transfers.isFetching ? "animate-spin" : ""} />{t("common.refresh")}</Button>}
     >
       {transfers.isPending ? <LoadingState /> : transfers.error ? <ErrorState error={transfers.error} retry={() => transfers.refetch()} />
         : transfers.data.length === 0 ? <EmptyState title={t("transfers.emptyTitle")} description={t("transfers.emptyDescription")} />

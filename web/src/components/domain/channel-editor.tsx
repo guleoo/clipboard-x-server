@@ -54,6 +54,7 @@ export function ChannelEditor({ channel, devices, trigger, saved }: {
       saved(channelId)
       toast.success(t(channel ? "channelUpdated" : "channelCreated"))
     },
+    onError: (error) => toast.error(messageOf(error)),
   })
   const toggle = (deviceId: string, checked: boolean) => {
     setMembers((current) => {

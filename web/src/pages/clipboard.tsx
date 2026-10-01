@@ -9,6 +9,7 @@ import { ChannelEditor } from "@/components/domain/channel-editor"
 import { ClipboardItemCard } from "@/components/domain/clipboard-item"
 import { ConfirmAction } from "@/components/domain/confirm-action"
 import { PublishDialog } from "@/components/domain/publish-dialog"
+import { useRefresh } from "@/components/domain/use-refresh"
 import { ErrorState, LoadingState } from "@/components/domain/states"
 import { Button } from "@/frame/components/ui/button"
 import { Input } from "@/frame/components/ui/input"
@@ -119,6 +120,7 @@ export function ClipboardPage() {
     enabled: Boolean(current),
   })
   const visibleItems = useMemo(() => items.data?.pages.flatMap((page) => page.items) ?? [], [items.data])
+  const refresh = useRefresh(() => items.refetch(), JSON.stringify([current?.id, queryText]))
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0
   }, [current?.id, queryText])
@@ -228,9 +230,7 @@ export function ClipboardPage() {
           {current ? (
             <>
               <Button variant="ghost" size="icon-sm" title={t("refresh")} aria-label={t("refresh")}
-                disabled={items.isFetching} onClick={() => {
-                  void items.refetch().then(({ error }) => { if (error) toast.error(messageOf(error)) })
-                }}>
+                disabled={items.isFetching} onClick={refresh}>
                 <RefreshCwIcon className={items.isFetching ? "size-4 animate-spin" : "size-4"} aria-hidden="true" />
               </Button>
               <ChannelEditor

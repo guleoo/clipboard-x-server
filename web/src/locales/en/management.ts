@@ -17,6 +17,7 @@ export default {
     deleteConfirm: "Delete device", saveKeyTitle: "Save the device API key",
     saveKeyDescription: "This key is bound to the device's DeviceId. Configure the complete key in that Clipboard X client. Its name and icon synchronize when it connects.",
     copyKey: "Copy key", keyCopied: "API key copied",
+    keyCopyFailed: "Unable to copy the API key. Check your browser's clipboard permissions.",
   },
   transfers: {
     title: "Activity", description: "View publishing and on-demand synchronization progress, participating devices, and failure reasons.",

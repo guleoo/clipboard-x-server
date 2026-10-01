@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/frame/components/ui/select"
 import { usePreferences } from "@/stores/preferences"
 
@@ -9,7 +10,12 @@ export function LanguageSelector() {
     <Select
       items={[{ value: "en", label: "English" }, { value: "zh-CN", label: "简体中文" }]}
       value={i18n.resolvedLanguage ?? "en"}
-      onValueChange={(value) => { if (value === "en" || value === "zh-CN") setLanguage(value) }}
+      onValueChange={(value) => {
+        if ((value === "en" || value === "zh-CN") && value !== i18n.resolvedLanguage) {
+          setLanguage(value)
+          toast.success(i18n.t("languageUpdated", { lng: value }))
+        }
+      }}
     >
       <SelectTrigger aria-label={t("language")}><SelectValue /></SelectTrigger>
       <SelectContent>

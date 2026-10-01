@@ -78,6 +78,7 @@ export function PublishDialog({ channel, published }: {
       published(publication)
       toast.success(t("publishedTo", { name: channel.name }))
     },
+    onError: (error) => toast.error(messageOf(error)),
   })
   const ready = mode === "text" ? text.length > 0 : Boolean(file)
   return (

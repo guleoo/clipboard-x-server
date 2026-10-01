@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ClipboardIcon,
@@ -30,6 +31,7 @@ import {
 import { Layout } from "@/frame/layout/normal"
 import { RequestError } from "@/frame/request"
 import { useAuth, usePreferences, useTabs, useTheme } from "@/stores"
+import { messageOf } from "@/utils/format"
 
 function SessionGate() {
   const { t } = useTranslation("common")
@@ -68,7 +70,9 @@ function AuthenticatedLayout() {
       clear()
       queryClient.clear()
       await navigate("/login", { replace: true })
+      toast.success(t("signedOut"))
     },
+    onError: (error) => toast.error(messageOf(error)),
   })
   const brand = (
     <NavLink to="/" className="flex shrink-0 items-center gap-2 rounded-md px-1.5 py-1 font-semibold">
@@ -98,7 +102,11 @@ function AuthenticatedLayout() {
         variant="ghost"
         size="icon"
         aria-label={t("toggleTheme")}
-        onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
+        onClick={() => {
+          const next = resolved === "dark" ? "light" : "dark"
+          setTheme(next)
+          toast.success(t(next === "dark" ? "darkThemeUpdated" : "lightThemeUpdated"))
+        }}
       >
         {resolved === "dark" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
       </Button>
@@ -125,7 +133,12 @@ function AuthenticatedLayout() {
           <DropdownMenuSeparator />
           <DropdownMenuRadioGroup
             value={i18n.resolvedLanguage ?? "en"}
-            onValueChange={(value) => { if (value === "en" || value === "zh-CN") setLanguage(value) }}
+            onValueChange={(value) => {
+              if ((value === "en" || value === "zh-CN") && value !== i18n.resolvedLanguage) {
+                setLanguage(value)
+                toast.success(i18n.t("languageUpdated", { lng: value }))
+              }
+            }}
           >
             <DropdownMenuLabel>{t("language")}</DropdownMenuLabel>
             <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>

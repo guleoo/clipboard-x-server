@@ -79,8 +79,13 @@ function IssuedKeyDialog({ issued, clear }: { readonly issued?: IssuedDeviceKey;
         <code className="block break-all rounded-lg border bg-muted p-3 text-xs select-all">{issued?.key}</code>
         <DialogFooter>
           <Button type="button" onClick={async () => {
-            if (issued) await navigator.clipboard.writeText(issued.key)
-            toast.success(t("devices.keyCopied"))
+            if (!issued) return
+            try {
+              await navigator.clipboard.writeText(issued.key)
+              toast.success(t("devices.keyCopied"))
+            } catch {
+              toast.error(t("devices.keyCopyFailed"))
+            }
           }}>{t("devices.copyKey")}</Button>
         </DialogFooter>
       </DialogContent>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { LanguageSelector } from "./language-selector"
 import { DateTime } from "@/frame/common/date"
 import { Input } from "@/frame/components/ui/input"
@@ -32,7 +33,10 @@ export function DisplayPreferences() {
     setOffsetText(text)
     setInvalid(false)
     const minutes = offsetOf(text)
-    if (minutes !== null) setOffset(minutes)
+    if (minutes !== null && minutes !== offsetMinutes) {
+      setOffset(minutes)
+      toast.success(t("utcOffsetUpdated", { offset: DateTime.offsetLabel(minutes) }), { id: "utc-offset-updated" })
+    }
   }
   return (
     <section className="surface-raised mb-6 max-w-4xl p-5 sm:p-6">
