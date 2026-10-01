@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { CleanupOptions, ManagedConfigurationSchema, config } from "../src/config";
-import { db } from "../src/db";
+import { Database, db } from "../src/db";
+import { databaseConfig } from "../src/frame/db";
 import { configLoadOptions, loadYamlConfigSync } from "../src/frame/config";
 import { createApp, generateSpecs, mountRoutes } from "../src/frame/hono";
 import { AuthError } from "../src/frame/security";
@@ -15,6 +16,18 @@ import { operationResponseSchemas } from "../src/dto/response";
 import { routes } from "../src/route";
 
 describe("Clipboard X product contracts", () => {
+  it("reports version 1.0.0 consistently across packages, status and OpenAPI", async () => {
+    Database.init();
+    Database.migrate({ migrationsFolder: databaseConfig.migrationsFolder });
+    const { clipboardService } = await import("../src/service/clipboard");
+    expect(clipboardService.status()).toMatchObject({ apiVersion: 1, serverVersion: "1.0.0" });
+    for (const file of ["package.json", "server/package.json", "web/package.json"]) {
+      expect(JSON.parse(readFileSync(join(import.meta.dir, "../..", file), "utf8")).version).toBe("1.0.0");
+    }
+    const specification = JSON.parse(readFileSync(join(import.meta.dir, "../openapi/openapi.json"), "utf8"));
+    expect(specification.info.version).toBe("1.0.0");
+  });
+
   it("exposes one process-wide configuration and database facade", async () => {
     const [{ config: secondConfig }, { db: secondDb }] = await Promise.all([
       import("../src/config"),

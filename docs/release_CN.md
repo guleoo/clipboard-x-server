@@ -14,22 +14,22 @@
 2. 创建指向该提交的 tag 并推送。正式版 tag 必须恰好为 `v<package.version>`；预发布版 tag 在版本号后添加 `-beta.1` 等后缀。已发布的 tag 不应移动。
 3. 推送 tag 后，GitHub 会核对 tag 与 `package.json` 中的版本、验证项目、构建并冒烟测试六份压缩包，确认每份压缩包都存在且可读取，然后生成 `SHA256SUMS` 并创建 GitHub Release。独立的任务还会构建 Linux amd64/arm64 镜像并推送到 `ghcr.io/guleoo/clipboard-x-server`。两项发布任务都只会在全部原生程序包构建成功后启动。
 
-以当前 `0.1.0` 版本为例，推送版本提交后，可这样发布 beta：
+以当前 `1.0.0` 版本为例，推送版本提交后，可这样发布 beta：
 
 ```sh
-git tag -a v0.1.0-beta.1 -m "Beta 1"
-git push clipboard-x-server v0.1.0-beta.1
+git tag -a v1.0.0-beta.1 -m "Beta 1"
+git push clipboard-x-server v1.0.0-beta.1
 ```
 
-发布正式版时，改为创建并推送 `v0.1.0`：
+发布正式版时，改为创建并推送 `v1.0.0`：
 
 ```sh
-git tag -a v0.1.0 -m "Release 0.1.0"
-git push clipboard-x-server v0.1.0
+git tag -a v1.0.0 -m "Release 1.0.0"
+git push clipboard-x-server v1.0.0
 ```
 
 `clipboard-x-server` 是当前检出目录的 Git 远端名称；如果你的远端名称不同，请替换它。发布新的程序版本时，需要使用匹配的新提交和 tag。
 
-镜像始终带有版本 tag，例如 `v0.1.0-beta.1` 或 `v0.1.0`。预发布版 tag（包含 `-`）会将 GitHub Release 标为预发布版，不更新镜像的 `latest`；正式版 tag 还会更新 `latest`。除六份平台程序包和 `SHA256SUMS` 外，GitHub 还会自动提供源码压缩包。
+镜像始终带有版本 tag，例如 `v1.0.0-beta.1` 或 `v1.0.0`。预发布版 tag（包含 `-`）会将 GitHub Release 标为预发布版，不更新镜像的 `latest`；正式版 tag 还会更新 `latest`。除六份平台程序包和 `SHA256SUMS` 外，GitHub 还会自动提供源码压缩包。
 
 GitHub Release 任务与 GHCR 任务互相独立：在程序包构建成功后，任一发布任务仍可能单独失败。对于已经存在 GitHub Release 的 tag，重新运行工作流不会覆盖已有 Release；`gh release create` 会因 tag 对应的 Release 已存在而失败。首次发布 GHCR 镜像时，仓库所有者可能还需要在 GitHub Packages 中把包的可见性设为 **Public**，匿名用户才能拉取镜像。

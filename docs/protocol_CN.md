@@ -107,7 +107,7 @@ API Key。各接口正常返回时的状态码见下文。
 ```json
 {
   "apiVersion": 1,
-  "serverVersion": "0.1.0",
+  "serverVersion": "1.0.0",
   "state": "online",
   "capabilities": {
     "supportedMimeTypes": ["text/plain;charset=utf-8", "image/png"],
