@@ -133,7 +133,7 @@ interface NumberFieldProps {
 }
 
 function NumberField({
-  id, label, description, value, optional, disabled, min = 0.000001, max, step = "1", onChange,
+  id, label, description, value, optional, disabled, min = 1, max, step = "1", onChange,
 }: NumberFieldProps) {
   const { t } = useTranslation("management")
   return (
@@ -243,7 +243,7 @@ export function ConfigurationPage() {
                   description={t("configuration.descriptions.maxItemsPerDevicePerChannel")} optional value={draft.maxItemsPerDevicePerChannel}
                   onChange={(value) => set("maxItemsPerDevicePerChannel", value)} />
                 <NumberField id="cleanup-age" label={t("configuration.fields.maxAge")} description={t("configuration.descriptions.maxAge")}
-                  optional step="any" value={draft.maxAgeDays} onChange={(value) => set("maxAgeDays", value)} />
+                  optional min={0.000001} step="any" value={draft.maxAgeDays} onChange={(value) => set("maxAgeDays", value)} />
               </div>
             </div>
           </section>

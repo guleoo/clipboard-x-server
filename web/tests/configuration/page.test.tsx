@@ -111,6 +111,42 @@ test("enabling periodic cleanup confirms and submits the retention policy", asyn
   expect(screen.queryByText("Apply a stricter cleanup policy?")).toBeNull()
 })
 
+test("accepts integer item limits without an offset step and preserves fractional durations", async () => {
+  const { updateCleanup } = renderPage(defaults)
+  await waitFor(() => expect(input("cleanup-interval").value).toBe("60"))
+  const fields = ["cleanup-total", "cleanup-channel", "cleanup-device", "cleanup-device-channel"]
+  for (const id of fields) {
+    const field = input(id)
+    expect(field.min).toBe("1")
+    expect(field.step).toBe("1")
+    fireEvent.change(field, { target: { value: "1000" } })
+    expect(field.checkValidity()).toBe(true)
+    fireEvent.change(field, { target: { value: "0" } })
+    expect(field.checkValidity()).toBe(false)
+    fireEvent.change(field, { target: { value: "1000.0001" } })
+    expect(field.checkValidity()).toBe(false)
+    fireEvent.change(field, { target: { value: "1000" } })
+  }
+  fireEvent.change(input("cleanup-interval"), { target: { value: "1.5" } })
+  fireEvent.change(input("cleanup-age"), { target: { value: "0.5" } })
+  expect(input("cleanup-interval").checkValidity()).toBe(true)
+  expect(input("cleanup-age").checkValidity()).toBe(true)
+  const form = screen.getByRole("button", { name: "Save cleanup policy" }).closest("form")!
+  expect(form.checkValidity()).toBe(true)
+  fireEvent.submit(form)
+  await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith({
+    ...defaults,
+    intervalMillis: 90_000,
+    clipboard: {
+      maxItems: 1000,
+      maxItemsPerChannel: 1000,
+      maxItemsPerDevice: 1000,
+      maxItemsPerDevicePerChannel: 1000,
+      maxAgeMillis: 43_200_000,
+    },
+  }))
+})
+
 test("loosening one limit saves without a destructive confirmation", async () => {
   const initial: CleanupConfiguration = {
     ...defaults,
