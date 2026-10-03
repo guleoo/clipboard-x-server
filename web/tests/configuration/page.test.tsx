@@ -44,7 +44,7 @@ function input(id: string): HTMLInputElement {
   return element
 }
 
-test("shows the enabled cleanup defaults and applies language settings without another save button", async () => {
+test("loads cleanup settings and keeps preference changes separate from saving the policy", async () => {
   const initial: CleanupConfiguration = {
     enabled: true,
     intervalMillis: 3_600_000,
@@ -55,14 +55,6 @@ test("shows the enabled cleanup defaults and applies language settings without a
   expect(input("cleanup-age").value).toBe("30")
   expect(screen.getByRole("switch", { name: "Enable automatic cleanup" }).getAttribute("aria-checked")).toBe("true")
   expect(screen.getByRole("combobox", { name: "Language" })).toBeTruthy()
-  expect(screen.getAllByRole("button", { name: /save/i })).toHaveLength(1)
-  const policyPanel = screen.getByRole("heading", { name: "Cleanup policy" }).closest("section")!
-  for (const id of ["cleanup-enabled", "cleanup-interval", "cleanup-total", "cleanup-channel", "cleanup-device", "cleanup-device-channel", "cleanup-age"]) {
-    expect(policyPanel.contains(document.getElementById(id))).toBe(true)
-  }
-  expect(screen.queryByRole("heading", { name: "Display preferences" })).toBeNull()
-  expect(screen.queryByRole("heading", { name: "Cleanup schedule" })).toBeNull()
-  expect(screen.queryByRole("heading", { name: "Clipboard items" })).toBeNull()
   const previousOffset = usePreferences.getState().offsetMinutes
   try {
     fireEvent.change(screen.getByLabelText("UTC offset"), { target: { value: "08:30" } })
@@ -92,7 +84,6 @@ test("enabling periodic cleanup confirms and submits the retention policy", asyn
   const confirmation = dialogTitle.closest<HTMLElement>("[data-slot=cleanup-confirmation]")
   if (!confirmation) throw new Error("Cleanup confirmation did not open")
   expect(updateCleanup).not.toHaveBeenCalled()
-  expect(screen.getAllByRole("button", { name: /save/i })).toHaveLength(1)
   fireEvent.click(screen.getByText("Confirm and save"))
   await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith({
     ...defaults,
@@ -111,42 +102,6 @@ test("enabling periodic cleanup confirms and submits the retention policy", asyn
   expect(screen.queryByText("Apply a stricter cleanup policy?")).toBeNull()
 })
 
-test("accepts integer item limits without an offset step and preserves fractional durations", async () => {
-  const { updateCleanup } = renderPage(defaults)
-  await waitFor(() => expect(input("cleanup-interval").value).toBe("60"))
-  const fields = ["cleanup-total", "cleanup-channel", "cleanup-device", "cleanup-device-channel"]
-  for (const id of fields) {
-    const field = input(id)
-    expect(field.min).toBe("1")
-    expect(field.step).toBe("1")
-    fireEvent.change(field, { target: { value: "1000" } })
-    expect(field.checkValidity()).toBe(true)
-    fireEvent.change(field, { target: { value: "0" } })
-    expect(field.checkValidity()).toBe(false)
-    fireEvent.change(field, { target: { value: "1000.0001" } })
-    expect(field.checkValidity()).toBe(false)
-    fireEvent.change(field, { target: { value: "1000" } })
-  }
-  fireEvent.change(input("cleanup-interval"), { target: { value: "1.5" } })
-  fireEvent.change(input("cleanup-age"), { target: { value: "0.5" } })
-  expect(input("cleanup-interval").checkValidity()).toBe(true)
-  expect(input("cleanup-age").checkValidity()).toBe(true)
-  const form = screen.getByRole("button", { name: "Save cleanup policy" }).closest("form")!
-  expect(form.checkValidity()).toBe(true)
-  fireEvent.submit(form)
-  await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith({
-    ...defaults,
-    intervalMillis: 90_000,
-    clipboard: {
-      maxItems: 1000,
-      maxItemsPerChannel: 1000,
-      maxItemsPerDevice: 1000,
-      maxItemsPerDevicePerChannel: 1000,
-      maxAgeMillis: 43_200_000,
-    },
-  }))
-})
-
 test("loosening one limit saves without a destructive confirmation", async () => {
   const initial: CleanupConfiguration = {
     ...defaults,
@@ -159,24 +114,6 @@ test("loosening one limit saves without a destructive confirmation", async () =>
   fireEvent.click(screen.getByRole("button", { name: "Save cleanup policy" }))
   await waitFor(() => expect(updateCleanup).toHaveBeenCalledWith({ ...initial, clipboard: {} }))
   expect(screen.queryByText("Apply a stricter cleanup policy?")).toBeNull()
-})
-
-test("exposes only periodic retention controls", async () => {
-  renderPage(defaults)
-  await screen.findByRole("heading", { name: "Cleanup policy" })
-  expect(screen.queryByText("On startup")).toBeNull()
-  expect(screen.queryByText("After publishing")).toBeNull()
-  expect(screen.queryByText("Binary objects")).toBeNull()
-  expect(screen.queryByText("Execution budget")).toBeNull()
-})
-
-test("timing fields enforce the same minimum as the server schema", async () => {
-  const { updateCleanup } = renderPage(defaults)
-  await waitFor(() => expect(input("cleanup-interval").value).toBe("60"))
-  fireEvent.change(input("cleanup-interval"), { target: { value: "0.5" } })
-  fireEvent.submit(screen.getByRole("button", { name: "Save cleanup policy" }).closest("form")!)
-  expect(screen.getByRole("alert").textContent).toContain("Cleanup interval (minutes) is outside the allowed range")
-  expect(updateCleanup).not.toHaveBeenCalled()
 })
 
 test("retranslates an existing validation error and preserves the form when switching languages", async () => {

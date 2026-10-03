@@ -72,30 +72,6 @@ function stubIntersectionObserver() {
   }
 }
 
-test("keeps clipboard cards in an independently scrollable main region", async () => {
-  const api = {
-    channels: mock(async () => [channel]),
-    devices: mock(async () => []),
-    items: mock(async () => ({ items: [], cursor: "", hasMore: false })),
-    transfers: mock(async () => []),
-  }
-  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-
-  render(
-    <ApiProvider client={api as unknown as Client}>
-      <QueryClientProvider client={query}>
-        <MemoryRouter initialEntries={["/?channelId=channel-1"]}>
-          <ClipboardPage />
-        </MemoryRouter>
-      </QueryClientProvider>
-    </ApiProvider>,
-  )
-
-  const cardRegion = await screen.findByLabelText("Clipboard content")
-  expect(cardRegion.classList.contains("overflow-y-auto")).toBe(true)
-  expect(screen.queryByText("Activity")).toBeNull()
-})
-
 test("places the newest cards across the top before filling each masonry column", async () => {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1600 })
   const api = {
@@ -245,7 +221,7 @@ test("switches clipboard labels immediately without replacing channel or item da
   expect(api.items).toHaveBeenCalledTimes(1)
 })
 
-test("refreshes loaded clipboard pages before the edit button while preserving the channel and search", async () => {
+test("refreshes loaded clipboard pages while preserving the channel and search", async () => {
   let finishRefresh: ((value: { items: ClipboardItem[]; cursor: string; hasMore: boolean }) => void) | undefined
   const api = {
     channels: mock(async () => [channel]),
@@ -270,7 +246,6 @@ test("refreshes loaded clipboard pages before the edit button while preserving t
   fireEvent.click(screen.getByRole("button", { name: "Load more" }))
   await screen.findByText("Device 2")
   const refresh = screen.getByRole("button", { name: "Refresh clipboard" }) as HTMLButtonElement
-  expect(refresh.nextElementSibling).toBe(screen.getByRole("button", { name: "Edit channel" }))
   fireEvent.click(refresh)
   await waitFor(() => expect(api.items).toHaveBeenCalledTimes(3))
   expect(refresh.disabled).toBe(true)

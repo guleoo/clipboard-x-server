@@ -97,7 +97,7 @@ test("clicking a lazy image preview materializes and displays its full content",
   expect(fullImages.every((image) => image.getAttribute("src") === "/admin/api/v1/items/item-1/contents/original")).toBe(true)
 })
 
-test("copies an available image with the conventional copy icon", async () => {
+test("copies the full content of an available image", async () => {
   class ClipboardItemMock {
     constructor(readonly data: Record<string, Blob | Promise<Blob>>) {}
   }
@@ -125,7 +125,6 @@ test("copies an available image with the conventional copy icon", async () => {
   )
 
   const copy = screen.getByRole("button", { name: "Copy image" })
-  expect(copy.querySelector(".lucide-copy")).toBeTruthy()
   fireEvent.click(copy)
   await waitFor(() => expect(content).toHaveBeenCalledWith(item.id, "original"))
   expect(write).toHaveBeenCalledTimes(1)

@@ -6,7 +6,7 @@ Tests are grouped by the module or domain whose behavior they verify:
 | --- | --- |
 | `frame/` | Product-independent configuration, database, HTTP, security, logging, schemas, and date contracts |
 | `config/` | Application configuration files, defaults, persistence, storage paths, and TLS options |
-| `db/` | Application database singleton, transactions, and SQLite value normalization |
+| `db/` | SQLite value normalization |
 | `device/` | Client profiles, device response contracts, and the virtual device |
 | `clipboard/` | Retention policies, scheduled cleanup, and object lifecycle |
 | `http/` | Application composition, sessions, request validation, origins, errors, OpenAPI, and TLS listening |

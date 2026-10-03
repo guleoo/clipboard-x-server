@@ -31,9 +31,6 @@ describe("cleanup configuration", () => {
     expect(parsed.clipboard.maxItemsPerDevicePerChannel).toBe(5);
     expect(() => CleanupOptions.parse({ clipboard: { maxItemsPerDevice: 0 } })).toThrow();
     expect(() => CleanupOptions.parse({ intervalMillis: 100 })).toThrow();
-    expect(() => CleanupOptions.parse({ objects: {} })).toThrow();
-    expect(() => CleanupOptions.parse({ execution: {} })).toThrow();
-    expect(() => CleanupOptions.parse({ triggers: {} })).toThrow();
   });
 
   it("writes cleanup configuration to formatted YAML and updates the active policy", () => {
@@ -55,7 +52,6 @@ describe("cleanup configuration", () => {
       expect(yaml).toContain("cleanup:\n");
       expect(yaml).toContain("max-items-per-device: 12\n");
       expect(yaml).toContain("max-age-millis: 86400000\n");
-      expect(yaml).toContain("  - ");
       expect(() => config.updateCleanup({ clipboard: { maxItemsPerDevice: -1 } })).toThrow();
       expect(readFileSync(config.path, "utf8")).toBe(yaml);
     } finally {

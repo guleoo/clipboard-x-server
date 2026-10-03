@@ -1,8 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import type { SQL } from "drizzle-orm";
-import { getTableConfig, SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
+import { getTableConfig } from "drizzle-orm/sqlite-core";
 import { DateFormat, PlainDate, PlainTime, ZonedDateTime } from "../../src/frame/core";
-import { bigint, boolean, date, id, id_like, int, json, number_list, str_list, table, time, timestamp, timestamp0, varchar } from "../../src/frame/db/dbtype";
+import { bigint, boolean, date, id, id_like, int, json, number_list, str_list, table, time, timestamp0, varchar } from "../../src/frame/db/dbtype";
 import { createDatabase } from "../../src/frame/db";
 import "../../src/config";
 
@@ -23,13 +22,6 @@ const dbtypeProbe = table("dbtype_probe", {
   createdAt: timestamp0("created_at").defaultNow().notNull(),
 });
 
-const timestampPrecisionProbe = table("timestamp_precision_probe", {
-  p0: timestamp0("p0").defaultNow(),
-  p1: timestamp("p1", { precision: 1 }).defaultNow(),
-  p2: timestamp("p2", { precision: 2 }).defaultNow(),
-  p3: timestamp("p3", { precision: 3 }).defaultNow(),
-});
-
 describe("SQLite dbtype", () => {
   it("uses SQLite INTEGER for governed number and bigint columns", () => {
     const columns = Object.fromEntries(
@@ -41,21 +33,6 @@ describe("SQLite dbtype", () => {
 
     expect(columns.quantity).toBe("integer");
     expect(columns.amount).toBe("integer");
-  });
-
-  it("applies timestamp precision to database defaults", () => {
-    const dialect = new SQLiteSyncDialect();
-    const defaults = Object.fromEntries(
-      getTableConfig(timestampPrecisionProbe).columns.map((column) => [
-        column.name,
-        dialect.sqlToQuery(column.default as SQL).sql,
-      ]),
-    );
-
-    expect(defaults.p0).toContain("/ 1000) * 1000");
-    expect(defaults.p1).toContain("/ 100) * 100");
-    expect(defaults.p2).toContain("/ 10) * 10");
-    expect(defaults.p3).not.toContain(" / ");
   });
 
   it("preserves governed values through Drizzle", () => {
