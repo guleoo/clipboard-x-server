@@ -27,4 +27,4 @@ Each test file must provide its own required initialization instead of relying o
 another test file running first. TLS listener tests require permission to bind a
 local port. Keep fixtures beside their domain unless they are genuinely shared.
 
-Repository-wide release, deployment, and documentation checks live in [`../../tests`](../../tests).
+Release tag and image publishing behavior tests live in [`../../scripts`](../../scripts).
