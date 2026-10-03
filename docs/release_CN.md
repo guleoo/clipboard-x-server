@@ -4,6 +4,8 @@
 
 [Release 工作流](../.github/workflows/release.yml)会构建六份原生 `.tar.gz` 压缩包：Linux、macOS 和 Windows 各有 x64、ARM64 版本。每份压缩包都包含编译后的 Server、Web 资源、SQLite 迁移文件、配置模板、OpenAPI 规范、许可证和文档。Windows 的压缩包同样是 `.tar.gz`；较新的 Windows 版本可用 `tar` 解压。安装步骤见[部署指南](deployment_CN.md)。
 
+压缩包统一命名为 `clipboard-x-server_{version}_{platform}_{architecture}.tar.gz`，平台为 `linux`、`macos` 或 `windows`，架构为 `amd64` 或 `arm64`。例如：`clipboard-x-server_1.0.0_windows_amd64.tar.gz`。预发布版本保留 `1.0.0-beta.1` 这样的后缀。
+
 ## 只验证工作流，不发布
 
 先推送包含该工作流的提交，再在 GitHub 上选择 **Actions → Release → Run workflow**。手动运行会验证项目、构建并冒烟测试全部六份原生程序包，完成后可下载工作流产物；它不会创建 GitHub Release，也不会推送容器镜像。
