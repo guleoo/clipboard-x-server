@@ -29,8 +29,8 @@ Clipboard X Server 连接不同平台的设备客户端，提供 Channel 同步�
 ```sh
 mkdir -p clipboard-x-server
 cd clipboard-x-server
-curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/compose.yaml -o compose.yaml
-curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example -o .env
+curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/main/docker/compose.yaml -o compose.yaml
+curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/main/docker/.env.example -o .env
 ```
 
 然后编辑 `.env`，设置管理员密码：
