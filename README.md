@@ -5,6 +5,8 @@
 
 Clipboard X Server connects device clients across platforms, providing Channel sync, on-demand transfers, and a Web console.
 
+![Clipboard X Server clipboard workspace](docs/preview.png)
+
 ## ✨ What it does
 
 | | Feature | Description |
