@@ -2,6 +2,14 @@
 
 [简体中文](operations_CN.md)
 
+## Language and time display
+
+The Web interface defaults to English and UTC. Switch between English and Simplified Chinese on the
+login page or in the settings menu. Language and UTC offset are also available under Configuration → Language; for
+example, `08:00` means UTC+08:00 and `-05:30` means UTC−05:30. Valid changes apply immediately and are saved in the current browser.
+The database stores UTC millisecond timestamps without a timezone marker; the browser applies the
+offset only when displaying a time.
+
 ## Backup and restore
 
 SQLite runs in WAL mode. `config.yaml` is part of the authoritative state and must be backed up together with the complete directory set by `app.data-dir`, including SQLite WAL/SHM files when present and the object tree. For the simplest consistent recovery point, stop the Server process first. In the native layout, back up `server/config.yaml` and `server/data/` together; `server/logs/` is independent and optional for recovery. In Docker, back up both the configuration and data volumes.
@@ -12,17 +20,15 @@ Before upgrades, back up data and run the new executable against a copy. Migrati
 
 ## Server-side cleanup
 
-Cleanup is opt-in and can be edited from the Web configuration page. The complete YAML structure is:
+Automatic cleanup is enabled by default and can be edited from the Web configuration page. Each
+device retains up to 1,000 items in each Channel, with a maximum age of 30 days. The default YAML is:
 
 ```yaml
 cleanup:
   enabled: true
   interval-millis: 3600000
   clipboard:
-    max-items: 10000
-    max-items-per-channel: 5000
-    max-items-per-device: 1000
-    max-items-per-device-per-channel: 500
+    max-items-per-device-per-channel: 1000
     max-age-millis: 2592000000
 ```
 

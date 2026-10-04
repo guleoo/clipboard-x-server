@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
+import "@/i18n"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Api, ApiProvider } from "@/api"
 import { ErrorBoundary } from "@/frame/components/error-boundary"
@@ -9,7 +11,7 @@ import { Request } from "@/frame/request"
 import { Router } from "@/frame/router"
 import { NormalLayout } from "@/layout/normal"
 import { parseUserRoutes } from "@/routes"
-import { RouterStore, useTheme } from "@/stores"
+import { RouterStore, usePreferences, useTheme } from "@/stores"
 
 function createRuntime() {
   const request = Request.Client.create()
@@ -38,10 +40,14 @@ const components = {
 const layouts = { normal: NormalLayout, empty: EmptyLayout } as const
 
 export default function App() {
+  const { t, i18n } = useTranslation("common")
   const [runtime] = useState(createRuntime)
+  const initializePreferences = usePreferences((state) => state.initialize)
   const initializeTheme = useTheme((state) => state.initialize)
   const theme = useTheme((state) => state.resolved)
   useEffect(() => initializeTheme(), [initializeTheme])
+  useEffect(() => initializePreferences(), [initializePreferences])
+  useEffect(() => runtime.router.refresh(), [runtime, i18n.resolvedLanguage])
   return (
     <ErrorBoundary>
       <ApiProvider client={runtime.api}>
@@ -49,7 +55,7 @@ export default function App() {
           <TooltipProvider>
             <Suspense fallback={
               <main className="grid min-h-screen place-items-center text-sm text-muted-foreground">
-                正在加载页面…
+                {t("loadingPage")}
               </main>
             }>
               <Router.View

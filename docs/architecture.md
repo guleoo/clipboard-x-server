@@ -104,7 +104,8 @@ content created through the Web and fans those changes out to real members throu
 feed. It has no API key and every device-side receive path rejects it, so content published by other
 devices is never delivered back to the virtual identity.
 
-Server cleanup is disabled by default. When enabled, its policy sets the interval and
+Server cleanup is enabled by default, with a one-hour interval, 1,000 items per device in each Channel,
+and a maximum item age of 30 days. Its configurable policy sets the interval and
 global/device/Channel/device-in-Channel/age item limits. Unreferenced objects have a fixed 24-hour
 grace period, and cleanup processes work in bounded batches. It removes only server copies and preserves
 client-local history. Synchronization changes,

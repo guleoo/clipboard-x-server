@@ -124,22 +124,27 @@ const LifetimesOptions = zz.object({
   materializationTtlMillis: positiveInteger.min(30_000).max(86_400_000).default(600_000),
 }).strict().default({ keyOverlapMillis: 300_000, materializationTtlMillis: 600_000 });
 
+const defaultClipboardCleanup = {
+  maxItemsPerDevicePerChannel: 1000,
+  maxAgeMillis: 30 * 86_400_000,
+};
+
 const CleanupClipboardOptions = zz.object({
   maxItems: positiveInteger.optional(),
   maxItemsPerChannel: positiveInteger.optional(),
   maxItemsPerDevice: positiveInteger.optional(),
   maxItemsPerDevicePerChannel: positiveInteger.optional(),
   maxAgeMillis: positiveInteger.optional(),
-}).strict().default({});
+}).strict().default(defaultClipboardCleanup);
 
 export const CleanupOptions = zz.object({
-  enabled: zz.boolean().default(false),
+  enabled: zz.boolean().default(true),
   intervalMillis: positiveInteger.min(60_000).max(86_400_000).default(3_600_000),
   clipboard: CleanupClipboardOptions,
 }).strict().default({
-  enabled: false,
+  enabled: true,
   intervalMillis: 3_600_000,
-  clipboard: {},
+  clipboard: defaultClipboardCleanup,
 });
 
 const ContentOptions = zz.object({

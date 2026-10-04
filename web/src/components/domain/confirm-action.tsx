@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from "react"
+import { useTranslation } from "react-i18next"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +17,7 @@ export function ConfirmAction({
   trigger,
   title,
   description,
-  confirmLabel = "确认",
+  confirmLabel,
   pending = false,
   onConfirm,
 }: {
@@ -27,6 +28,7 @@ export function ConfirmAction({
   readonly pending?: boolean
   readonly onConfirm: () => void
 }) {
+  const { t } = useTranslation("common")
   const [open, setOpen] = useState(false)
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -37,7 +39,7 @@ export function ConfirmAction({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel render={<Button variant="outline" />}>取消</AlertDialogCancel>
+          <AlertDialogCancel render={<Button variant="outline" />}>{t("cancel")}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             disabled={pending}
@@ -46,7 +48,7 @@ export function ConfirmAction({
               setOpen(false)
             }}
           >
-            {pending ? "处理中…" : confirmLabel}
+            {pending ? t("processing") : confirmLabel ?? t("confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

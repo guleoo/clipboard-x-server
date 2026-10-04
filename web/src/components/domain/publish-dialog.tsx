@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useMutation } from "@tanstack/react-query"
 import { FileImageIcon, PlusIcon, TypeIcon } from "lucide-react"
 import { toast } from "sonner"
@@ -14,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/frame/components/ui/dialog"
 import { Input } from "@/frame/components/ui/input"
+import { LocalizedError } from "@/frame/common/error"
 import { Label } from "@/frame/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/frame/components/ui/tabs"
 import { Textarea } from "@/frame/components/ui/textarea"
@@ -44,6 +46,7 @@ export function PublishDialog({ channel, published }: {
   readonly channel: Channel
   readonly published: (publication: Publication) => void
 }) {
+  const { t } = useTranslation("clipboard")
   const api = useApi()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<"text" | "image">("text")
@@ -61,7 +64,7 @@ export function PublishDialog({ channel, published }: {
           },
         })
       }
-      if (!file) throw new Error("请选择图片")
+      if (!file) throw new LocalizedError("clipboard:chooseImage")
       const preview = await thumbnail(file)
       return api.publish(channel.id, {
         content: file,
@@ -73,30 +76,31 @@ export function PublishDialog({ channel, published }: {
       setText("")
       setFile(undefined)
       published(publication)
-      toast.success(`已发布到 ${channel.name}`)
+      toast.success(t("publishedTo", { name: channel.name }))
     },
+    onError: (error) => toast.error(messageOf(error)),
   })
   const ready = mode === "text" ? text.length > 0 : Boolean(file)
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!mutation.isPending) setOpen(value) }}>
-      <DialogTrigger render={<Button />}><PlusIcon className="size-4" />添加内容</DialogTrigger>
+      <DialogTrigger render={<Button />}><PlusIcon className="size-4" />{t("addContent")}</DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <form onSubmit={(event) => { event.preventDefault(); mutation.mutate() }}>
           <DialogHeader>
-            <DialogTitle>添加到 {channel.name}</DialogTitle>
-            <DialogDescription className="sr-only">添加文本或图片到当前 Channel</DialogDescription>
+            <DialogTitle>{t("addTo", { name: channel.name })}</DialogTitle>
+            <DialogDescription className="sr-only">{t("addTextOrImage")}</DialogDescription>
           </DialogHeader>
           <Tabs value={mode} onValueChange={(value) => setMode(value as "text" | "image")} className="py-4">
             <TabsList>
-              <TabsTrigger value="text"><TypeIcon />文本</TabsTrigger>
-              <TabsTrigger value="image"><FileImageIcon />图片</TabsTrigger>
+              <TabsTrigger value="text"><TypeIcon />{t("text")}</TabsTrigger>
+              <TabsTrigger value="image"><FileImageIcon />{t("image")}</TabsTrigger>
             </TabsList>
             <TabsContent value="text" className="pt-3">
-              <Label htmlFor="clipboard-text" className="sr-only">文本内容</Label>
+              <Label htmlFor="clipboard-text" className="sr-only">{t("textContent")}</Label>
               <Textarea
                 id="clipboard-text"
                 className="min-h-56"
-                placeholder="输入要同步的内容"
+                placeholder={t("enterContent")}
                 value={text}
                 onChange={(event) => setText(event.target.value)}
                 autoFocus
@@ -105,7 +109,7 @@ export function PublishDialog({ channel, published }: {
             <TabsContent value="image" className="pt-3">
               <label htmlFor="clipboard-image" className="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-muted/25 px-6 text-center hover:bg-muted/45">
                 <FileImageIcon className="mb-3 size-8 text-muted-foreground" aria-hidden="true" />
-                <span className="text-sm font-medium">{file?.name ?? "选择图片"}</span>
+                <span className="text-sm font-medium">{file?.name ?? t("chooseImage")}</span>
                 {file ? <span className="mt-1 text-xs text-muted-foreground">{formatBytes(file.size)}</span> : null}
               </label>
               <Input
@@ -120,7 +124,7 @@ export function PublishDialog({ channel, published }: {
           {mutation.error ? <p className="mb-4 text-sm text-destructive" role="alert">{messageOf(mutation.error)}</p> : null}
           <DialogFooter>
             <Button type="submit" disabled={!ready || mutation.isPending}>
-              {mutation.isPending ? "正在发布…" : "发布"}
+              {mutation.isPending ? t("publishing") : t("publish")}
             </Button>
           </DialogFooter>
         </form>

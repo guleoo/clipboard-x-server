@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { useTranslation } from "react-i18next"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { PencilIcon, PlusIcon, Trash2Icon, UserMinusIcon, UserPlusIcon } from "lucide-react"
 import { toast } from "sonner"
@@ -22,6 +23,7 @@ import { Page } from "@/frame/layout"
 import { messageOf } from "@/utils/format"
 
 function ChannelDialog({ channel, saved }: { readonly channel?: Channel; readonly saved: () => void }) {
+  const { t } = useTranslation("clipboard")
   const api = useApi()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(channel?.name ?? "")
@@ -31,8 +33,9 @@ function ChannelDialog({ channel, saved }: { readonly channel?: Channel; readonl
       saved()
       setOpen(false)
       if (!channel) setName("")
-      toast.success(channel ? "Channel 已更新" : "Channel 已创建")
+      toast.success(t(channel ? "channelUpdated" : "channelCreated"))
     },
+    onError: (error) => toast.error(messageOf(error)),
   })
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -41,22 +44,22 @@ function ChannelDialog({ channel, saved }: { readonly channel?: Channel; readonl
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={channel
-        ? <Button variant="ghost" size="icon-sm" aria-label={`编辑 ${channel.name}`} />
+        ? <Button variant="ghost" size="icon-sm" aria-label={t("editNamedChannel", { name: channel.name })} />
         : <Button />}>
-        {channel ? <PencilIcon className="size-4" /> : <><PlusIcon className="size-4" />创建 Channel</>}
+        {channel ? <PencilIcon className="size-4" /> : <><PlusIcon className="size-4" />{t("createChannel")}</>}
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={submit}>
           <DialogHeader>
-            <DialogTitle>{channel ? "重命名 Channel" : "创建 Channel"}</DialogTitle>
-            <DialogDescription>设备只有加入 Channel 后才能读取或发布其中的条目。</DialogDescription>
+            <DialogTitle>{t(channel ? "renameChannel" : "createChannel")}</DialogTitle>
+            <DialogDescription>{t("channelAccessDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5 py-5">
-            <Label htmlFor={`channel-name-${channel?.id ?? "new"}`}>名称</Label>
+            <Label htmlFor={`channel-name-${channel?.id ?? "new"}`}>{t("name")}</Label>
             <Input id={`channel-name-${channel?.id ?? "new"}`} value={name} onChange={(event) => setName(event.target.value)} maxLength={256} required autoFocus />
           </div>
           {mutation.error ? <p className="mb-4 text-sm text-destructive" role="alert">{messageOf(mutation.error)}</p> : null}
-          <DialogFooter><Button type="submit" disabled={mutation.isPending}>保存</Button></DialogFooter>
+          <DialogFooter><Button type="submit" disabled={mutation.isPending}>{t("save")}</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
@@ -68,35 +71,37 @@ function AddMember({ channel, devices, saved }: {
   readonly devices: readonly Device[]
   readonly saved: () => void
 }) {
+  const { t } = useTranslation("clipboard")
   const api = useApi()
   const available = devices.filter((device) => !device.disabledAt && !channel.members.some((member) => member.id === device.id))
   const [deviceId, setDeviceId] = useState("")
   const mutation = useMutation({
     mutationFn: () => api.addChannelMember(channel.id, deviceId),
-    onSuccess: () => { saved(); setDeviceId(""); toast.success("设备已加入 Channel") },
+    onSuccess: () => { saved(); setDeviceId(""); toast.success(t("memberAdded")) },
     onError: (error) => toast.error(messageOf(error)),
   })
   if (available.length === 0) return null
   return (
     <div className="mt-4 flex gap-2 border-t pt-4">
-      <label className="sr-only" htmlFor={`member-${channel.id}`}>选择要加入 {channel.name} 的设备</label>
+      <label className="sr-only" htmlFor={`member-${channel.id}`}>{t("selectMember", { name: channel.name })}</label>
       <select
         id={`member-${channel.id}`}
         className="h-8 min-w-0 flex-1 rounded-lg border bg-background px-2.5 text-sm"
         value={deviceId}
         onChange={(event) => setDeviceId(event.target.value)}
       >
-        <option value="">选择设备…</option>
+        <option value="">{t("selectDevice")}</option>
         {available.map((device) => <option key={device.id} value={device.id}>{device.tag}</option>)}
       </select>
       <Button variant="outline" size="sm" disabled={!deviceId || mutation.isPending} onClick={() => mutation.mutate()}>
-        <UserPlusIcon className="size-3.5" />加入
+        <UserPlusIcon className="size-3.5" />{t("join")}
       </Button>
     </div>
   )
 }
 
 export function ChannelsPage() {
+  const { t } = useTranslation("clipboard")
   const api = useApi()
   const client = useQueryClient()
   const channels = useQuery({ queryKey: ["channels"], queryFn: () => api.channels() })
@@ -104,24 +109,24 @@ export function ChannelsPage() {
   const refresh = () => client.invalidateQueries({ queryKey: ["channels"] })
   const removeChannel = useMutation({
     mutationFn: (channel: Channel) => api.deleteChannel(channel.id),
-    onSuccess: () => { refresh(); toast.success("Channel 已删除") },
+    onSuccess: () => { refresh(); toast.success(t("channelDeleted")) },
     onError: (error) => toast.error(messageOf(error)),
   })
   const removeMember = useMutation({
     mutationFn: ({ channelId, deviceId }: { channelId: string; deviceId: string }) => api.removeChannelMember(channelId, deviceId),
-    onSuccess: () => { refresh(); toast.success("设备已移出 Channel") },
+    onSuccess: () => { refresh(); toast.success(t("memberRemoved")) },
     onError: (error) => toast.error(messageOf(error)),
   })
   const pending = channels.isPending || devices.isPending
   const error = channels.error ?? devices.error
   return (
     <Page
-      title="Channel"
-      description="Channel 是同步隔离边界；一条剪切板记录只属于一个 Channel，变更会同步写入 config.yaml。"
+      title={t("channels")}
+      description={t("channelsDescription")}
       action={<ChannelDialog saved={refresh} />}
     >
       {pending ? <LoadingState /> : error ? <ErrorState error={error} retry={() => { channels.refetch(); devices.refetch() }} />
-        : channels.data?.length === 0 ? <EmptyState title="还没有 Channel" description="创建 Channel，然后把设备加入其中。" />
+        : channels.data?.length === 0 ? <EmptyState title={t("noChannels")} description={t("noChannelsDescription")} />
         : (
           <div className="grid gap-4 xl:grid-cols-2">
             {channels.data?.map((channel) => (
@@ -133,27 +138,27 @@ export function ChannelsPage() {
                   </div>
                   <ChannelDialog channel={channel} saved={refresh} />
                   <ConfirmAction
-                    trigger={<Button variant="ghost" size="icon-sm" aria-label={`删除 ${channel.name}`}><Trash2Icon className="size-4 text-destructive" /></Button>}
-                    title={`删除 Channel“${channel.name}”？`}
-                    description="设备会立即失去此 Channel 的访问权限。已存储条目仍保留，等待后续显式清理。"
-                    confirmLabel="删除 Channel"
+                    trigger={<Button variant="ghost" size="icon-sm" aria-label={t("deleteNamedChannelAction", { name: channel.name })}><Trash2Icon className="size-4 text-destructive" /></Button>}
+                    title={t("deleteNamedChannel", { name: channel.name })}
+                    description={t("deleteLegacyChannelDescription")}
+                    confirmLabel={t("deleteChannel")}
                     pending={removeChannel.isPending}
                     onConfirm={() => removeChannel.mutate(channel)}
                   />
                 </div>
                 <div className="mt-5">
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">成员（{channel.members.length}）</p>
-                  {channel.members.length === 0 ? <p className="rounded-lg bg-muted/55 p-3 text-sm text-muted-foreground">暂无成员</p> : (
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">{t("members", { count: channel.members.length })}</p>
+                  {channel.members.length === 0 ? <p className="rounded-lg bg-muted/55 p-3 text-sm text-muted-foreground">{t("noMembers")}</p> : (
                     <ul className="space-y-2">
                       {channel.members.map((member) => (
                         <li key={member.id} className="flex items-center gap-2 rounded-lg bg-muted/55 px-3 py-2 text-sm">
                           <span className="min-w-0 flex-1 truncate font-medium">{member.tag}</span>
                           <StatusBadge value={member.state} />
                           <ConfirmAction
-                            trigger={<Button variant="ghost" size="icon-xs" aria-label={`移出 ${member.tag}`}><UserMinusIcon className="size-3.5" /></Button>}
-                            title={`将“${member.tag}”移出 Channel？`}
-                            description="该设备将无法继续读取或发布此 Channel 的条目。"
-                            confirmLabel="移出"
+                            trigger={<Button variant="ghost" size="icon-xs" aria-label={t("removeNamedMember", { name: member.tag })}><UserMinusIcon className="size-3.5" /></Button>}
+                            title={t("removeMemberTitle", { name: member.tag })}
+                            description={t("removeMemberDescription")}
+                            confirmLabel={t("remove")}
                             pending={removeMember.isPending}
                             onConfirm={() => removeMember.mutate({ channelId: channel.id, deviceId: member.id })}
                           />

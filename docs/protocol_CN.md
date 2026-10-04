@@ -5,6 +5,9 @@
 本文是 Clipboard X Server 与所有设备客户端之间的权威人类可读协议。协议不依赖桌面环境、
 操作系统、UI 工具包或某一个客户端实现。
 
+协议版本按照 `v{n}` 迭代，并与接口路径中的版本一致：`v1` 对应 `/api/v1` 和
+`/admin/api/v1`。协议版本独立于 Server 的软件发布版本。
+
 ## 先看这里
 
 Server 保存设备身份、Channel 成员关系、剪切板元数据、预览及已上传的内容。少量文本通常完整
@@ -107,7 +110,7 @@ API Key。各接口正常返回时的状态码见下文。
 ```json
 {
   "apiVersion": 1,
-  "serverVersion": "0.1.0",
+  "serverVersion": "<server release version>",
   "state": "online",
   "capabilities": {
     "supportedMimeTypes": ["text/plain;charset=utf-8", "image/png"],
@@ -121,7 +124,8 @@ API Key。各接口正常返回时的状态码见下文。
 }
 ```
 
-`apiVersion` 必须等于 `1`。`state` 为 `online` 或 `degraded`。
+`apiVersion` 必须等于 `1`，表示协议 `v1`。`serverVersion` 返回当前运行的 Server 发布版本，
+示例使用占位说明。`state` 为 `online` 或 `degraded`。
 
 | 字段 | 客户端如何使用 |
 | --- | --- |

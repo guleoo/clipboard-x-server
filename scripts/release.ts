@@ -38,7 +38,8 @@ export function releaseTarget(platform: string, architecture: string, requestedT
 }
 
 export function releaseName(tag: string, target: ReleaseTarget): string {
-  return `clipboard-x-server-${tag}-${target}`;
+  const [platform, architecture] = target.split("-");
+  return `clipboard-x-server_${tag.slice(1)}_${platform}_${architecture === "x64" ? "amd64" : architecture}`;
 }
 
 export function executableName(target: ReleaseTarget): string {

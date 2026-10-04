@@ -2,7 +2,7 @@ import { create } from "zustand"
 import { z } from "zod"
 import { LocalStorage } from "@/frame/common/storage"
 
-const TabSchema = z.object({ path: z.string().startsWith("/"), title: z.string().min(1) })
+const TabSchema = z.object({ path: z.string().startsWith("/") })
 type Tab = z.infer<typeof TabSchema>
 const item = LocalStorage.scope("clipboard-x").item({
   key: "recent-tabs",

@@ -2,6 +2,12 @@
 
 [English](operations.md)
 
+## 语言与时间显示
+
+Web 界面默认使用英文和 UTC。在登录页或设置菜单中切换英文与简体中文；在「配置 → 语言」
+设置语言和 UTC 时区偏移，例如 `08:00` 表示 UTC+08:00，`-05:30` 表示 UTC−05:30。有效修改即时生效，并自动保存在当前浏览器中。
+数据库存储不带时区标记的 UTC 毫秒时间戳；浏览器仅在显示时间时应用偏移。
+
 ## 备份与恢复
 
 SQLite 使用 WAL 模式。`config.yaml` 是权威状态的一部分，必须与 `app.data-dir` 指定的整个目录一起备份，包括存在的 SQLite WAL/SHM 文件和对象目录树。取得一致恢复点最简单的方式是先停止 Server 进程。原生部署时一同备份 `server/config.yaml` 和 `server/data/`；`server/logs/` 独立于恢复所需数据，可选择备份。Docker 部署时同时备份配置卷和数据卷。
@@ -12,17 +18,14 @@ SQLite 使用 WAL 模式。`config.yaml` 是权威状态的一部分，必须与
 
 ## 服务端清理
 
-清理需要主动启用，也可在 Web 配置页面编辑。完整的 YAML 结构如下：
+自动清理默认开启，可在 Web 配置页面编辑。每个设备在每个 Channel 最多保留 1000 条，最长保存 30 天。默认 YAML 如下：
 
 ```yaml
 cleanup:
   enabled: true
   interval-millis: 3600000
   clipboard:
-    max-items: 10000
-    max-items-per-channel: 5000
-    max-items-per-device: 1000
-    max-items-per-device-per-channel: 500
+    max-items-per-device-per-channel: 1000
     max-age-millis: 2592000000
 ```
 

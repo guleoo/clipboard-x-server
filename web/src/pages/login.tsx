@@ -1,4 +1,7 @@
 import { useState, type FormEvent } from "react"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { LanguageSelector } from "@/components/domain/language-selector"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ClipboardIcon } from "lucide-react"
 import { Navigate, useNavigate } from "react-router"
@@ -17,8 +20,11 @@ function AuthFrame({ title, description, children }: {
   return (
     <main className="grid min-h-screen place-items-center bg-background p-5 text-foreground">
       <section className="surface-raised w-full max-w-md p-6 sm:p-8">
-        <div className="flex size-10 items-center justify-center rounded-[8px] bg-primary text-primary-foreground">
-          <ClipboardIcon className="size-5" aria-hidden="true" />
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex size-10 items-center justify-center rounded-[8px] bg-primary text-primary-foreground">
+            <ClipboardIcon className="size-5" aria-hidden="true" />
+          </div>
+          <LanguageSelector />
         </div>
         <h1 className="mt-5 text-xl font-semibold">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
@@ -29,6 +35,7 @@ function AuthFrame({ title, description, children }: {
 }
 
 export function LoginPage() {
+  const { t } = useTranslation("common")
   const api = useApi()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -42,7 +49,9 @@ export function LoginPage() {
       establish(session.administrator)
       queryClient.setQueryData(["session"], session)
       await navigate("/", { replace: true })
+      toast.success(t("signedIn"))
     },
+    onError: (error) => toast.error(messageOf(error, "login")),
   })
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -50,19 +59,19 @@ export function LoginPage() {
   }
   if (authenticated) return <Navigate replace to="/" />
   return (
-    <AuthFrame title="登录 Clipboard X" description="访问你的 Channels 与同步剪切板。">
+    <AuthFrame title={t("loginTitle")} description={t("loginDescription")}>
       <form className="space-y-4" onSubmit={submit}>
         <div className="space-y-1.5">
-          <Label htmlFor="login-username">用户名</Label>
+          <Label htmlFor="login-username">{t("username")}</Label>
           <Input id="login-username" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="login-password">密码</Label>
+          <Label htmlFor="login-password">{t("password")}</Label>
           <Input id="login-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={7} required />
         </div>
-        {mutation.error ? <p className="text-sm text-destructive" role="alert">{messageOf(mutation.error)}</p> : null}
+        {mutation.error ? <p className="text-sm text-destructive" role="alert">{messageOf(mutation.error, "login")}</p> : null}
         <Button className="w-full" type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "正在登录…" : "登录"}
+          {mutation.isPending ? t("signingIn") : t("login")}
         </Button>
       </form>
     </AuthFrame>

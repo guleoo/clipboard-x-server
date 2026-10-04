@@ -5,6 +5,8 @@
 
 Clipboard X Server connects device clients across platforms, providing Channel sync, on-demand transfers, and a Web console.
 
+[View interface preview](docs/preview.png)
+
 ## ✨ What it does
 
 | | Feature | Description |
@@ -29,8 +31,8 @@ Public image: `ghcr.io/guleoo/clipboard-x-server:latest`.
 ```sh
 mkdir -p clipboard-x-server
 cd clipboard-x-server
-curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/compose.yaml -o compose.yaml
-curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/master/docker/.env.example -o .env
+curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/main/docker/compose.yaml -o compose.yaml
+curl -fsSL https://raw.githubusercontent.com/guleoo/clipboard-x-server/main/docker/.env.example -o .env
 ```
 
 Edit `.env` and set the administrator password:
@@ -78,7 +80,7 @@ git clone https://github.com/guleoo/clipboard-x-server.git
 cd clipboard-x-server
 ```
 
-Bun 1.3.14 is required. Run these commands from the repository root:
+Use the Bun version declared in `package.json`. Run these commands from the repository root:
 
 ```sh
 bun install --frozen-lockfile

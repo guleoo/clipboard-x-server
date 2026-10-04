@@ -2,7 +2,7 @@
 
 > English · [简体中文](architecture_CN.md)
 
-The Web package is a single-entry, client-rendered React SPA. After login, the home page is a Channel clipboard workspace: switch Channels on the left and preview or act on clipboard cards in an independently scrolling center region. Channel creation, editing, and content publication use dialogs. Devices, activity, configuration, and account pages live in the settings menu. The configuration page currently manages only periodic cleanup of server-side clipboard data; it does not govern local client history.
+The Web package is a single-entry, client-rendered React SPA. After login, the home page is a Channel clipboard workspace: switch Channels on the left and preview or act on clipboard cards in an independently scrolling center region. Channel creation, editing, and content publication use dialogs. The Devices shortcut sits between the theme and settings buttons; activity, configuration, and account pages live in the settings menu. The configuration page currently manages only periodic cleanup of server-side clipboard data; it does not govern local client history.
 
 Bun handles workspace dependencies, scripts, and tests. Vite provides the development server and production build. `src/App.tsx` composes the app, and `src/main.tsx` is its sole browser entry. The production build writes `web/dist`; the root release process packages it with the Server executable, which serves it from the same origin.
 

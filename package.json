@@ -1,6 +1,6 @@
 {
   "name": "clipboard-x-server",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": {
     "name": "guleoo",
     "url": "https://github.com/guleoo"
@@ -18,8 +18,9 @@
     "start": "bun run --cwd server start",
     "dev:server": "bun run --cwd server dev",
     "dev:web": "bun run --cwd web dev",
-    "typecheck": "bun run --parallel --filter '*' typecheck",
-    "test": "bun run --parallel --filter '*' test",
+    "typecheck": "tsc --noEmit -p scripts/tsconfig.json && bun run --parallel --filter '*' typecheck",
+    "test": "bun run test:scripts && bun run --parallel --filter '*' test",
+    "test:scripts": "bun test ./scripts",
     "test:network": "bun run --filter '@clipboard-x/server' test:network",
     "build": "bun run build.ts",
     "compile": "bun run build.ts --compile",
@@ -29,5 +30,10 @@
     "gc:objects": "bun run --cwd server gc:objects",
     "benchmark": "bun run --filter '@clipboard-x/server' benchmark",
     "audit:licenses": "bun run scripts/licenses.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "typescript": "5.9.3",
+    "yaml": "2.9.0"
   }
 }

@@ -15,27 +15,13 @@ const styles: Readonly<Record<string, string>> = {
   cancelled: "bg-muted text-muted-foreground",
 }
 
-const labels: Readonly<Record<string, string>> = {
-  online: "在线",
-  offline: "离线",
-  disabled: "已禁用",
-  available: "可用",
-  "source-required": "需要来源设备",
-  requesting: "请求中",
-  queued: "排队中",
-  "waiting-for-peer": "等待设备",
-  transferring: "传输中",
-  verifying: "校验中",
-  completed: "已完成",
-  failed: "失败",
-  cancelled: "已取消",
-  expired: "已过期",
-}
-
 export function StatusBadge({ value }: { readonly value: string }) {
+  const { t } = useTranslation("common")
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${styles[value] ?? "bg-muted text-muted-foreground"}`}>
-      {labels[value] ?? value}
+      {Object.hasOwn(common.status, value) ? t(`status.${value as keyof typeof common.status}`) : value}
     </span>
   )
 }
+import { useTranslation } from "react-i18next"
+import common from "@/locales/en/common"
