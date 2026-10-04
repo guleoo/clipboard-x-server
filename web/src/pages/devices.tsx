@@ -1,10 +1,12 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useTranslation } from "react-i18next"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { KeyRoundIcon, PlusIcon, PowerIcon, RotateCwIcon, Trash2Icon } from "lucide-react"
+import { KeyRoundIcon, PlusIcon, PowerIcon, RefreshCwIcon, RotateCwIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 import { useApi, type Device, type IssuedDeviceKey } from "@/api"
 import { ConfirmAction } from "@/components/domain/confirm-action"
+import { DeviceIcon } from "@/components/domain/device-icon"
+import { useRefresh } from "@/components/domain/use-refresh"
 import { EmptyState, ErrorState, LoadingState } from "@/components/domain/states"
 import { StatusBadge } from "@/components/domain/status-badge"
 import { Button } from "@/frame/components/ui/button"
@@ -22,44 +24,11 @@ import { Page } from "@/frame/layout"
 import { deviceName, formatDate, messageOf } from "@/utils/format"
 import { usePreferences } from "@/stores/preferences"
 
-const deviceIcons: Readonly<Record<string, string>> = {
-  computer: "computer-symbolic.svg",
-  laptop: "laptop-symbolic.svg",
-  tablet: "tablet-symbolic.svg",
-  server: "server-symbolic.svg",
-  android: "android-fill-symbolic.svg",
-  apple: "apple-fill-symbolic.svg",
-  windows: "windows-fill-symbolic.svg",
-  linux: "linux-symbolic.svg",
-  debian: "debian-symbolic.svg",
-  archlinux: "archlinux-symbolic.svg",
-}
-
-function darkIconColor(light: string): string {
-  const channels = [1, 3, 5].map((index) => Number.parseInt(light.slice(index, index + 2), 16))
-  const highest = Math.max(...channels)
-  const scale = highest > 96 ? 96 / highest : 1
-  return `#${channels.map((value) => Math.round(value * scale).toString(16).padStart(2, "0")).join("")}`
-}
-
 function DeviceHeading({ device }: { readonly device: Device }) {
   const { t } = useTranslation("management")
-  const icon = Object.hasOwn(deviceIcons, device.iconKind)
-    ? deviceIcons[device.iconKind]
-    : deviceIcons.computer
-  const colors = {
-    "--device-icon-light": device.iconColor.dark ?? darkIconColor(device.iconColor.light),
-    "--device-icon-dark": device.iconColor.light,
-    maskImage: `url("/icons/device/${icon}")`,
-    maskPosition: "center",
-    maskRepeat: "no-repeat",
-    maskSize: "contain",
-  } as CSSProperties
-
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <span className="size-5 shrink-0 bg-[var(--device-icon-light)] dark:bg-[var(--device-icon-dark)]"
-        style={colors} aria-hidden="true" />
+      <DeviceIcon device={device} />
       <h2 className="min-w-0 truncate font-semibold">{device.kind === "virtual" ? t("devices.virtualName") : deviceName(device)}</h2>
     </div>
   )
@@ -152,6 +121,7 @@ export function DevicesPage() {
   const api = useApi()
   const client = useQueryClient()
   const devices = useQuery({ queryKey: ["devices"], queryFn: () => api.devices() })
+  const reload = useRefresh(() => devices.refetch(), "devices")
   const [creating, setCreating] = useState(false)
   const [issued, setIssued] = useState<IssuedDeviceKey>()
   const refresh = () => client.invalidateQueries({ queryKey: ["devices"] })
@@ -187,9 +157,14 @@ export function DevicesPage() {
       title={t("devices.title")}
       description={t("devices.description")}
       action={(
-        <Button onClick={() => setCreating(true)}>
-          <PlusIcon className="size-4" />{t("devices.add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={reload} disabled={devices.isFetching}>
+            <RefreshCwIcon className={devices.isFetching ? "animate-spin" : ""} />{t("common.refresh")}
+          </Button>
+          <Button onClick={() => setCreating(true)}>
+            <PlusIcon className="size-4" />{t("devices.add")}
+          </Button>
+        </div>
       )}
     >
       {devices.isPending ? <LoadingState /> : devices.error ? (

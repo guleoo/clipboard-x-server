@@ -110,6 +110,10 @@ function AuthenticatedLayout() {
       >
         {resolved === "dark" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
       </Button>
+      <Button variant="ghost" size="icon" nativeButton={false} render={<NavLink to="/devices" />}
+        aria-label={t("devices")} title={t("devices")}>
+        <LaptopIcon className="size-4" />
+      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={t("openSettings")} />}>
           <SettingsIcon className="size-4" />
@@ -117,9 +121,6 @@ function AuthenticatedLayout() {
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuGroup>
             <DropdownMenuLabel>{administrator?.username ?? t("administrator")}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigate("/devices")}>
-              <LaptopIcon />{t("devices")}
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/activity")}>
               <HistoryIcon />{t("activity")}
             </DropdownMenuItem>

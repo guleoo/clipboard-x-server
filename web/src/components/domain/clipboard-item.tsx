@@ -8,13 +8,12 @@ import {
   FileIcon,
   ImageIcon,
   LoaderCircleIcon,
-  MonitorIcon,
-  ServerIcon,
   Trash2Icon,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useApi, type ClipboardItem, type ClipboardRepresentation, type Transfer } from "@/api"
 import { ConfirmAction } from "@/components/domain/confirm-action"
+import { DeviceIcon } from "@/components/domain/device-icon"
 import { StatusBadge } from "@/components/domain/status-badge"
 import { Button } from "@/frame/components/ui/button"
 import {
@@ -286,7 +285,6 @@ export function ClipboardItemCard({ item, transfer, remove }: {
       requestImage.mutate()
     }
   }
-  const OriginIcon = item.origin.kind === "virtual" ? ServerIcon : MonitorIcon
   return (
     <article className="mb-4 inline-block w-full break-inside-avoid overflow-hidden rounded-[8px] border bg-card text-card-foreground shadow-sm">
       <button type="button" className="block w-full text-left" onClick={showPreview} aria-label={t("viewContent")}>
@@ -302,7 +300,7 @@ export function ClipboardItemCard({ item, transfer, remove }: {
         </div>
       ) : null}
       <footer className="flex min-h-12 items-center gap-2 border-t px-3 py-2">
-        <OriginIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <DeviceIcon device={item.origin} className="size-4" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium">{item.origin.tag}</p>
           <time className="block text-[11px] text-muted-foreground">{formatDate(item.createdAt)}</time>
@@ -328,7 +326,7 @@ export function ClipboardItemCard({ item, transfer, remove }: {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><OriginIcon className="size-4" />{item.origin.tag}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><DeviceIcon device={item.origin} className="size-4" />{item.origin.tag}</DialogTitle>
             <DialogDescription>{item.channelName} · {formatDate(item.createdAt)}</DialogDescription>
           </DialogHeader>
           <div className="overflow-hidden rounded-[8px] border">

@@ -1,3 +1,4 @@
+import { feedbackSpies } from "../support/feedback";
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import "../support/dom"
 import type { Device } from "../../src/api";
@@ -9,9 +10,33 @@ const { ApiProvider } = await import("../../src/api");
 const { DevicesPage } = await import("../../src/pages/devices");
 await import("../../src/i18n")
 const { i18n } = await import("../../src/frame/common/i18n");
+const feedback = feedbackSpies()
 
 afterEach(cleanup)
 beforeEach(async () => { await i18n.changeLanguage("en") })
+
+test("refreshes the device list after debounced clicks and reports success", async () => {
+  let devices: Device[] = []
+  const api = { devices: mock(async () => devices) }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <ApiProvider client={api as unknown as Client}>
+      <QueryClientProvider client={query}><DevicesPage /></QueryClientProvider>
+    </ApiProvider>,
+  )
+  await screen.findByText("No devices yet")
+  devices = [{
+    id: "device-1", tag: "My laptop", iconKind: "laptop", iconColor: { light: "#ffffff" },
+    state: "online", lastSeenAt: 1, createdAt: 1, updatedAt: 1, kind: "client", keys: [],
+  }]
+  const refresh = screen.getByRole("button", { name: "Refresh" })
+  fireEvent.click(refresh)
+  fireEvent.click(refresh)
+  fireEvent.click(refresh)
+  await screen.findByRole("heading", { name: "My laptop" })
+  expect(api.devices).toHaveBeenCalledTimes(2)
+  await waitFor(() => expect(feedback.success).toHaveBeenCalledWith("Refreshed", expect.anything()))
+})
 
 test("registers the client DeviceId without asking the administrator for client-owned profile fields", async () => {
   const deviceId = "123e4567-e89b-42d3-a456-426614174000"
