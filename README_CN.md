@@ -5,9 +5,7 @@
 
 Clipboard X Server 连接不同平台的设备客户端，提供 Channel 同步、按需传输和 Web 管理界面。
 
-<p align="center">
-  <a href="docs/preview.png"><img src="docs/preview.png" alt="Clipboard X Server 剪切板界面预览" width="900" /></a>
-</p>
+[查看界面预览](docs/preview.png)
 
 ## ✨ 能做什么
 
