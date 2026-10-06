@@ -1,6 +1,6 @@
 FROM oven/bun:1.3.14 AS build
 WORKDIR /src
-COPY package.json bun.lock bunfig.toml tsconfig.json tsconfig.base.json build.ts README.md README_CN.md LICENSE.md ./
+COPY package.json bun.lock bunfig.toml tsconfig.json tsconfig.base.json README.md README_CN.md LICENSE.md ./
 COPY scripts ./scripts
 COPY docs ./docs
 COPY web ./web

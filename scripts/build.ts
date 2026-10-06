@@ -1,19 +1,19 @@
 import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
-import { executableName, releaseName, releaseTag, releaseTarget } from "./scripts/release"
+import { join, resolve } from "node:path"
+import { executableName, releaseName, releaseTag, releaseTarget } from "./release"
 import { parseDocument } from "yaml"
 
 const compile = process.argv.includes("--compile")
 const archive = process.argv.includes("--archive")
-const root = import.meta.dir
+const root = resolve(import.meta.dir, "..")
 const target = compile ? releaseTarget(process.platform, process.arch, process.env.CBX_RELEASE_TARGET) : undefined
 const binaryName = target ? executableName(target) : "server.js"
 
 if (archive && !compile) throw new Error("Release archives require --compile")
 
 async function run(command: readonly string[]): Promise<void> {
-  const process = Bun.spawn(command, { cwd: root, stdout: "inherit", stderr: "inherit" })
+  const process = Bun.spawn([...command], { cwd: root, stdout: "inherit", stderr: "inherit" })
   const code = await process.exited
   if (code !== 0) throw new Error(`Command failed (${code}): ${command.join(" ")}`)
 }

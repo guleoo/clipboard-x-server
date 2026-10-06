@@ -48,7 +48,7 @@ A Zustand theme store manages light, dark, and system themes and toggles the roo
 
 - Web does not read, parse, or modify `config.yaml`; that file belongs to Server.
 - Web has no API-origin, Server-host/port, or standalone deployment configuration. The Router basename is `/`.
-- Root `build.ts` runs the Vite build and packages `web/dist` with the Server executable.
+- `scripts/build.ts` runs the Vite build and packages `web/dist` with the Server executable.
 - The Vite development server uses port `3000`. Its proxy target comes only from `CBX_PROXY_URL` in `web/.env*`, without a `VITE_` prefix. The current Vite configuration requires this variable whenever it loads, including for production builds; the variable is not exposed to browser code. Administrator requests prefer the browser's `Sec-Fetch-Site` check. To support clients without that header, Server can explicitly set `web.public-origin` to the origin used to access Vite.
 
 Only Server parses listener, database, object storage, administrator, device authorization, key, and Channel configuration with `yaml`, and its console writes updates atomically. Client-owned device names and icons are SQLite runtime data, not YAML configuration.
