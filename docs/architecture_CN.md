@@ -33,7 +33,7 @@ server/src/
 - JWT 可选，因为 Clipboard X 使用不透明的管理员会话和设备 API Key；
 - 受保护的路由可显式指定凭证读取器：管理员接口读取其 HttpOnly Cookie，设备接口使用标准 Bearer 读取器；
 - 请求日志使用 Hono 实际命中的路由索引，使后面的单页应用兜底路由不会遮蔽真正命中的路由模板；
-- 会话表映射到已有的 `admin_sessions` 迁移历史。
+- 管理员会话保存在 `admin_sessions` 表中。
 
 Frame 标准的 `Result<T>` 和错误处理器保持不变。Clipboard X 通过仅在生产组装入口安装的产品层错误处理器，维持既有的原始 JSON 及 `{ error: { code, message, requestId, details } }` API 约定。
 

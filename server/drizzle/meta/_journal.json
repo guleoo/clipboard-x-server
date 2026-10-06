@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1789265947465,
-      "tag": "0000_powerful_scream",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1789435421796,
-      "tag": "0001_striped_lionheart",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1789546312726,
-      "tag": "0002_melodic_avengers",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1789625191970,
-      "tag": "0003_regular_skreet",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1789712165441,
-      "tag": "0004_hesitant_rogue",
+      "when": 1791255057267,
+      "tag": "0000_initial",
       "breakpoints": true
     }
   ]

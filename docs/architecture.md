@@ -44,7 +44,7 @@ Product changes are deliberately narrow:
   HttpOnly cookie while the device surface uses the standard Bearer reader;
 - request logging uses Hono's executed route index so a later SPA catch-all cannot hide the matched
   route template;
-- the session table maps onto the existing `admin_sessions` migration history.
+- administrator sessions are stored in the `admin_sessions` table.
 
 Frame's standard `Result<T>` and error handler remain intact. Clipboard X keeps its established raw
 JSON and `{ error: { code, message, requestId, details } }` API contract through a product-owned error
