@@ -87,8 +87,8 @@ docker compose -f compose.yaml -f compose.tls.yaml up -d
 
 覆盖文件将两份证书文件分别只读绑定到固定的容器路径，不会挂载整个证书目录。容器的 UID `10001` 必须能读取这两个文件。`CBX_PORT=443` 只改变宿主机发布的端口；容器内部仍监听 28787。证书续期后需要重启容器。
 
-镜像提供 `/app/config/config.yaml`，其中包括 `app.host`、`app.port`、`app.timezone`、`app.data-dir` 和容器专用设置的环境变量占位符。如果希望从 `.env` 配置 HTTPS 和浏览器访问源，请保留 YAML 中的 `app.tls.cert-file`、`app.tls.key-file`、`web.public-origin` 和 `web.cookie-secure`。一个命名卷保存该 YAML，供 Web 控制台修改；另一个命名卷保存 SQLite 和二进制对象。更新时应保留并备份这两个卷。环境变量的变更只影响 YAML 中仍为占位符的字段：控制台写入具体值后，以 YAML 中的值为准；新镜像不会替换现有配置卷。
+镜像提供 `/app/storage/config.yaml`，其中包括 `app.host`、`app.port`、`app.timezone`、`app.data-dir` 和容器专用设置的环境变量占位符。如果希望从 `.env` 配置 HTTPS 和浏览器访问源，请保留 YAML 中的 `app.tls.cert-file`、`app.tls.key-file`、`web.public-origin` 和 `web.cookie-secure`。唯一的命名卷 `clipboard-x-storage` 保存 `config.yaml`、`data/`（SQLite 和二进制对象）以及 `logs/`，更新时保留并备份这个卷。环境变量的变更只影响 YAML 中仍为占位符的字段：控制台写入具体值后，以 YAML 中的值为准；新镜像不会替换卷内配置。
 
-更新镜像并保留卷时，先运行 `docker compose pull`，再运行 `docker compose up -d`；直接使用 TLS 时，这两个命令都应带上对应的两个 `-f` 选项。若使用较旧的持久化 YAML，在用新镜像启动前，将监听地址、端口、时区和数据目录分别放在 `app.host`、`app.port`、`app.timezone` 和 `app.data-dir`。容器默认值依次为 `0.0.0.0`、`28787`、`UTC` 和 `../data`。删除旧的 `app.hostname`，以及根级的 `host`、`port`、`timezone` 或 `data-dir`；Server 只从 `app` 读取这些设置。
+更新镜像并保留卷时，先运行 `docker compose pull`，再运行 `docker compose up -d`；直接使用 TLS 时，这两个命令都应带上对应的两个 `-f` 选项。
 
 无需认证的 `/health/live` 检查进程，`/health/ready` 还会检查 SQLite。容器健康检查读取同一份 YAML。备份与恢复方法见[运维指南](operations_CN.md)。

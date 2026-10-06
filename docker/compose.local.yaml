@@ -18,13 +18,11 @@ services:
       CBX_TLS_CERT_FILE: ${CBX_TLS_CERT_FILE:-}
       CBX_TLS_KEY_FILE: ${CBX_TLS_KEY_FILE:-}
     volumes:
-      - clipboard-x-config:/app/config
-      - clipboard-x-data:/app/data
+      - clipboard-x-storage:/app/storage
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
 
 volumes:
-  clipboard-x-config:
-  clipboard-x-data:
+  clipboard-x-storage:
