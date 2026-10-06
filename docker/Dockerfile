@@ -11,12 +11,12 @@ RUN bun run compile
 FROM debian:bookworm-slim AS runtime
 RUN groupadd --system --gid 10001 clipboard-x \
   && useradd --system --uid 10001 --gid clipboard-x --home-dir /app clipboard-x \
-  && mkdir -p /app/config /app/data /app/tls /app/web /app/server/drizzle \
+  && mkdir -p /app/config /app/data /app/tls /app/web /app/drizzle \
   && chown -R clipboard-x:clipboard-x /app
 WORKDIR /app
 COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/clipboard-x-server ./clipboard-x-server
 COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/web ./web
-COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/server/drizzle ./server/drizzle
+COPY --from=build --chown=clipboard-x:clipboard-x /src/dist/drizzle ./drizzle
 COPY --chown=clipboard-x:clipboard-x docker/config.yaml ./config/config.yaml
 USER 10001:10001
 VOLUME ["/app/config", "/app/data"]

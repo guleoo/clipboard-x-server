@@ -65,8 +65,8 @@ docker compose ps
 从 [GitHub Releases](https://github.com/guleoo/clipboard-x-server/releases) 下载对应平台的压缩包并解压。
 
 ```sh
-cp server/config.example.yaml server/config.yaml
-./clipboard-x-server --config ./server/config.yaml --migrate --serve
+cp config.example.yaml config.yaml
+./clipboard-x-server --config ./config.yaml --migrate --serve
 ```
 
 管理界面默认位于 **http://127.0.0.1:28787**。

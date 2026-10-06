@@ -6,20 +6,20 @@
 
 Download the archive for your platform from [GitHub Releases](https://github.com/guleoo/clipboard-x-server/releases) and unpack it. Keep the extracted directory together: it contains the executable, Web assets, SQLite migrations, the configuration template, OpenAPI specification, license, and documentation.
 
-In the extracted directory, copy the template, set a unique `administrator.password` in `server/config.yaml`, and start the Server with migrations enabled:
+In the extracted directory, copy the template, set a unique `administrator.password` in `config.yaml`, and start the Server with migrations enabled:
 
 ```sh
-cp server/config.example.yaml server/config.yaml
-chmod 600 server/config.yaml
-./clipboard-x-server --config ./server/config.yaml --migrate --serve
+cp config.example.yaml config.yaml
+chmod 600 config.yaml
+./clipboard-x-server --config ./config.yaml --migrate --serve
 ```
 
 On Windows, the archive is also `.tar.gz`. Extract it, then run these commands in its extracted directory with PowerShell:
 
 ```powershell
-Copy-Item server/config.example.yaml server/config.yaml
-# Edit server/config.yaml and set a unique administrator.password.
-.\clipboard-x-server.exe --config .\server\config.yaml --migrate --serve
+Copy-Item config.example.yaml config.yaml
+# Edit config.yaml and set a unique administrator.password.
+.\clipboard-x-server.exe --config .\config.yaml --migrate --serve
 ```
 
 The template listens on `0.0.0.0:28787` and uses UTC. Listener `host` and `port`, `timezone`, and `data-dir` belong under `app`; the root also contains `web`, `limits`, `lifetimes`, `cleanup`, `administrator`, `devices`, and `channels`. Other internal settings use Server defaults. Relative paths in YAML resolve from the YAML file's directory. Binding a privileged port such as 443 requires the appropriate operating-system permissions.

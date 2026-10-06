@@ -10,7 +10,7 @@ Web 界面默认使用英文和 UTC。在登录页或设置菜单中切换英文
 
 ## 备份与恢复
 
-SQLite 使用 WAL 模式。`config.yaml` 是权威状态的一部分，必须与 `app.data-dir` 指定的整个目录一起备份，包括存在的 SQLite WAL/SHM 文件和对象目录树。取得一致恢复点最简单的方式是先停止 Server 进程。原生部署时一同备份 `server/config.yaml` 和 `server/data/`；`server/logs/` 独立于恢复所需数据，可选择备份。Docker 部署时同时备份配置卷和数据卷。
+SQLite 使用 WAL 模式。`config.yaml` 是权威状态的一部分，必须与 `app.data-dir` 指定的整个目录一起备份，包括存在的 SQLite WAL/SHM 文件和对象目录树。取得一致恢复点最简单的方式是先停止 Server 进程。原生部署时一同备份 `config.yaml` 和 `data/`；`logs/` 独立于恢复所需数据，可选择备份。Docker 部署时同时备份配置卷和数据卷。
 
 恢复时先停止 Server 进程，将当前数据目录移到一旁，再从同一个恢复点还原 `config.yaml`、完整数据库及对象目录树，保留所有权和权限，运行严格审计，然后启动并检查就绪状态。`config.yaml` 应保持 `0600` 权限。
 

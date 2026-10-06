@@ -23,7 +23,7 @@ describe("TLS listener", () => {
 
       const configFile = join(directory, "config", "config.yaml");
       mkdirSync(join(directory, "config"));
-      cpSync(resolve(root, "server/drizzle"), join(directory, "server", "drizzle"), { recursive: true });
+      cpSync(resolve(root, "server/drizzle"), join(directory, "drizzle"), { recursive: true });
       const reservation = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("reserved") });
       const port = reservation.port;
       await reservation.stop(true);

@@ -61,7 +61,7 @@ jobs:
         env:
           CBX_RELEASE_TARGET: ${{ matrix.target }}
         run: bun run package
-      - name: Smoke test executable and SQLite migrations
+      - name: Smoke test executable, SQLite, and Web assets
         run: bun scripts/smoke-release.ts
       - name: Select artifact name
         id: artifact
