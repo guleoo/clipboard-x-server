@@ -12,6 +12,20 @@ Push the commits containing the workflow, then choose **Actions → Release → 
 
 ## Publish a beta or stable release
 
+Prepare `docs/release/v{version}-en.md` and `docs/release/v{version}-cn.md` before tagging, including any prerelease suffix in `{version}`. The workflow publishes the English document as the Release body without appending generated notes. Add a Chinese link to the English document using the tagged repository URL:
+
+```markdown
+[简体中文](https://github.com/guleoo/clipboard-x-server/blob/v{version}/docs/release/v{version}-cn.md)
+```
+
+The first release describes features only. For subsequent releases, summarize features and changes, then add a comparison link at the end, replacing both version placeholders:
+
+```markdown
+**Full Changelog**: https://github.com/guleoo/clipboard-x-server/compare/v{previous-version}...v{version}
+```
+
+Commit both documents on `dev` and merge them into `main` with the release changes before creating the tag.
+
 1. Update the release version consistently in the package manifests and the Server status response. Run `bun install` to update `bun.lock`, then run `bun run typecheck`, `bun run test`, and `bun run openapi:check` locally. Commit and push the changes.
 2. Create and push a tag pointing to that commit. A stable tag must be exactly `v<package.version>`; a prerelease tag starts with that version and adds a suffix such as `-beta.1`. Keep published tags fixed.
 3. On the tag push, GitHub checks the tag against `package.json`, verifies the project, builds and smoke-tests all six archives, confirms that every archive is present and readable, and creates `SHA256SUMS` plus a GitHub Release. A separate job builds and pushes a Linux amd64/arm64 image to `ghcr.io/guleoo/clipboard-x-server`. Both publishing jobs start only after all native packages succeed.
@@ -21,7 +35,7 @@ After pushing the version commit, read the package version to publish a beta:
 ```sh
 release_tag="v$(bun -p 'require("./package.json").version')-beta.1"
 git tag -a "$release_tag" -m "Beta release"
-git push clipboard-x-server "$release_tag"
+git push origin "$release_tag"
 ```
 
 For a stable release, use the package version without a prerelease suffix:
@@ -29,10 +43,10 @@ For a stable release, use the package version without a prerelease suffix:
 ```sh
 release_tag="v$(bun -p 'require("./package.json").version')"
 git tag -a "$release_tag" -m "Release $release_tag"
-git push clipboard-x-server "$release_tag"
+git push origin "$release_tag"
 ```
 
-`clipboard-x-server` is this checkout's Git remote name; substitute your remote if it differs. A new package version needs a matching new commit and tag.
+The examples use the `origin` remote; substitute your remote if it differs. A new package version needs a matching new commit and tag.
 
 The image always receives the release tag. A prerelease tag (one containing `-`) marks the GitHub Release as a prerelease and does not update the image's `latest` tag. A stable tag also updates `latest`. GitHub publishes its own automatic source-code archives alongside the six platform packages and `SHA256SUMS`.
 
