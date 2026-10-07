@@ -9,19 +9,19 @@ web:
   public-origin: ""
   # Set true when the browser accesses the panel over HTTPS, including through a reverse proxy.
   cookie-secure: false
-limits:
-  max-object-bytes: 83886080
-  max-item-bytes: 268435456
-  max-preview-bytes: 1048576
-lifetimes:
-  key-overlap-millis: 300000
-  materialization-ttl-millis: 600000
-cleanup:
+limits: # Capacity limits in KB (1 KB = 1024 bytes).
+  max-object: 81920
+  max-item: 262144
+  max-preview: 1024
+lifetimes: # Durations in seconds.
+  key-overlap: 300
+  materialization-ttl: 600
+cleanup: # Durations in seconds; item limits are counts.
   enabled: true
-  interval-millis: 3600000
+  interval: 3600
   clipboard:
     max-items-per-device-per-channel: 1000
-    max-age-millis: 2592000000
+    max-age: 2592000
 administrator:
   username: admin
   password: test-password

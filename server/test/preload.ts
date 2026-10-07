@@ -33,9 +33,9 @@ security:
     memory-cost: 19456
     time-cost: 2
 session:
-  ttl-millis: 604800000
-  touch-interval-millis: 300000
-  token-bytes: 32
+  ttl: 604800
+  touch-interval: 300
+  token-length: 32
 `);
   process.env.APP_CONFIG_FILE = config;
   process.on("exit", () => rmSync(directory, { recursive: true, force: true }));
