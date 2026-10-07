@@ -14,7 +14,7 @@ chmod 600 config.yaml
 ./clipboard-x-server --config ./config.yaml --migrate --serve
 ```
 
-On Windows, the archive is also `.tar.gz`. Extract it, then run these commands in its extracted directory with PowerShell:
+On Windows, download and extract the `.zip` archive, then run these commands in its extracted directory with PowerShell:
 
 ```powershell
 Copy-Item config.example.yaml config.yaml

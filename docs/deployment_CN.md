@@ -14,7 +14,7 @@ chmod 600 config.yaml
 ./clipboard-x-server --config ./config.yaml --migrate --serve
 ```
 
-Windows 平台的压缩包也是 `.tar.gz`。解压后，在解压目录中使用 PowerShell 运行：
+Windows 平台下载并解压 `.zip` 压缩包，然后在解压目录中使用 PowerShell 运行：
 
 ```powershell
 Copy-Item config.example.yaml config.yaml

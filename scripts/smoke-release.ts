@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { parseDocument } from "yaml";
-import { executableName, releaseName, releaseTag, releaseTarget } from "./release";
+import { archiveExtension, executableName, releaseName, releaseTag, releaseTarget } from "./release";
 
 const root = resolve(import.meta.dir, "..");
 const { version } = await Bun.file(resolve(root, "package.json")).json();
@@ -13,7 +13,7 @@ const directory = await mkdtemp(resolve(tmpdir(), "clipboard-x-release-smoke-"))
 let child: Bun.Subprocess | undefined;
 
 try {
-  const extraction = Bun.spawn(["tar", "-xzf", resolve(root, "release", `${name}.tar.gz`), "-C", directory], {
+  const extraction = Bun.spawn(["tar", "-xf", resolve(root, "release", `${name}.${archiveExtension(target)}`), "-C", directory], {
     stdout: "inherit",
     stderr: "inherit",
   });
