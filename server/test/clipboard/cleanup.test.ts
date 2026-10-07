@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Database as SQLite } from "bun:sqlite";
 import { sql } from "drizzle-orm";
 import { sqliteValue } from "../../src/common/sqlite";
 import { CleanupOptions, config } from "../../src/config";
@@ -123,22 +122,6 @@ describe("server-only cleanup", () => {
       sweep.mockRestore()
       config.updateCleanup(original)
       cleanupService.configure()
-    }
-  })
-
-  it("starts the GC grace period at migration for previously unreferenced objects", () => {
-    const legacy = new SQLite(":memory:")
-    try {
-      legacy.exec("CREATE TABLE objects (id text PRIMARY KEY, ref_count integer NOT NULL, created_at integer NOT NULL)")
-      legacy.exec("CREATE INDEX objects_collectable ON objects (ref_count, created_at)")
-      legacy.exec("INSERT INTO objects VALUES ('unused', 0, 1), ('active', 1, 1)")
-      legacy.exec(readFileSync(new URL("../../drizzle/0003_regular_skreet.sql", import.meta.url), "utf8"))
-      const unused = legacy.query("SELECT unreferenced_at FROM objects WHERE id = 'unused'").get() as { unreferenced_at: number }
-      const active = legacy.query("SELECT unreferenced_at FROM objects WHERE id = 'active'").get() as { unreferenced_at: null }
-      expect(unused.unreferenced_at).toBeGreaterThan(Date.now() - 5_000)
-      expect(active.unreferenced_at).toBeNull()
-    } finally {
-      legacy.close()
     }
   })
 

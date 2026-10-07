@@ -14,7 +14,7 @@ export interface DatabaseConfig {
 
 const sourceMigrations = resolve(import.meta.dir, "../../../drizzle");
 const migrationsFolder = [
-  resolve(dirname(process.execPath), "server/drizzle"),
+  resolve(dirname(process.execPath), "drizzle"),
   resolve(dirname(configPath), "drizzle"),
   sourceMigrations,
 ].find(existsSync) ?? sourceMigrations;

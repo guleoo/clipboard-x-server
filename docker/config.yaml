@@ -3,12 +3,12 @@ app:
   host: 0.0.0.0
   port: 28787
   timezone: UTC
-  data-dir: ../data
+  data-dir: ./data
   tls:
     cert-file: ${env:CBX_TLS_CERT_FILE}
     key-file: ${env:CBX_TLS_KEY_FILE}
 web:
-  root: ../web/dist
+  root: ../web
   public-origin: ${env:CBX_PUBLIC_ORIGIN}
   cookie-secure: ${env:CBX_COOKIE_SECURE}
 limits:

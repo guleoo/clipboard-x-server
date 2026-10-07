@@ -12,6 +12,20 @@
 
 ## 发布 beta 或正式版
 
+打 tag 前，准备好 `docs/release/v{version}-en.md` 和 `docs/release/v{version}-cn.md`，预发布后缀也包含在 `{version}` 中。工作流使用英文文档作为 Release 正文，不追加自动生成的说明。英文文档中的中文入口使用对应 tag 的仓库链接：
+
+```markdown
+[简体中文](https://github.com/guleoo/clipboard-x-server/blob/v{version}/docs/release/v{version}-cn.md)
+```
+
+首个版本只介绍功能。后续版本简单概括功能与变更，并在末尾添加比较链接，替换其中两个版本占位符：
+
+```markdown
+**Full Changelog**: https://github.com/guleoo/clipboard-x-server/compare/v{previous-version}...v{version}
+```
+
+先在 `dev` 提交两份文档，再与发布改动一起合并到 `main`，然后创建 tag。
+
 1. 同步更新各包配置和 Server 状态接口中的发布版本。运行 `bun install` 更新 `bun.lock`，然后在本地运行 `bun run typecheck`、`bun run test` 和 `bun run openapi:check`。提交并推送这些改动。
 2. 创建指向该提交的 tag 并推送。正式版 tag 必须恰好为 `v<package.version>`；预发布版 tag 在版本号后添加 `-beta.1` 等后缀。已发布的 tag 不应移动。
 3. 推送 tag 后，GitHub 会核对 tag 与 `package.json` 中的版本、验证项目、构建并冒烟测试六份压缩包，确认每份压缩包都存在且可读取，然后生成 `SHA256SUMS` 并创建 GitHub Release。独立的任务还会构建 Linux amd64/arm64 镜像并推送到 `ghcr.io/guleoo/clipboard-x-server`。两项发布任务都只会在全部原生程序包构建成功后启动。
@@ -21,7 +35,7 @@
 ```sh
 release_tag="v$(bun -p 'require("./package.json").version')-beta.1"
 git tag -a "$release_tag" -m "Beta release"
-git push clipboard-x-server "$release_tag"
+git push origin "$release_tag"
 ```
 
 发布正式版时，使用不带预发布后缀的包版本号：
@@ -29,10 +43,10 @@ git push clipboard-x-server "$release_tag"
 ```sh
 release_tag="v$(bun -p 'require("./package.json").version')"
 git tag -a "$release_tag" -m "Release $release_tag"
-git push clipboard-x-server "$release_tag"
+git push origin "$release_tag"
 ```
 
-`clipboard-x-server` 是当前检出目录的 Git 远端名称；如果你的远端名称不同，请替换它。发布新的程序版本时，需要使用匹配的新提交和 tag。
+示例使用 `origin` 远端；如果你的远端名称不同，请替换它。发布新的程序版本时，需要使用匹配的新提交和 tag。
 
 镜像始终带有对应的发布 tag。预发布版 tag（包含 `-`）会将 GitHub Release 标为预发布版，不更新镜像的 `latest`；正式版 tag 还会更新 `latest`。除六份平台程序包和 `SHA256SUMS` 外，GitHub 还会自动提供源码压缩包。
 

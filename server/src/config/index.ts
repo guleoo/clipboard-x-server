@@ -102,7 +102,7 @@ export const ManagedConfigurationSchema = zz.object({
 });
 
 const WebOptions = zz.object({
-  root: zz.string().min(1).default("./web/dist"),
+  root: zz.string().min(1).default("./web"),
   publicOrigin: zz.preprocess(
     (value) => value === "" ? undefined : value,
     zz.url().optional(),
@@ -111,7 +111,7 @@ const WebOptions = zz.object({
     zz.boolean(),
     zz.enum(["true", "false"]).transform((value) => value === "true"),
   ]).default(true),
-}).strict().default({ root: "./web/dist", cookieSecure: true });
+}).strict().default({ root: "./web", cookieSecure: true });
 
 const LimitsOptions = zz.object({
   maxObjectBytes: positiveInteger.max(1024 * 1024 * 1024).default(80 * 1024 * 1024),

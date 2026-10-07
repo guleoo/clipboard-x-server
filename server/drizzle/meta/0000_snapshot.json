@@ -1,69 +1,9 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ecb02e92-a949-4b46-b0b1-5aabfaaa897e",
+  "id": "0848464c-f651-4385-90ba-ea6288d9f040",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "admin_sessions": {
-      "name": "admin_sessions",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "token_hash": {
-          "name": "token_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "last_seen_at": {
-          "name": "last_seen_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "admin_sessions_token_hash_unique": {
-          "name": "admin_sessions_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ],
-          "isUnique": true
-        },
-        "admin_sessions_expiry": {
-          "name": "admin_sessions_expiry",
-          "columns": [
-            "expires_at"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "administrators": {
       "name": "administrators",
       "columns": {
@@ -372,6 +312,39 @@
             "created_at"
           ],
           "isUnique": false
+        },
+        "clipboard_items_cleanup_global": {
+          "name": "clipboard_items_cleanup_global",
+          "columns": [
+            "visible",
+            "deleted_at",
+            "created_at",
+            "id"
+          ],
+          "isUnique": false
+        },
+        "clipboard_items_cleanup_device": {
+          "name": "clipboard_items_cleanup_device",
+          "columns": [
+            "origin_device_id",
+            "visible",
+            "deleted_at",
+            "created_at",
+            "id"
+          ],
+          "isUnique": false
+        },
+        "clipboard_items_cleanup_device_channel": {
+          "name": "clipboard_items_cleanup_device_channel",
+          "columns": [
+            "origin_device_id",
+            "channel_id",
+            "visible",
+            "deleted_at",
+            "created_at",
+            "id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -506,6 +479,21 @@
           "notNull": true,
           "autoincrement": false
         },
+        "icon_color_light": {
+          "name": "icon_color_light",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'#ffffff'"
+        },
+        "icon_color_dark": {
+          "name": "icon_color_dark",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "state": {
           "name": "state",
           "type": "text",
@@ -552,6 +540,88 @@
         }
       },
       "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "admin_sessions": {
+      "name": "admin_sessions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text(24)",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "uid": {
+          "name": "uid",
+          "type": "text(24)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "text(24)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "permission_keys": {
+          "name": "permission_keys",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "admin_sessions_token_hash_unique": {
+          "name": "admin_sessions_token_hash_unique",
+          "columns": [
+            "token_hash"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -638,6 +708,15 @@
             "active_key"
           ],
           "isUnique": true
+        },
+        "materialization_requests_cleanup_item": {
+          "name": "materialization_requests_cleanup_item",
+          "columns": [
+            "item_id",
+            "active_key",
+            "expires_at"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -787,17 +866,16 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "unreferenced_at": {
+          "name": "unreferenced_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
-        "objects_collectable": {
-          "name": "objects_collectable",
-          "columns": [
-            "ref_count",
-            "created_at"
-          ],
-          "isUnique": false
-        },
         "objects_sha256_size": {
           "name": "objects_sha256_size",
           "columns": [
@@ -805,6 +883,14 @@
             "size"
           ],
           "isUnique": true
+        },
+        "objects_collectable": {
+          "name": "objects_collectable",
+          "columns": [
+            "ref_count",
+            "unreferenced_at"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -1330,7 +1416,17 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "uploads_cleanup_item": {
+          "name": "uploads_cleanup_item",
+          "columns": [
+            "item_id",
+            "state",
+            "expires_at"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "uploads_transfer_id_transfers_id_fk": {
           "name": "uploads_transfer_id_transfers_id_fk",

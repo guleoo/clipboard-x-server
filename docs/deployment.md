@@ -6,20 +6,20 @@
 
 Download the archive for your platform from [GitHub Releases](https://github.com/guleoo/clipboard-x-server/releases) and unpack it. Keep the extracted directory together: it contains the executable, Web assets, SQLite migrations, the configuration template, OpenAPI specification, license, and documentation.
 
-In the extracted directory, copy the template, set a unique `administrator.password` in `server/config.yaml`, and start the Server with migrations enabled:
+In the extracted directory, copy the template, set a unique `administrator.password` in `config.yaml`, and start the Server with migrations enabled:
 
 ```sh
-cp server/config.example.yaml server/config.yaml
-chmod 600 server/config.yaml
-./clipboard-x-server --config ./server/config.yaml --migrate --serve
+cp config.example.yaml config.yaml
+chmod 600 config.yaml
+./clipboard-x-server --config ./config.yaml --migrate --serve
 ```
 
 On Windows, the archive is also `.tar.gz`. Extract it, then run these commands in its extracted directory with PowerShell:
 
 ```powershell
-Copy-Item server/config.example.yaml server/config.yaml
-# Edit server/config.yaml and set a unique administrator.password.
-.\clipboard-x-server.exe --config .\server\config.yaml --migrate --serve
+Copy-Item config.example.yaml config.yaml
+# Edit config.yaml and set a unique administrator.password.
+.\clipboard-x-server.exe --config .\config.yaml --migrate --serve
 ```
 
 The template listens on `0.0.0.0:28787` and uses UTC. Listener `host` and `port`, `timezone`, and `data-dir` belong under `app`; the root also contains `web`, `limits`, `lifetimes`, `cleanup`, `administrator`, `devices`, and `channels`. Other internal settings use Server defaults. Relative paths in YAML resolve from the YAML file's directory. Binding a privileged port such as 443 requires the appropriate operating-system permissions.
@@ -87,8 +87,8 @@ docker compose -f compose.yaml -f compose.tls.yaml up -d
 
 The override binds each certificate file read-only at its fixed container path; it does not mount a certificate directory. The files must be readable by container UID `10001`. `CBX_PORT=443` changes the host-side port; the container still listens on 28787. Restart the container after certificate renewal.
 
-The image provides `/app/config/config.yaml` with `app.host`, `app.port`, `app.timezone`, and `app.data-dir`, plus environment placeholders for container-specific settings. Keep `app.tls.cert-file`, `app.tls.key-file`, `web.public-origin`, and `web.cookie-secure` in this YAML if those settings are to come from `.env`. A named configuration volume holds the YAML so the Web console can update it; another volume stores SQLite and binary objects. Keep and back up both volumes when updating. Environment changes affect only placeholders still present in YAML: a concrete value saved by the console takes precedence, and a newer image does not replace an existing configuration volume.
+The image provides `/app/storage/config.yaml` with `app.host`, `app.port`, `app.timezone`, and `app.data-dir`, plus environment placeholders for container-specific settings. Keep `app.tls.cert-file`, `app.tls.key-file`, `web.public-origin`, and `web.cookie-secure` in this YAML if those settings are to come from `.env`. One named volume, `clipboard-x-storage`, holds `config.yaml`, `data/` (SQLite and binary objects), and `logs/`. Keep and back up this volume when updating. Environment changes affect only placeholders still present in YAML: a concrete value saved by the console takes precedence, and a newer image does not replace the volume's configuration.
 
-To update the image while retaining the volumes, run `docker compose pull` followed by `docker compose up -d` (or use both `-f` options for direct TLS). Before starting a new image against an older persisted YAML, place listener, timezone, and data-directory values in `app.host`, `app.port`, `app.timezone`, and `app.data-dir`. For the stock container, these are `0.0.0.0`, `28787`, `UTC`, and `../data`. Remove an old `app.hostname` or root-level `host`, `port`, `timezone`, or `data-dir`: the Server reads these settings only from `app`.
+To update the image while retaining the volume, run `docker compose pull` followed by `docker compose up -d` (or use both `-f` options for direct TLS).
 
 The unauthenticated `/health/live` endpoint checks the process; `/health/ready` also checks SQLite. The container health check reads the same YAML file. See [operations](operations.md) for backup and recovery guidance.
