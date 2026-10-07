@@ -7,6 +7,9 @@ app:
   data-dir: ./data
 web:
   root: ../web/dist
+  # Leave empty for direct HTTP access; set the browser-facing origin for an HTTPS reverse proxy.
+  public-origin: ""
+  # Set true when the browser accesses the panel over HTTPS, including through a reverse proxy.
   cookie-secure: false
 limits:
   max-object-bytes: 83886080
