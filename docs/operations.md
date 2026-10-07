@@ -26,11 +26,13 @@ device retains up to 1,000 items in each Channel, with a maximum age of 30 days.
 ```yaml
 cleanup:
   enabled: true
-  interval-millis: 3600000
+  interval: 3600
   clipboard:
     max-items-per-device-per-channel: 1000
-    max-age-millis: 2592000000
+    max-age: 2592000
 ```
+
+`interval` and `max-age` are in seconds; item limits are counts. Saving a policy from the Web console also writes these durations in seconds to YAML.
 
 The global limit counts every visible item. The device limit counts one device across all Channels,
 including publications from the virtual Server device; the Channel limit counts every device in that

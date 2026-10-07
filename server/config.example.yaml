@@ -1,28 +1,78 @@
 # Copy to config.yaml before starting the server. This file contains plaintext
 # administrator and device credentials; keep its permissions at 0600.
+# Relative paths resolve from this YAML file's directory, not the working directory.
+# Manual edits take effect after restart; the Web console writes managed changes here.
+
+# Server listener and local storage.
 app:
+  # Listen on all IPv4 interfaces; use 127.0.0.1 for local access only.
   host: 0.0.0.0
+  # Listening port.
   port: 28787
+  # Server time zone for date formatting and logs. Storage timestamps remain UTC;
+  # the Web interface has its own configurable display offset.
   timezone: UTC
+  # SQLite database and binary objects are stored here. Logs use a separate logs/ directory.
   data-dir: ./data
+
+# Web assets and administrator browser sessions.
 web:
+  # Directory containing the built index.html and assets; served by the Server.
   root: ../web/dist
+  # Browser-facing scheme, hostname and port used for administrator request origin checks.
+  # Leave empty for direct access. Behind an HTTPS reverse proxy, use e.g.
+  # https://clipboard.example.com (include a non-default port, but no URL path).
+  public-origin: ""
+  # Only send the administrator session cookie over HTTPS when true.
+  # Enable for both direct HTTPS and HTTPS reverse proxies; keep false for plain HTTP.
   cookie-secure: false
-limits:
-  max-object-bytes: 83886080
-  max-item-bytes: 268435456
-  max-preview-bytes: 1048576
-lifetimes:
-  key-overlap-millis: 300000
-  materialization-ttl-millis: 600000
-cleanup:
+
+limits: # Capacity limits in KB (1 KB = 1024 bytes).
+  # Maximum size of one full-content representation, such as one image (80 MiB).
+  max-object: 81920
+  # Maximum combined size of all full-content representations in one clipboard item.
+  # Different formats count toward the same total; previews are not included (256 MiB).
+  max-item: 262144
+  # Maximum size of each preview, such as a thumbnail (1 MiB).
+  max-preview: 1024
+
+lifetimes: # Durations in seconds.
+  # Grace period for a device's previous keys after issuing a replacement key (5 minutes).
+  # Allows the client to switch keys without immediately losing access; 0 expires old keys at once.
+  key-overlap: 300
+  # Time allowed to fetch missing full content from its source device (10 minutes).
+  # This expires unfinished content requests, not stored clipboard history.
+  materialization-ttl: 600
+
+cleanup: # Durations in seconds; item limits are counts.
+  # Enable periodic server-side cleanup. Client history is never deleted by this policy.
   enabled: true
-  interval-millis: 3600000
+  # Time between cleanup cycles (1 hour; allowed range: 60–86400 seconds).
+  # Cleanup does not run immediately at startup or when saving the policy.
+  interval: 3600
+  # Clipboard retention limits. Older eligible items are removed during cleanup.
+  # Omit a limit to leave that dimension unlimited; clipboard: {} disables these item limits.
   clipboard:
+    # Maximum items from each device in each channel, not the total channel size.
     max-items-per-device-per-channel: 1000
-    max-age-millis: 2592000000
+    # Maximum item age, measured from its creation time (30 days).
+    # Cleanup removes the server copy; a client that kept only a preview can no longer fetch full content.
+    max-age: 2592000
+
+# The single administrator account used to sign in to the Web interface.
 administrator:
+  # Sign-in username (3–64 characters).
   username: admin
+  # Replace before deployment. Accepts any password of 7–256 characters.
+  # This YAML remains authoritative; the value is not only a first-start bootstrap password.
   password: change-this-password
+
+# Registered client devices and their complete API keys; manage these in the Web console.
+# Each entry binds an id (the client's DeviceId) to disabled and keys settings.
+# Names and icons come from clients and are stored in SQLite. The virtual Server device is automatic.
 devices: []
+
+# Channels and memberships; manage these in the Web console.
+# Each entry contains id, name, and members (registered DeviceIds).
+# The virtual Server device is automatically included and is not listed here.
 channels: []

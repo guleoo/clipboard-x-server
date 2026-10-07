@@ -23,11 +23,13 @@ SQLite 使用 WAL 模式。`config.yaml` 是权威状态的一部分，必须与
 ```yaml
 cleanup:
   enabled: true
-  interval-millis: 3600000
+  interval: 3600
   clipboard:
     max-items-per-device-per-channel: 1000
-    max-age-millis: 2592000000
+    max-age: 2592000
 ```
+
+`interval` 和 `max-age` 使用秒，条目上限使用数量。从 Web 控制台保存策略时，也会将时长按秒写入 YAML。
 
 全局上限统计所有可见条目。设备上限统计一台设备在所有 Channel 中的条目，包含虚拟 Server 设备发布的内容；Channel 上限统计该 Channel 中所有设备的条目；设备与 Channel 交集上限控制两者的交集。条目先按创建时间、再按 ID 排序，优先移除符合条件的最早条目。省略某项剪贴板限制，表示该维度不设上限。`cleanup.enabled` 是总开关。无引用二进制对象属于内部维护事项，不提供面向用户的策略设置，并使用固定 24 小时宽限期。
 

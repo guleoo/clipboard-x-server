@@ -6,7 +6,7 @@ export const SecurityOptions = z
     jwtSecret: z.string().min(32).optional(),
     jwtAlgorithm: z.literal("HS256").default("HS256"),
     tokenPrefix: z.string().trim().min(1).default("Bearer"),
-    accessTokenTtlMillis: z.number().int().positive().default(15 * 60 * 1_000),
+    accessTokenTtl: z.number().min(0.001).default(15 * 60),
     password: z
       .object({
         memoryCost: z.number().int().min(19_456).default(65_536),
@@ -16,6 +16,10 @@ export const SecurityOptions = z
       .default({ memoryCost: 65_536, timeCost: 3 }),
   })
   .strict()
-  .prefault({});
+  .prefault({})
+  .transform(({ accessTokenTtl, ...security }) => ({
+    ...security,
+    accessTokenTtlMillis: Math.round(accessTokenTtl * 1_000),
+  }));
 
 export const SecurityConfig = Config.section("security", SecurityOptions);

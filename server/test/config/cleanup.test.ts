@@ -41,17 +41,20 @@ describe("cleanup configuration", () => {
       expect(readFileSync(config.path, "utf8")).toBe(before);
       const saved = config.updateCleanup({
         enabled: true,
-        clipboard: { maxItemsPerDevice: 12, maxAgeMillis: 86_400_000 },
+        intervalMillis: 61_250,
+        clipboard: { maxItemsPerDevice: 12, maxAgeMillis: 86_400_125 },
       });
       expect(saved).toEqual(CleanupOptions.parse({
         enabled: true,
-        clipboard: { maxItemsPerDevice: 12, maxAgeMillis: 86_400_000 },
+        intervalMillis: 61_250,
+        clipboard: { maxItemsPerDevice: 12, maxAgeMillis: 86_400_125 },
       }));
       expect(config.cleanup).toEqual(saved);
       const yaml = readFileSync(config.path, "utf8");
       expect(yaml).toContain("cleanup:\n");
       expect(yaml).toContain("max-items-per-device: 12\n");
-      expect(yaml).toContain("max-age-millis: 86400000\n");
+      expect(yaml).toContain("interval: 61.25\n");
+      expect(yaml).toContain("max-age: 86400.125\n");
       expect(() => config.updateCleanup({ clipboard: { maxItemsPerDevice: -1 } })).toThrow();
       expect(readFileSync(config.path, "utf8")).toBe(yaml);
     } finally {

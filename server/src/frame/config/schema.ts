@@ -21,7 +21,7 @@ export const AppOptions = z
     port: z.coerce.number().int().nonnegative().default(28_787),
     dataDir: z.string().trim().min(1).default("./data"),
     tls: TlsOptions.optional(),
-    shutdownTimeoutMillis: z.number().int().positive().default(30_000),
+    shutdownTimeout: z.number().min(0.001).default(30),
     apiPrefix: z.string().default("/"),
     routeSurfaces: z
       .object({
@@ -32,6 +32,10 @@ export const AppOptions = z
       .default({ admin: "/admin/api", app: "/api" }),
     timezone: z.string().refine(validZone, "Invalid time zone").default("UTC"),
   })
-  .strict();
+  .strict()
+  .transform(({ shutdownTimeout, ...app }) => ({
+    ...app,
+    shutdownTimeoutMillis: Math.round(shutdownTimeout * 1_000),
+  }));
 
 export const LoggerConfigOptions = LoggerOptions;

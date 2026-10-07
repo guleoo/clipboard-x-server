@@ -114,15 +114,15 @@ const WebOptions = zz.object({
 }).strict().default({ root: "./web", cookieSecure: true });
 
 const LimitsOptions = zz.object({
-  maxObjectBytes: positiveInteger.max(1024 * 1024 * 1024).default(80 * 1024 * 1024),
-  maxItemBytes: positiveInteger.max(2 * 1024 * 1024 * 1024).default(256 * 1024 * 1024),
-  maxPreviewBytes: positiveInteger.max(16 * 1024 * 1024).default(1024 * 1024),
-}).strict().default({ maxObjectBytes: 80 * 1024 * 1024, maxItemBytes: 256 * 1024 * 1024, maxPreviewBytes: 1024 * 1024 });
+  maxObject: zz.number().min(1 / 1024).max(1024 * 1024).default(80 * 1024),
+  maxItem: zz.number().min(1 / 1024).max(2 * 1024 * 1024).default(256 * 1024),
+  maxPreview: zz.number().min(1 / 1024).max(16 * 1024).default(1024),
+}).strict().default({ maxObject: 80 * 1024, maxItem: 256 * 1024, maxPreview: 1024 });
 
 const LifetimesOptions = zz.object({
-  keyOverlapMillis: nonnegativeInteger.max(86_400_000).default(300_000),
-  materializationTtlMillis: positiveInteger.min(30_000).max(86_400_000).default(600_000),
-}).strict().default({ keyOverlapMillis: 300_000, materializationTtlMillis: 600_000 });
+  keyOverlap: zz.number().nonnegative().max(86_400).default(300),
+  materializationTtl: zz.number().min(30).max(86_400).default(600),
+}).strict().default({ keyOverlap: 300, materializationTtl: 600 });
 
 const defaultClipboardCleanup = {
   maxItemsPerDevicePerChannel: 1000,
@@ -147,6 +147,27 @@ export const CleanupOptions = zz.object({
   clipboard: defaultClipboardCleanup,
 });
 
+// YAML uses seconds; the administration API and cleanup scheduler use milliseconds.
+const CleanupConfigurationOptions = zz.object({
+  enabled: zz.boolean().default(true),
+  interval: zz.number().min(60).max(86_400).default(3_600),
+  clipboard: CleanupClipboardOptions.unwrap().omit({ maxAgeMillis: true }).extend({
+    maxAge: zz.number().min(0.001).optional(),
+  }).default({ maxItemsPerDevicePerChannel: 1000, maxAge: 30 * 86_400 }),
+}).strict().prefault({});
+
+function cleanupPolicy(value: zz.output<typeof CleanupConfigurationOptions>): zz.output<typeof CleanupOptions> {
+  const { maxAge, ...counts } = value.clipboard;
+  return CleanupOptions.parse({
+    enabled: value.enabled,
+    intervalMillis: Math.round(value.interval * 1_000),
+    clipboard: {
+      ...counts,
+      ...(maxAge === undefined ? {} : { maxAgeMillis: Math.round(maxAge * 1_000) }),
+    },
+  });
+}
+
 const ContentOptions = zz.object({
   supportedMimeTypes: zz.array(MimeTypeSchema).min(1).max(64).default([
     "text/plain;charset=utf-8",
@@ -159,14 +180,14 @@ const ContentOptions = zz.object({
 }).strict().prefault({});
 
 const HttpOptions = zz.object({
-  jsonBodyLimitBytes: positiveInteger.max(16 * 1024 * 1024).default(256 * 1024),
+  jsonBodyLimit: zz.number().min(1 / 1024).max(16 * 1024).default(256),
   rateLimit: zz.object({
     limit: positiveInteger.default(600),
-    windowMillis: positiveInteger.default(60_000),
-  }).strict().default({ limit: 600, windowMillis: 60_000 }),
+    window: zz.number().min(0.001).default(60),
+  }).strict().default({ limit: 600, window: 60 }),
 }).strict().default({
-  jsonBodyLimitBytes: 256 * 1024,
-  rateLimit: { limit: 600, windowMillis: 60_000 },
+  jsonBodyLimit: 256,
+  rateLimit: { limit: 600, window: 60 },
 });
 
 export type ManagedConfiguration = zz.output<typeof ManagedConfigurationSchema>;
@@ -268,7 +289,15 @@ function renderCleanup(value: zz.output<typeof CleanupOptions>): string {
   if (document.errors.length || !isConfigObject(document.toJS())) {
     throw new ConfigError("Configuration root must be a valid YAML object", { path: configPath });
   }
-  document.set("cleanup", sourceValue(value));
+  const { maxAgeMillis, ...counts } = value.clipboard;
+  document.set("cleanup", sourceValue({
+    enabled: value.enabled,
+    interval: value.intervalMillis / 1_000,
+    clipboard: {
+      ...counts,
+      maxAge: maxAgeMillis === undefined ? undefined : maxAgeMillis / 1_000,
+    },
+  }));
   return document.toString({ indent: 2, lineWidth: 0 });
 }
 
@@ -277,7 +306,7 @@ let managed = managedFromConfig();
 const web = Config.section("web", WebOptions);
 const limits = Config.section("limits", LimitsOptions);
 const lifetimes = Config.section("lifetimes", LifetimesOptions);
-let cleanup = CleanupOptions.parse(Config.section("cleanup", CleanupOptions));
+let cleanup = cleanupPolicy(Config.section("cleanup", CleanupConfigurationOptions));
 const content = Config.section("content", ContentOptions);
 const http = Config.section("http", HttpOptions);
 
@@ -293,15 +322,15 @@ export const config = Object.freeze({
   cookieSecure: web.cookieSecure,
   dataDirectory: FrameConfig.DataDir,
   objectDirectory: join(FrameConfig.DataDir, "objects"),
-  maxObjectBytes: limits.maxObjectBytes,
-  maxItemBytes: limits.maxItemBytes,
-  maxPreviewBytes: limits.maxPreviewBytes,
-  keyOverlapMillis: lifetimes.keyOverlapMillis,
-  materializationTtlMillis: lifetimes.materializationTtlMillis,
+  maxObjectBytes: Math.round(limits.maxObject * 1024),
+  maxItemBytes: Math.round(limits.maxItem * 1024),
+  maxPreviewBytes: Math.round(limits.maxPreview * 1024),
+  keyOverlapMillis: Math.round(lifetimes.keyOverlap * 1_000),
+  materializationTtlMillis: Math.round(lifetimes.materializationTtl * 1_000),
   get cleanup() { return cleanup; },
   supportedMimeTypes: content.supportedMimeTypes,
-  jsonBodyLimitBytes: http.jsonBodyLimitBytes,
-  rateLimit: http.rateLimit,
+  jsonBodyLimitBytes: Math.round(http.jsonBodyLimit * 1024),
+  rateLimit: Object.freeze({ limit: http.rateLimit.limit, windowMillis: Math.round(http.rateLimit.window * 1_000) }),
   passwordMemoryCost: SecurityConfig.password.memoryCost,
   passwordTimeCost: SecurityConfig.password.timeCost,
   sessionTtlMillis: SessionConfig.ttlMillis,
@@ -314,7 +343,7 @@ export const config = Object.freeze({
     const previous = readFileSync(configPath, "utf8");
     writeConfig(renderCleanup(next));
     try {
-      const effective = CleanupOptions.parse(loadYamlConfigSync(configLoadOptions).cleanup);
+      const effective = cleanupPolicy(CleanupConfigurationOptions.parse(loadYamlConfigSync(configLoadOptions).cleanup));
       if (JSON.stringify(effective) !== JSON.stringify(next)) {
         throw new CleanupOverrideError("Cleanup is overridden by an imported or environment configuration", { path: configPath });
       }

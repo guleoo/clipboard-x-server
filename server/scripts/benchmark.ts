@@ -21,7 +21,7 @@ await Bun.write(configurationPath, stringify({
   app: { name: "clipboard-x-benchmark", host: "127.0.0.1", port: 0, timezone: "UTC", "data-dir": join(directory, "data") },
   logger: { console: { enabled: false }, file: { enabled: false } },
   security: { password: { "memory-cost": 19456, "time-cost": 2 } },
-  session: { "ttl-millis": 604800000, "touch-interval-millis": 300000, "token-bytes": 32 },
+  session: { ttl: 604800, "touch-interval": 300, "token-length": 32 },
   web: { root: join(directory, "web"), "cookie-secure": false },
   limits: {},
   lifetimes: {},
