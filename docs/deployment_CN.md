@@ -6,12 +6,12 @@
 
 从 [GitHub Releases](https://github.com/guleoo/clipboard-x-server/releases) 下载对应平台的压缩包并解压。请保持整个解压目录完整：其中包含可执行文件、Web 资源、SQLite 迁移文件、配置模板、OpenAPI 规范、许可证和文档。
 
-在解压目录中复制模板，修改 `config.yaml`，为 `administrator.password` 设置唯一密码，然后启用数据库迁移并启动 Server：
+在解压目录中复制模板，修改 `config.yaml`，为 `administrator.password` 设置唯一密码，然后启动 Server：
 
 ```sh
 cp config.example.yaml config.yaml
 chmod 600 config.yaml
-./clipboard-x-server --config ./config.yaml --migrate --serve
+./clipboard-x-server
 ```
 
 Windows 平台下载并解压 `.zip` 压缩包，然后在解压目录中使用 PowerShell 运行：
@@ -19,8 +19,10 @@ Windows 平台下载并解压 `.zip` 压缩包，然后在解压目录中使用 
 ```powershell
 Copy-Item config.example.yaml config.yaml
 # 编辑 config.yaml，为 administrator.password 设置唯一密码。
-.\clipboard-x-server.exe --config .\config.yaml --migrate --serve
+.\clipboard-x-server.exe
 ```
+
+启动时默认先执行尚未应用的数据库迁移，再提供服务。可使用 `--config {path}` 指定其他 YAML 配置文件；数据库表结构已就绪时，可使用 `--no-migrate` 跳过迁移。
 
 模板默认监听 `0.0.0.0:28787`，时区为 UTC。监听地址 `host`、端口 `port`、`timezone` 和 `data-dir` 都位于 `app` 下；根级还包含 `web`、`limits`、`lifetimes`、`cleanup`、`administrator`、`devices` 和 `channels`。其他内部设置使用 Server 代码中的默认值。YAML 中的相对路径以该 YAML 文件所在目录为基准解析。绑定 443 等特权端口需要相应的操作系统权限。
 

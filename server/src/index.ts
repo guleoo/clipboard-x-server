@@ -29,13 +29,9 @@ async function main(arguments_: readonly string[]): Promise<void> {
     await healthcheck();
     return;
   }
-  if (arguments_.includes("--migrate")) {
+  if (!arguments_.includes("--no-migrate")) {
     Database.migrate({ migrationsFolder: databaseConfig.migrationsFolder });
     logger.info("Database migrations complete", { event: "database.migrated" });
-    if (!arguments_.includes("--serve")) {
-      await Lifecycle.shutdown({ reason: "manual" });
-      return;
-    }
   }
   const listener = await startServer(routes);
   logger.info("Server listening", {

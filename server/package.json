@@ -11,7 +11,7 @@
   "type": "module",
   "module": "src/index.ts",
   "scripts": {
-    "dev": "bun run scripts/db/migrate.ts --config ./config.yaml && bun --hot src/index.ts --config ./config.yaml",
+    "dev": "bun --hot src/index.ts --config ./config.yaml",
     "start": "bun src/index.ts --config ./config.yaml",
     "typecheck": "tsc --noEmit",
     "test": "APP_ENV=test bun test --preload ./test/preload.ts",

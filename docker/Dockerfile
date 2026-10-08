@@ -23,4 +23,4 @@ VOLUME ["/app/storage"]
 EXPOSE 28787
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD ["/app/clipboard-x-server", "--config", "/app/storage/config.yaml", "--healthcheck"]
 ENTRYPOINT ["/app/clipboard-x-server"]
-CMD ["--config", "/app/storage/config.yaml", "--migrate", "--serve"]
+CMD ["--config", "/app/storage/config.yaml"]

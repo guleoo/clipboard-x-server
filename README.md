@@ -66,7 +66,7 @@ Download and extract the archive for your platform from [GitHub Releases](https:
 
 ```sh
 cp config.example.yaml config.yaml
-./clipboard-x-server --config ./config.yaml --migrate --serve
+./clipboard-x-server
 ```
 
 The Web console is available at **http://127.0.0.1:28787** by default.
