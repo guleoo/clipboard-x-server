@@ -104,29 +104,39 @@ function useTransferFeedback(transferId: string | undefined, transfer: Transfer 
   }, [transferId, transfer?.state, transfer?.error.code, error, t])
 }
 
-function imageContentOf(item: ClipboardItem): ClipboardRepresentation | undefined {
-  const previewContentId = item.previews.find((preview) => preview.mimeType.startsWith("image/"))?.contentId
-  return item.contents.find((content) => content.id === previewContentId && content.mimeType.startsWith("image/"))
+function previewContentOf(item: ClipboardItem): ClipboardRepresentation | undefined {
+  const previewContentId = item.previews[0]?.contentId
+  return item.contents.find((content) => content.id === previewContentId && (content.mimeType.startsWith("image/") || content.mimeType.startsWith("text/")))
     ?? item.contents.find((content) => content.mimeType.startsWith("image/"))
+    ?? item.contents.find((content) => content.mimeType.startsWith("text/"))
 }
 
-function Preview({ item, expanded = false, fullImage = false, loading = false }: {
+function Preview({ item, expanded = false, fullContent = false, loading = false }: {
   readonly item: ClipboardItem
   readonly expanded?: boolean
-  readonly fullImage?: boolean
+  readonly fullContent?: boolean
   readonly loading?: boolean
 }) {
   const { t } = useTranslation("clipboard")
   const api = useApi()
   const preview = item.previews[0]
-  const imageContent = imageContentOf(item)
-  const text = useQuery({
+  const content = previewContentOf(item)
+  const imageContent = content?.mimeType.startsWith("image/") ? content : undefined
+  const fullText = expanded && fullContent && content?.mimeType.startsWith("text/") ? content : undefined
+  const previewText = useQuery({
     queryKey: ["preview", item.id, preview?.id],
     queryFn: async () => (await api.preview(item.id, preview!.id)).text(),
-    enabled: Boolean(preview?.mimeType.startsWith("text/")),
+    enabled: !fullText && Boolean(preview?.mimeType.startsWith("text/")),
     staleTime: Infinity,
   })
-  const imageSource = fullImage && imageContent
+  const contentText = useQuery({
+    queryKey: ["content", item.id, content?.id],
+    queryFn: async () => (await api.content(item.id, fullText!.id)).text(),
+    enabled: Boolean(fullText),
+    staleTime: Infinity,
+  })
+  const text = fullText ? contentText : previewText
+  const imageSource = fullContent && imageContent
     ? `/admin/api/v1/items/${encodeURIComponent(item.id)}/contents/${encodeURIComponent(imageContent.id)}`
     : preview?.mimeType.startsWith("image/")
       ? `/admin/api/v1/items/${encodeURIComponent(item.id)}/previews/${encodeURIComponent(preview.id)}`
@@ -137,7 +147,7 @@ function Preview({ item, expanded = false, fullImage = false, loading = false }:
         <img
           className={expanded ? "max-h-[60vh] w-full object-contain" : "size-full object-contain"}
           src={imageSource}
-          alt={t(fullImage ? "fullImageFrom" : "previewImageFrom", { name: item.origin.tag })}
+          alt={t(fullContent ? "fullImageFrom" : "previewImageFrom", { name: item.origin.tag })}
         />
         {loading ? (
           <span className="absolute inset-0 grid place-items-center bg-background/70" aria-label={t("syncingImage")}>
@@ -147,23 +157,29 @@ function Preview({ item, expanded = false, fullImage = false, loading = false }:
       </div>
     )
   }
-  if (!preview) {
+  if (!preview && !fullText) {
     const Icon = imageContent ? ImageIcon : FileIcon
     return (
       <div className="relative grid min-h-36 place-items-center bg-muted/35 text-muted-foreground">
         <Icon className="size-7" aria-hidden="true" />
-        {loading ? <LoaderCircleIcon className="absolute size-6 animate-spin text-primary" aria-label={t("syncingImage")} /> : null}
+        {loading ? <LoaderCircleIcon className="absolute size-6 animate-spin text-primary" aria-label={t(imageContent ? "syncingImage" : "fetchingContent")} /> : null}
       </div>
     )
   }
-  if (text.isPending) return <div className="min-h-36 animate-pulse bg-muted/45" aria-label={t("loadingPreview")} />
-  if (text.error) return <div className="grid min-h-36 place-items-center text-sm text-destructive">{t("previewUnavailable")}</div>
+  if (text.isPending) return <div className="min-h-36 animate-pulse bg-muted/45" aria-label={t(fullText ? "fetchingContent" : "loadingPreview")} />
+  if (text.error) return <div className="grid min-h-36 place-items-center text-sm text-destructive">{t(fullText ? "contentUnavailable" : "previewUnavailable")}</div>
   return (
     <div className={expanded ? "max-h-[55vh] overflow-auto bg-muted/25 p-5" : "min-h-36 bg-muted/25 p-4"}>
       <p className={expanded ? "whitespace-pre-wrap text-sm leading-6" : "line-clamp-6 whitespace-pre-wrap text-sm leading-6"}>
         {text.data}
       </p>
-      {preview.truncated ? <p className="mt-3 text-xs text-muted-foreground">{t("previewTruncated")}</p> : null}
+      {preview?.truncated && !fullText ? <p className="mt-3 text-xs text-muted-foreground">{t("previewTruncated")}</p> : null}
+      {expanded && loading ? (
+        <p role="status" className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <LoaderCircleIcon className="size-3.5 animate-spin" aria-hidden="true" />
+          {t("fetchingContent")}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -246,31 +262,31 @@ export function ClipboardItemCard({ item, transfer, remove }: {
   usePreferences((state) => state.offsetMinutes)
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [imageTransferId, setImageTransferId] = useState<string>()
+  const [previewTransferId, setPreviewTransferId] = useState<string>()
   const primary = item.contents[0]
-  const imageContent = imageContentOf(item)
-  const requestImage = useMutation({
-    mutationFn: () => api.requestContent(item.id, imageContent!.id),
+  const previewContent = previewContentOf(item)
+  const requestPreview = useMutation({
+    mutationFn: () => api.requestContent(item.id, previewContent!.id),
     onSuccess: ({ transfer: requested }) => {
-      setImageTransferId(requested.id)
+      setPreviewTransferId(requested.id)
       queryClient.setQueryData(["transfer", requested.id], requested)
       toast.info(t("contentRequested"), { id: `content-transfer-${requested.id}` })
     },
     onError: (error) => toast.error(messageOf(error)),
   })
-  const imageTransfer = useQuery({
-    queryKey: ["transfer", imageTransferId],
-    queryFn: () => api.transfer(imageTransferId!),
-    enabled: Boolean(imageTransferId),
+  const previewTransfer = useQuery({
+    queryKey: ["transfer", previewTransferId],
+    queryFn: () => api.transfer(previewTransferId!),
+    enabled: Boolean(previewTransferId),
     refetchInterval: (query) => {
       const value = query.state.data as Transfer | undefined
       return value && terminalTransferStates.has(value.state) ? false : 1_500
     },
   })
-  const requestedTransfer = imageTransfer.data ?? requestImage.data?.transfer
-  useTransferFeedback(imageTransferId, requestedTransfer, imageTransfer.error)
-  const imageReady = imageContent?.availability === "available" || requestedTransfer?.state === "completed"
-  const imageLoading = requestImage.isPending || Boolean(requestedTransfer && !terminalTransferStates.has(requestedTransfer.state))
+  const requestedTransfer = previewTransfer.data ?? requestPreview.data?.transfer
+  useTransferFeedback(previewTransferId, requestedTransfer, previewTransfer.error)
+  const contentReady = previewContent?.availability === "available" || requestedTransfer?.state === "completed"
+  const contentLoading = requestPreview.isPending || Boolean(requestedTransfer && !terminalTransferStates.has(requestedTransfer.state))
   const displayedTransfer = requestedTransfer ?? transfer
   const activeTransfer = displayedTransfer && !terminalTransferStates.has(displayedTransfer.state)
   useEffect(() => {
@@ -280,15 +296,15 @@ export function ClipboardItemCard({ item, transfer, remove }: {
   }, [queryClient, requestedTransfer?.state])
   const showPreview = () => {
     setOpen(true)
-    const retryable = imageTransfer.isError || !requestedTransfer || terminalTransferStates.has(requestedTransfer.state)
-    if (imageContent && imageContent.availability !== "available" && retryable && !requestImage.isPending) {
-      requestImage.mutate()
+    const retryable = previewTransfer.isError || !requestedTransfer || terminalTransferStates.has(requestedTransfer.state)
+    if (previewContent && !contentReady && retryable && !requestPreview.isPending) {
+      requestPreview.mutate()
     }
   }
   return (
     <article className="mb-4 inline-block w-full break-inside-avoid overflow-hidden rounded-[8px] border bg-card text-card-foreground shadow-sm">
       <button type="button" className="block w-full text-left" onClick={showPreview} aria-label={t("viewContent")}>
-        <Preview item={item} fullImage={Boolean(imageReady)} loading={imageLoading} />
+        <Preview item={item} fullContent={contentReady} loading={contentLoading} />
       </button>
       {activeTransfer ? (
         <div className="border-t px-3 py-2">
@@ -309,7 +325,7 @@ export function ClipboardItemCard({ item, transfer, remove }: {
           <ContentAction
             item={item}
             content={primary}
-            available={primary.id === imageContent?.id && Boolean(imageReady)}
+            available={primary.id === previewContent?.id && contentReady}
           />
         ) : null}
         <Button variant="ghost" size="icon-sm" title={t("view")} aria-label={t("viewDetails")} onClick={showPreview}>
@@ -330,7 +346,7 @@ export function ClipboardItemCard({ item, transfer, remove }: {
             <DialogDescription>{item.channelName} · {formatDate(item.createdAt)}</DialogDescription>
           </DialogHeader>
           <div className="overflow-hidden rounded-[8px] border">
-            <Preview item={item} expanded fullImage={Boolean(imageReady)} loading={imageLoading} />
+            <Preview item={item} expanded fullContent={contentReady} loading={contentLoading} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {item.contents.map((content) => (
@@ -341,7 +357,7 @@ export function ClipboardItemCard({ item, transfer, remove }: {
                 <ContentAction
                   item={item}
                   content={content}
-                  available={content.id === imageContent?.id && Boolean(imageReady)}
+                  available={content.id === previewContent?.id && contentReady}
                 />
               </div>
             ))}

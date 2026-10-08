@@ -59,6 +59,7 @@ export default {
   syncingImage: "正在同步完整图片",
   loadingPreview: "正在加载预览",
   previewUnavailable: "预览不可用",
+  contentUnavailable: "完整内容不可用",
   previewTruncated: "预览已截断",
   copy: "复制",
   copyImage: "复制图片",

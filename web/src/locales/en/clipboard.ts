@@ -59,6 +59,7 @@ export default {
   syncingImage: "Syncing full image",
   loadingPreview: "Loading preview",
   previewUnavailable: "Preview unavailable",
+  contentUnavailable: "Full content unavailable",
   previewTruncated: "Preview truncated",
   copy: "Copy",
   copyImage: "Copy image",
