@@ -41,7 +41,7 @@ describe("TLS listener", () => {
         CBX_TLS_KEY_FILE: "../tls/key.pem",
       };
 
-      child = Bun.spawn([process.execPath, resolve(root, "server/src/index.ts"), "--config", configFile, "--migrate", "--serve"], {
+      child = Bun.spawn([process.execPath, resolve(root, "server/src/index.ts"), "--config", configFile], {
         cwd: root,
         env: environment,
         stdout: "ignore",

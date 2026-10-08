@@ -49,6 +49,11 @@ describe("release notes", () => {
       mkdirSync(notes, { recursive: true });
       writeFileSync(resolve(notes, `${tag}-en.md`), english);
       writeFileSync(resolve(notes, `${tag}-cn.md`), "中文发布说明\n");
+      mkdirSync(resolve(directory, "release"));
+      const assets = ["linux_amd64", "linux_arm64", "macos_amd64", "macos_arm64", "windows_amd64", "windows_arm64"]
+        .map((target) => `release/clipboard-x-server_${tag.slice(1)}_${target}.${target.startsWith("windows_") ? "zip" : "tar.gz"}`);
+      assets.push("release/SHA256SUMS");
+      for (const asset of assets) writeFileSync(resolve(directory, asset), "Release asset\n");
       // Capture the publish command without contacting GitHub or creating a Release.
       const stub = `gh() {
         printf '%s\\n' "$@"
@@ -70,6 +75,7 @@ describe("release notes", () => {
       if (result.status !== 0) throw new Error(result.stderr);
       const arguments_ = result.stdout.split(/\r?\n/u);
       expect(arguments_.slice(0, 3)).toEqual(["release", "create", tag]);
+      expect(arguments_.slice(3, 3 + assets.length).sort()).toEqual([...assets].sort());
       expect(arguments_[arguments_.indexOf("--notes-file") + 1]).toBe(`docs/release/${tag}-en.md`);
       expect(arguments_).not.toContain("--generate-notes");
       expect(arguments_.includes("--prerelease")).toBe(tag.includes("-"));

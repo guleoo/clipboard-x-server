@@ -2,9 +2,9 @@
 
 > [简体中文](release_CN.md) · [Deployment guide](deployment.md)
 
-The [Release workflow](../.github/workflows/release.yml) builds six native `.tar.gz` archives: Linux, macOS, and Windows, each for x64 and ARM64. Every archive contains the compiled Server, Web assets, SQLite migrations, a configuration template, the OpenAPI specification, the license, and documentation. Windows archives are also `.tar.gz`; recent Windows versions can extract them with `tar`. Deployment steps are in the [deployment guide](deployment.md).
+The [Release workflow](../.github/workflows/release.yml) builds six native archives: Linux, macOS, and Windows, each for x64 and ARM64. Linux and macOS use `.tar.gz`; Windows uses `.zip`. Every archive contains the compiled Server, Web assets, SQLite migrations, a configuration template, the OpenAPI specification, the license, and documentation. Deployment steps are in the [deployment guide](deployment.md).
 
-Archive names follow `clipboard-x-server_{version}_{platform}_{architecture}.tar.gz`, with `linux`, `macos`, or `windows` as the platform and `amd64` or `arm64` as the architecture. For example: `clipboard-x-server_1.0.0_windows_amd64.tar.gz`. Prerelease versions retain their suffix, such as `1.0.0-beta.1`.
+Archive names follow `clipboard-x-server_{version}_{platform}_{architecture}.{extension}`, with `linux`, `macos`, or `windows` as the platform and `amd64` or `arm64` as the architecture. For example: `clipboard-x-server_1.0.0_windows_amd64.zip` and `clipboard-x-server_1.0.0_linux_arm64.tar.gz`. Prerelease versions retain their suffix, such as `1.0.0-beta.1`.
 
 ## Try the workflow without publishing
 

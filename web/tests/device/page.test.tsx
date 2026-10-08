@@ -38,6 +38,37 @@ test("refreshes the device list after debounced clicks and reports success", asy
   await waitFor(() => expect(feedback.success).toHaveBeenCalledWith("Refreshed", expect.anything()))
 })
 
+test("hides revoked keys and shows the empty state when refreshed keys are all revoked", async () => {
+  let device: Device = {
+    id: "device-1", tag: "My laptop", iconKind: "laptop", iconColor: { light: "#ffffff" },
+    state: "online", lastSeenAt: 1, createdAt: 1, updatedAt: 1, kind: "client",
+    keys: [
+      { id: "revoked-key", createdAt: 1, revokedAt: 2 },
+      { id: "current-key", createdAt: 3 },
+      { id: "overlap-key", createdAt: 2, expiresAt: Date.now() + 300_000 },
+    ],
+  }
+  const api = { devices: mock(async () => [device]) }
+  const query = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <ApiProvider client={api as unknown as Client}>
+      <QueryClientProvider client={query}><DevicesPage /></QueryClientProvider>
+    </ApiProvider>,
+  )
+  await screen.findByText("current-key")
+  expect(screen.getByText("overlap-key")).toBeTruthy()
+  expect(screen.queryByText("revoked-key")).toBeNull()
+  expect(screen.getByRole("button", { name: "Rotate key" })).toBeTruthy()
+  device = { ...device, keys: device.keys.map((key) => ({ ...key, revokedAt: 4 })) }
+  await act(async () => { await query.invalidateQueries({ queryKey: ["devices"] }) })
+  await screen.findByText(i18n.t("devices.noKeys", { ns: "management" }))
+  expect(screen.queryByText("current-key")).toBeNull()
+  expect(screen.queryByText("overlap-key")).toBeNull()
+  expect(screen.getByRole("button", { name: "Issue key" })).toBeTruthy()
+  expect(screen.queryByRole("button", { name: "Rotate key" })).toBeNull()
+  expect(device.keys).toHaveLength(3)
+})
+
 test("registers the client DeviceId without asking the administrator for client-owned profile fields", async () => {
   const deviceId = "123e4567-e89b-42d3-a456-426614174000"
   const created: Device = {

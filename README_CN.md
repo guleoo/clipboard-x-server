@@ -66,7 +66,7 @@ docker compose ps
 
 ```sh
 cp config.example.yaml config.yaml
-./clipboard-x-server --config ./config.yaml --migrate --serve
+./clipboard-x-server
 ```
 
 管理界面默认位于 **http://127.0.0.1:28787**。

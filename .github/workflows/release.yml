@@ -67,13 +67,19 @@ jobs:
         id: artifact
         shell: bash
         run: |
-          archives=(release/*.tar.gz)
-          name="$(basename "${archives[0]}" .tar.gz)"
+          shopt -s nullglob
+          archives=(release/*.tar.gz release/*.zip)
+          test "${#archives[@]}" -eq 1
+          name="$(basename "${archives[0]}")"
+          name="${name%.tar.gz}"
+          name="${name%.zip}"
           echo "name=$name" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.name }}
-          path: release/*.tar.gz
+          path: |
+            release/*.tar.gz
+            release/*.zip
           if-no-files-found: error
 
   publish:
@@ -90,19 +96,26 @@ jobs:
           merge-multiple: true
           path: release
       - name: Verify all six archives and write checksums
+        id: archives
         shell: bash
         run: |
           set -euo pipefail
           targets=(linux_amd64 linux_arm64 macos_amd64 macos_arm64 windows_amd64 windows_arm64)
           shopt -s nullglob
-          archives=(release/*.tar.gz)
+          archives=(release/*.tar.gz release/*.zip)
           test "${#archives[@]}" -eq "${#targets[@]}"
           for target in "${targets[@]}"; do
-            archive="release/clipboard-x-server_${GITHUB_REF_NAME#v}_${target}.tar.gz"
-            test -s "$archive"
-            tar -tzf "$archive" > /dev/null
+            if [[ "$target" == windows_* ]]; then
+              archive="release/clipboard-x-server_${GITHUB_REF_NAME#v}_${target}.zip"
+              test -s "$archive"
+              unzip -tq "$archive" > /dev/null
+            else
+              archive="release/clipboard-x-server_${GITHUB_REF_NAME#v}_${target}.tar.gz"
+              test -s "$archive"
+              tar -tzf "$archive" > /dev/null
+            fi
           done
-          (cd release && sha256sum ./*.tar.gz > SHA256SUMS)
+          (cd release && sha256sum ./*.tar.gz ./*.zip > SHA256SUMS)
       - name: Publish GitHub Release
         id: release
         shell: bash
@@ -114,7 +127,7 @@ jobs:
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then
             flags+=(--prerelease --latest=false)
           fi
-          gh release create "$GITHUB_REF_NAME" release/*.tar.gz release/SHA256SUMS "${flags[@]}"
+          gh release create "$GITHUB_REF_NAME" release/*.tar.gz release/*.zip release/SHA256SUMS "${flags[@]}"
 
   publish-image:
     if: github.event_name == 'push'

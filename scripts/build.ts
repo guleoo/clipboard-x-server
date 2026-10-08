@@ -1,7 +1,7 @@
 import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
-import { executableName, releaseName, releaseTag, releaseTarget } from "./release"
+import { archiveExtension, executableName, releaseName, releaseTag, releaseTarget } from "./release"
 import { parseDocument } from "yaml"
 
 const compile = process.argv.includes("--compile")
@@ -54,13 +54,20 @@ console.log(`Release assembled in ${release}`)
 if (archive) {
   const { version } = (await Bun.file(`${root}/package.json`).json()) as { version: string }
   const name = releaseName(releaseTag(version, process.env.CBX_RELEASE_TAG), target!)
-  const output = `${root}/release/${name}.tar.gz`
+  const extension = archiveExtension(target!)
+  const output = `${root}/release/${name}.${extension}`
   const temporaryOutput = `${output}.tmp`
   const staging = await mkdtemp(join(tmpdir(), "clipboard-x-release-"))
   await mkdir(`${root}/release`, { recursive: true })
   try {
     await cp(release, join(staging, name), { recursive: true })
-    await run(["tar", "-czf", temporaryOutput, "-C", staging, name])
+    if (extension === "zip") {
+      // Windows/macOS tar is libarchive-based; Linux cross-builds use bsdtar explicitly.
+      const archiver = process.platform === "linux" ? "bsdtar" : "tar"
+      await run([archiver, "--format=zip", "-cf", temporaryOutput, "-C", staging, name])
+    } else {
+      await run(["tar", "-czf", temporaryOutput, "-C", staging, name])
+    }
     await rename(temporaryOutput, output)
   } finally {
     await rm(temporaryOutput, { force: true })

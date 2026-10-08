@@ -120,7 +120,14 @@ export function DevicesPage() {
   usePreferences((state) => state.offsetMinutes)
   const api = useApi()
   const client = useQueryClient()
-  const devices = useQuery({ queryKey: ["devices"], queryFn: () => api.devices() })
+  const devices = useQuery({
+    queryKey: ["devices"],
+    queryFn: () => api.devices(),
+    select: (devices) => devices.map((device) => ({
+      ...device,
+      keys: device.keys.filter((key) => key.revokedAt === undefined),
+    })),
+  })
   const reload = useRefresh(() => devices.refetch(), "devices")
   const [creating, setCreating] = useState(false)
   const [issued, setIssued] = useState<IssuedDeviceKey>()
@@ -204,8 +211,8 @@ export function DevicesPage() {
                       disabled={Boolean(device.disabledAt) || issue.isPending}
                       onClick={() => issue.mutate(device)}
                     >
-                      {device.keys.some((key) => !key.revokedAt) ? <RotateCwIcon className="size-3.5" /> : <KeyRoundIcon className="size-3.5" />}
-                      {device.keys.some((key) => !key.revokedAt) ? t("devices.rotate") : t("devices.issue")}
+                      {device.keys.length > 0 ? <RotateCwIcon className="size-3.5" /> : <KeyRoundIcon className="size-3.5" />}
+                      {device.keys.length > 0 ? t("devices.rotate") : t("devices.issue")}
                     </Button>
                   </div>
                   {device.keys.length === 0 ? <p className="text-xs text-muted-foreground">{t("devices.noKeys")}</p> : (
@@ -214,17 +221,15 @@ export function DevicesPage() {
                         <li key={key.id} className="flex items-center gap-2 rounded-lg bg-muted/55 px-3 py-2 text-xs">
                           <span className="shrink-0 text-muted-foreground">{t("devices.keyId")}</span>
                           <code className="min-w-0 flex-1 truncate">{key.id}</code>
-                          <span className="text-muted-foreground">{key.revokedAt ? t("devices.revoked") : key.expiresAt ? t("devices.overlap") : t("devices.current")}</span>
-                          {!key.revokedAt ? (
-                            <ConfirmAction
-                              trigger={<Button variant="ghost" size="xs">{t("devices.revoke")}</Button>}
-                              title={t("devices.revokeTitle")}
-                              description={t("devices.revokeDescription")}
-                              confirmLabel={t("devices.revoke")}
-                              pending={revoke.isPending}
-                              onConfirm={() => revoke.mutate({ deviceId: device.id, keyId: key.id })}
-                            />
-                          ) : null}
+                          <span className="text-muted-foreground">{key.expiresAt ? t("devices.overlap") : t("devices.current")}</span>
+                          <ConfirmAction
+                            trigger={<Button variant="ghost" size="xs">{t("devices.revoke")}</Button>}
+                            title={t("devices.revokeTitle")}
+                            description={t("devices.revokeDescription")}
+                            confirmLabel={t("devices.revoke")}
+                            pending={revoke.isPending}
+                            onConfirm={() => revoke.mutate({ deviceId: device.id, keyId: key.id })}
+                          />
                         </li>
                       ))}
                     </ul>

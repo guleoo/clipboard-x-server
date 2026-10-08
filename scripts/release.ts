@@ -46,6 +46,10 @@ export function executableName(target: ReleaseTarget): string {
   return target.startsWith("windows-") ? "clipboard-x-server.exe" : "clipboard-x-server";
 }
 
+export function archiveExtension(target: ReleaseTarget): "zip" | "tar.gz" {
+  return target.startsWith("windows-") ? "zip" : "tar.gz";
+}
+
 if (import.meta.main) {
   const packageJson = JSON.parse(readFileSync(resolve(import.meta.dir, "../package.json"), "utf8")) as { version: string };
   console.log(releaseTag(packageJson.version, process.env.CBX_RELEASE_TAG));
