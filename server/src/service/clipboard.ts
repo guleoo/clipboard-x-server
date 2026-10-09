@@ -107,7 +107,7 @@ export class ClipboardService {
     const metrics = this.repo.statusMetrics()
     return {
       apiVersion: 1,
-      serverVersion: "1.0.1",
+      serverVersion: "1.0.2",
       state: "online",
       capabilities: {
         supportedMimeTypes: config.supportedMimeTypes,
