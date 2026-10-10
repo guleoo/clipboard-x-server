@@ -1,6 +1,6 @@
 # Deployment
 
-> [简体中文](deployment_CN.md) · [Release guide](release.md)
+> [简体中文](deployment_CN.md)
 
 ## Native release
 
@@ -41,7 +41,7 @@ Add these fields to the existing template rather than replacing its other settin
 
 The YAML file is the authoritative source for configurable options, the administrator, devices, complete device API keys, channels, and memberships. Capacity limits use KB (1 KB = 1024 bytes), and durations use seconds; field names have no unit suffix. The process reads it at startup. Console changes are written to the file through a synced temporary file and atomic rename, with mode `0600`; manual edits take effect after restarting the process.
 
-Server-side `cleanup` is enabled by default, retaining up to 1,000 items per device in each Channel for at most 30 days. It removes older server copies on the configured interval without deleting local client history. Edit or disable the policy on the Web configuration page. Read [operations](operations.md) for details.
+Server-side `cleanup` is enabled by default, retaining up to 1,000 items per device in each Channel for at most 30 days. It removes older server copies on the configured interval without deleting local client history. Edit or disable the policy on the Web configuration page.
 
 ## Container from GHCR
 
@@ -93,4 +93,10 @@ The image provides `/app/storage/config.yaml` with `app.host`, `app.port`, `app.
 
 To update the image while retaining the volume, run `docker compose pull` followed by `docker compose up -d` (or use both `-f` options for direct TLS).
 
-The unauthenticated `/health/live` endpoint checks the process; `/health/ready` also checks SQLite. The container health check reads the same YAML file. See [operations](operations.md) for backup and recovery guidance.
+The unauthenticated `/health/live` endpoint checks the process; `/health/ready` also checks SQLite. The container health check reads the same YAML file.
+
+## Backup and restore
+
+Stop the Server before taking a backup. For a native deployment, back up `config.yaml` and the complete directory configured by `app.data-dir` together, including SQLite WAL/SHM files when present and binary objects. For Docker, back up the `clipboard-x-storage` volume. Logs are not required for recovery.
+
+To restore, stop the Server and restore configuration and data from the same backup, preserving ownership and permissions. Keep `config.yaml` at mode `0600` on Unix systems. Start the Server and check `/health/ready`, administrator login, and access to clipboard content. Back up before upgrading; do not delete the Docker volume when updating the container.

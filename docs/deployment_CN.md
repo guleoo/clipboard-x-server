@@ -1,6 +1,6 @@
 # 部署指南
 
-> [English](deployment.md) · [版本发布指南](release_CN.md)
+> [English](deployment.md)
 
 ## 原生程序包
 
@@ -41,7 +41,7 @@ web:
 
 YAML 文件是可配置选项、管理员、设备、完整设备 API Key、Channel 及成员关系的权威来源。容量限制使用 KB（1 KB = 1024 字节），时长使用秒，字段名不带单位后缀。进程启动时读取此文件。管理控制台修改配置时，先写入同步到磁盘的临时文件，再原子重命名，并将文件权限设为 `0600`；手动编辑后需要重启进程才能生效。
 
-服务端 `cleanup` 默认开启，每个设备在每个 Channel 最多保留 1000 条，最长保存 30 天。它按配置的间隔删除较旧的服务端副本，不会删除客户端本地历史。可在 Web 配置页面修改或关闭策略，详见[运维指南](operations_CN.md)。
+服务端 `cleanup` 默认开启，每个设备在每个 Channel 最多保留 1000 条，最长保存 30 天。它按配置的间隔删除较旧的服务端副本，不会删除客户端本地历史。可在 Web 配置页面修改或关闭策略。
 
 ## 从 GHCR 部署容器
 
@@ -93,4 +93,10 @@ docker compose -f compose.yaml -f compose.tls.yaml up -d
 
 更新镜像并保留卷时，先运行 `docker compose pull`，再运行 `docker compose up -d`；直接使用 TLS 时，这两个命令都应带上对应的两个 `-f` 选项。
 
-无需认证的 `/health/live` 检查进程，`/health/ready` 还会检查 SQLite。容器健康检查读取同一份 YAML。备份与恢复方法见[运维指南](operations_CN.md)。
+无需认证的 `/health/live` 检查进程，`/health/ready` 还会检查 SQLite。容器健康检查读取同一份 YAML。
+
+## 备份与恢复
+
+备份前先停止 Server。原生部署时，将 `config.yaml` 与 `app.data-dir` 指定的整个目录一起备份，包括存在的 SQLite WAL/SHM 文件和二进制对象。Docker 部署时备份 `clipboard-x-storage` 卷。恢复不依赖日志。
+
+恢复时先停止 Server，从同一份备份还原配置和数据，保留所有权与权限。在 Unix 系统上将 `config.yaml` 的权限保持为 `0600`。启动后检查 `/health/ready`、管理员登录和剪切板内容访问。升级前先备份，更新容器时不要删除 Docker 卷。

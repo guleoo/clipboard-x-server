@@ -39,14 +39,18 @@ await cp(`${root}/docs`, `${release}/docs`, { recursive: true })
 await cp(`${root}/web/docs`, `${release}/docs/web`, { recursive: true })
 await cp(`${root}/README.md`, `${release}/README.md`)
 await cp(`${root}/README_CN.md`, `${release}/README_CN.md`)
+await cp(`${root}/CONTRIBUTING.md`, `${release}/CONTRIBUTING.md`)
+await cp(`${root}/CONTRIBUTING_CN.md`, `${release}/CONTRIBUTING_CN.md`)
 await cp(`${root}/LICENSE.md`, `${release}/LICENSE.md`)
 
-// Local OpenAPI links differ between the source checkout and the native package.
-for (const path of ["README.md", "README_CN.md", "docs/protocol.md", "docs/protocol_CN.md"]) {
+// Local documentation links differ between the source checkout and the native package.
+for (const path of ["README.md", "README_CN.md", "CONTRIBUTING.md", "CONTRIBUTING_CN.md", "docs/protocol.md", "docs/protocol_CN.md"]) {
   const document = await readFile(`${release}/${path}`, "utf8")
   await writeFile(`${release}/${path}`, document
     .replaceAll("(server/openapi/openapi.json)", "(openapi/openapi.json)")
-    .replaceAll("(../server/openapi/openapi.json)", "(../openapi/openapi.json)"))
+    .replaceAll("(../server/openapi/openapi.json)", "(../openapi/openapi.json)")
+    .replaceAll("(web/docs/architecture.md)", "(docs/web/architecture.md)")
+    .replaceAll("(web/docs/architecture_CN.md)", "(docs/web/architecture_CN.md)"))
 }
 
 console.log(`Release assembled in ${release}`)
