@@ -125,8 +125,7 @@ See the [deployment guide](docs/deployment.md) for TLS and container deployment.
 | --- | --- |
 | [Architecture](docs/architecture.md) | Responsibilities of the Server, Web console, configuration, SQLite, and object storage. |
 | [Deployment](docs/deployment.md) | Executables, TLS, and containers. |
-| [Releases](docs/release.md) | Verification, beta, and stable GitHub Releases for six platforms. |
-| [Operations](docs/operations.md) | Backup and restore, periodic cleanup, object audits, and garbage collection. |
+| [Contributing](CONTRIBUTING.md) | Development setup, code conventions, checks, and pull requests. |
 | [OpenAPI 3.1](server/openapi/openapi.json) | Machine-readable routes, authentication, and data structures. |
 | [Protocol guide](docs/protocol.md) · [中文协议指南](docs/protocol_CN.md) | Cross-request flows, error semantics, and client compatibility. |
 
